@@ -12,6 +12,10 @@ Stop manually creating folders. Just Drop & Run.
 *   **Zero-Dependency**: Built with standard Python libraries—no complex installation required.
 *   **Dual Mode Support**: Works seamlessly on Windows (PowerShell/CMD) and Linux/WSL (Bash).
 
+## 🤖 Automation & Architecture
+The project runs on a daily automated pipeline triggered at 8:00 AM.
+For a detailed visual flow of how the system works, please see [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ## 📂 Project Structure
 
 ```text
