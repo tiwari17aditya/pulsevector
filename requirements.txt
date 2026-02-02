@@ -1,6 +1,5 @@
-# Standard Library Dependencies (No external installation required)
-os
-shutil
-re
-datetime
-pathlib
+google-generativeai
+python-dotenv
+googlesearch-python
+beautifulsoup4
+requests
