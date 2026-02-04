@@ -1,6 +1,7 @@
 @echo off
 cd /d "c:\Users\addyt\OneDrive\Desktop\pulse-vector"
 python auto_pulse.py
+python process_data.py
 
 :: --- 1. Git Automation (Push to GitHub) ---
 echo Pushing changes to GitHub...
