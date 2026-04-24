@@ -1,5 +1,5 @@
 @echo off
-cd /d "c:\Users\addyt\OneDrive\Desktop\pulse-vector"
+cd /d "c:\Users\addyt\OneDrive\Desktop\New folder\pulse-vector"
 python auto_pulse.py
 python process_data.py
 

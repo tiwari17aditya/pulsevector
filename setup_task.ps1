@@ -1,4 +1,4 @@
-$Action = New-ScheduledTaskAction -Execute "c:\Users\addyt\OneDrive\Desktop\pulse-vector\run_daily.bat"
+$Action = New-ScheduledTaskAction -Execute "c:\Users\addyt\OneDrive\Desktop\New folder\pulse-vector\run_daily.bat"
 $Trigger = New-ScheduledTaskTrigger -Daily -At 8am
 $Settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -WakeToRun
 
