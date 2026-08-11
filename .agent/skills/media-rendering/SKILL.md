@@ -10,16 +10,19 @@ description: Domain skill for PIL image slide creation, MoviePy/FFmpeg video ren
 - `src/core/video_utils.py`
 - `src/core/tts_utils.py`
 - `POC/enhance_video_poc.py`
+- `POC/qr_minigame_poc.py`
+- `docs/play/index.html`
 
 ## Instructions & Core Operations
 1. **Visual Slide Generation**:
    - Aspect ratio: Vertical 9:16 (`1080x1920` px resolution).
    - Style: Dark mode glassmorphism UI card aesthetic with clean, modern typography.
    - Text safety: Keep text within safe margin bounds (top 150px and bottom 250px avoided to prevent overlap with YouTube Shorts overlay UI).
-2. **Video Compilation**:
+2. **Video Compilation & Overlays**:
    - Frame rate: Standardized 30 FPS (`fps=30`).
    - Transitions: Apply dynamic visual transitions (`slide_left`, `zoom_fade`, `fade`).
    - Audio overlay: Blend TTS narration voice track with background music (`samples/Audio/`) at balanced decibel levels (-14 dB to -18 dB for background track).
+   - QR Code Integration: Overlay a `150x150` QR code at position `(820, 1405)` next to the countdown timer, pointing to the interactive HTML game in `docs/play/index.html` with query parameters.
 
 ## Domain Constraints
 - Never produce stretched or non-standard aspect ratio videos for YouTube Shorts.
