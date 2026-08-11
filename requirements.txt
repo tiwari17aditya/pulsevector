@@ -1,0 +1,14 @@
+google-genai
+python-dotenv
+googlesearch-python
+beautifulsoup4
+requests
+pillow
+opencv-python
+imageio-ffmpeg
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2
+edge-tts
+mutagen
+supabase

@@ -1,0 +1,82 @@
+name: Pulse Monthly Automation
+
+on:
+  schedule:
+    # Run daily from the 28th to the 31st at 3:45 AM IST (10:15 PM UTC the night before)
+    - cron: '15 22 28-31 * *'
+  workflow_dispatch:
+    # Allows manual triggering from the Actions tab on GitHub
+
+env:
+  TZ: Asia/Kolkata
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Check if Month End
+        id: check-month-end
+        run: |
+          python -c "import datetime, os; now = datetime.datetime.now(); is_month_end = (now + datetime.timedelta(days=1)).month != now.month; is_dispatch = '${{ github.event_name }}' == 'workflow_dispatch'; run_pipeline = 'true' if (is_month_end or is_dispatch) else 'false'; with open(os.environ['GITHUB_OUTPUT'], 'a') as f: f.write(f'run_pipeline={run_pipeline}\n')"
+
+      - name: Install System Dependencies (FFmpeg)
+        if: steps.check-month-end.outputs.run_pipeline == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install Python Dependencies
+        if: steps.check-month-end.outputs.run_pipeline == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Recreate YouTube Credentials
+        if: steps.check-month-end.outputs.run_pipeline == 'true'
+        run: |
+          mkdir -p credentials
+          echo '${{ secrets.YOUTUBE_CLIENT_SECRETS }}' > credentials/client_secrets.json
+          echo '${{ secrets.YOUTUBE_TOKEN_JSON }}' > credentials/token.json
+
+      - name: Configure Git
+        if: steps.check-month-end.outputs.run_pipeline == 'true'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Run Pulse Vector Monthly Pipeline
+        if: steps.check-month-end.outputs.run_pipeline == 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          YOUTUBE_PRIVACY_STATUS: ${{ secrets.YOUTUBE_PRIVACY_STATUS || 'public' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python src/pipeline.py --monthly
+
+      - name: Push Git Commits
+        if: steps.check-month-end.outputs.run_pipeline == 'true' && always()
+        run: |
+          git pull --rebase -X theirs origin main || (git rebase --abort && git pull --no-rebase -X theirs origin main --no-edit || (git checkout --ours . && git add . && git commit -m "Auto-resolve merge conflicts"))
+          git push origin main
+
+
+
+      - name: Cleanup Credentials
+        if: steps.check-month-end.outputs.run_pipeline == 'true' && always()
+        run: |
+          rm -f credentials/client_secrets.json credentials/token.json

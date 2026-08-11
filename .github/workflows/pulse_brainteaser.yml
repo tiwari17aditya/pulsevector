@@ -1,0 +1,72 @@
+name: Pulse Brain Teaser Automation
+
+on:
+  schedule:
+    # Morning run: 7:45 AM IST (which is 2:15 AM UTC)
+    - cron: '15 2 * * *'
+    # Evening run: 7:45 PM IST (which is 2:15 PM UTC)
+    - cron: '15 14 * * *'
+  workflow_dispatch:
+    # Allows manual triggering from the Actions tab on GitHub
+
+env:
+  TZ: Asia/Kolkata
+
+jobs:
+  run-brainteaser:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install System Dependencies (FFmpeg)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Recreate YouTube Credentials
+        run: |
+          mkdir -p credentials
+          echo '${{ secrets.YOUTUBE_CLIENT_SECRETS }}' > credentials/client_secrets.json
+          echo '${{ secrets.YOUTUBE_TOKEN_JSON }}' > credentials/token.json
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Run Standalone Brain Teaser Pipeline
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          YOUTUBE_PRIVACY_STATUS: ${{ secrets.YOUTUBE_PRIVACY_STATUS || 'public' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python src/brainteaser_pipeline.py
+
+      - name: Commit and Push Generated Cards
+        run: |
+          git add .
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update: Standalone Brain Teaser Pipeline Run" && (git pull --rebase -X theirs origin main || (git rebase --abort && git pull --no-rebase -X theirs origin main --no-edit || (git checkout --ours . && git add . && git commit -m "Auto-resolve merge conflicts"))) && git push origin main)
+
+
+      - name: Cleanup Credentials
+        if: always()
+        run: |
+          rm -f credentials/client_secrets.json credentials/token.json
