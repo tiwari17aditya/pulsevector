@@ -11,3 +11,10 @@
 ## Skill Invocation Rules
 - Load ONLY the skill relevant to the target files or action being performed.
 - Do NOT load unrelated skills into agent context.
+
+## Packup Command Sign-Off Checklist
+When the user triggers "packup" or "/packup", the agent must execute the following operations before signing off:
+- Stage, commit, and push all modifications to the remote repository (`git push origin main`).
+- Update all session-related trackers, walkthroughs, and logs (e.g. `Research/developer_token_usage.md` and `walkthrough.md`).
+- Document proposed enhancements or next steps for subsequent sessions.
+- Review and update the domain skills in `.agent/skills/` if necessary to maintain code standards and optimize token usage.
