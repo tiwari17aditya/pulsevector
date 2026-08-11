@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pulse Vector Play - Interactive Challenge</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-color: #030712;
+      --card-bg: rgba(17, 24, 39, 0.55);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --primary-color: #3b82f6; /* Blue */
+      --success-color: #10b981; /* Emerald */
+      --danger-color: #ef4444; /* Red */
+      --text-main: #f3f4f6;
+      --text-sub: #9ca3af;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-color);
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(236, 72, 153, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 50% 50%, #030712 0%, #000000 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    /* Container */
+    .container {
+      width: 100%;
+      max-width: 500px;
+      position: relative;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 40px rgba(139, 92, 246, 0.3);
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle {
+      font-size: 0.95rem;
+      color: var(--text-sub);
+      margin-top: 6px;
+      letter-spacing: 0.5px;
+      font-weight: 500;
+    }
+
+    /* Main Card */
+    .game-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 30px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+    }
+
+    .game-card.success-glow {
+      border-color: var(--success-color);
+      box-shadow: 0 0 30px rgba(16, 185, 129, 0.25), 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .game-card.fail-shake {
+      animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+      border-color: var(--danger-color);
+      box-shadow: 0 0 30px rgba(239, 68, 68, 0.2), 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Challenge Info */
+    .challenge-date {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #818cf8;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 12px;
+    }
+
+    .question {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 600;
+      line-height: 1.4;
+      margin-bottom: 20px;
+    }
+
+    /* Sequence/Puzzle Box */
+    .sequence-container {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 24px;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .sequence-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: var(--text-sub);
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .sequence-val {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      color: #38bdf8;
+      text-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+    }
+
+    /* Options */
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .option-btn {
+      width: 100%;
+      background: rgba(30, 41, 59, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: 16px 20px;
+      color: var(--text-main);
+      font-size: 1.05rem;
+      font-weight: 500;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+    }
+
+    .option-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .option-btn:active {
+      transform: translateY(0);
+    }
+
+    /* Option states */
+    .option-btn.correct {
+      background: rgba(16, 185, 129, 0.15) !important;
+      border-color: var(--success-color) !important;
+      color: #34d399;
+      font-weight: 700;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+    }
+
+    .option-btn.wrong {
+      background: rgba(239, 68, 68, 0.1) !important;
+      border-color: var(--danger-color) !important;
+      color: #f87171;
+    }
+
+    .option-btn.disabled {
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+    .option-btn.correct.disabled {
+      opacity: 1;
+    }
+
+    /* Feedback Overlay / Message */
+    .feedback-msg {
+      margin-top: 20px;
+      text-align: center;
+      font-weight: 700;
+      font-size: 1.1rem;
+      min-height: 24px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .feedback-msg.show {
+      opacity: 1;
+    }
+
+    .feedback-msg.correct {
+      color: #34d399;
+      text-shadow: 0 0 10px rgba(52, 211, 153, 0.2);
+    }
+
+    .feedback-msg.wrong {
+      color: #f87171;
+    }
+
+    /* Brand / Watermark */
+    .footer-brand {
+      text-align: center;
+      margin-top: 30px;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.25);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    /* Loader */
+    .loader-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 0;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid rgba(255,255,255,0.06);
+      border-top-color: var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+    }
+
+    .loader-text {
+      margin-top: 16px;
+      color: var(--text-sub);
+      font-size: 0.9rem;
+    }
+
+    .error-container {
+      text-align: center;
+      padding: 30px 10px;
+    }
+    
+    .error-icon {
+      font-size: 2.5rem;
+      color: var(--danger-color);
+      margin-bottom: 12px;
+    }
+
+    .retry-btn {
+      margin-top: 16px;
+      background: var(--primary-color);
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+
+    .retry-btn:hover {
+      opacity: 0.9;
+    }
+
+    /* Confetti Particle */
+    .particle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      pointer-events: none;
+      animation: shoot 1.2s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+      z-index: 100;
+    }
+
+    /* Animations */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-1px, 0, 0); }
+      20%, 80% { transform: translate3d(2px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+      40%, 60% { transform: translate3d(4px, 0, 0); }
+    }
+
+    @keyframes shoot {
+      0% {
+        transform: translate3d(0, 0, 0) scale(1);
+        opacity: 1;
+      }
+      80% {
+        opacity: 0.8;
+      }
+      100% {
+        transform: translate3d(var(--x), var(--y), 0) scale(0.4);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>PULSE VECTOR</h1>
+      <div class="subtitle">Interactive Mini-Games</div>
+    </header>
+
+    <div class="game-card" id="gameCard">
+      <!-- Loader State -->
+      <div id="loader" class="loader-container">
+        <div class="spinner"></div>
+        <div class="loader-text">Loading challenge details...</div>
+      </div>
+
+      <!-- Error State -->
+      <div id="errorState" class="error-container" style="display: none;">
+        <div class="error-icon">⚠️</div>
+        <h3>Failed to load challenge</h3>
+        <p style="color: var(--text-sub); margin-top: 8px; font-size: 0.9rem;" id="errorMsg"></p>
+        <button class="retry-btn" onclick="loadChallenge()">Try Again</button>
+      </div>
+
+      <!-- Game State -->
+      <div id="gameContent" style="display: none;">
+        <div class="challenge-date" id="challengeDate">24 JULY 2026</div>
+        <div class="question" id="challengeQuestion">What number comes next in the sequence?</div>
+        
+        <div class="sequence-container">
+          <div class="sequence-label">Sequence</div>
+          <div class="sequence-val" id="challengeSequence">3, 7, 15, 31, 63, ?</div>
+        </div>
+
+        <div class="options-grid" id="optionsGrid">
+          <!-- Dynamically populated options -->
+        </div>
+
+        <div class="feedback-msg" id="feedbackMsg"></div>
+      </div>
+    </div>
+
+    <div class="footer-brand">pulse-vector</div>
+  </div>
+
+  <script>
+    // Constants
+    const REPO_OWNER = "tiwari17aditya";
+    const REPO_NAME = "pulsevector";
+    
+    const monthMap = {
+      jan: "January", feb: "February", mar: "March", apr: "April", may: "May", jun: "June",
+      jul: "July", aug: "August", sep: "September", oct: "October", nov: "November", dec: "December"
+    };
+
+    // Game state
+    let challengeData = null;
+    let selectedOption = null;
+
+    // DOM Elements
+    const gameCard = document.getElementById("gameCard");
+    const loader = document.getElementById("loader");
+    const errorState = document.getElementById("errorState");
+    const errorMsg = document.getElementById("errorMsg");
+    const gameContent = document.getElementById("gameContent");
+    const challengeDate = document.getElementById("challengeDate");
+    const challengeQuestion = document.getElementById("challengeQuestion");
+    const challengeSequence = document.getElementById("challengeSequence");
+    const optionsGrid = document.getElementById("optionsGrid");
+    const feedbackMsg = document.getElementById("feedbackMsg");
+
+    // Get URL Parameters
+    function getQueryParam(name) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(name);
+    }
+
+    // Parse Challenge Date from Parameter (e.g., 24jul26)
+    function parseChallengeDate(param) {
+      if (!param) return null;
+      
+      const regex = /^(\d{1,2})([a-zA-Z]{3})(\d{2})$/;
+      const match = param.trim().match(regex);
+      if (!match) return null;
+      
+      const day = parseInt(match[1]);
+      const monthShort = match[2].toLowerCase();
+      const yearShort = match[3];
+      
+      const monthName = monthMap[monthShort];
+      if (!monthName) return null;
+      
+      const year = "20" + yearShort; // Assumes 20xx
+      
+      return { day, monthName, year, filename: `brainteaser-${param.toLowerCase()}.txt` };
+    }
+
+    // Fetch Content with Fallback
+    async function fetchChallengeText(dateInfo) {
+      const { year, monthName, filename } = dateInfo;
+      const relativePath = `../../pulse_archive/${year}/${monthName}/Brain_Teasers/Text/${filename}`;
+      const remoteUrl = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/pulse_archive/${year}/${monthName}/Brain_Teasers/Text/${filename}`;
+      
+      // Try fetching locally first (useful for local verification)
+      try {
+        console.log(`Attempting local fetch: ${relativePath}`);
+        const localResponse = await fetch(relativePath);
+        if (localResponse.ok) {
+          return await localResponse.text();
+        }
+      } catch (err) {
+        console.warn("Local fetch failed or blocked by CORS, falling back to GitHub raw URL...", err);
+      }
+      
+      // Fallback to GitHub Raw URL
+      console.log(`Fetching from GitHub Raw: ${remoteUrl}`);
+      const response = await fetch(remoteUrl);
+      if (!response.ok) {
+        throw new Error(`File not found. HTTP Status ${response.status}`);
+      }
+      return await response.text();
+    }
+
+    // Parse text file contents into structured object
+    function parseTeaserData(text) {
+      const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+      let title = "";
+      let question = "What comes next in the sequence?";
+      let series = "";
+      let options = [];
+      let correctAnswer = null;
+      
+      // Parse Line by Line
+      for (let line of lines) {
+        if (line.toLowerCase().startsWith("daily brain teaser")) {
+          title = line.replace(/🧠/g, "").trim();
+        } else if (line.toLowerCase().startsWith("q.")) {
+          question = line.substring(2).trim();
+        } else if (line.toLowerCase().startsWith("series:")) {
+          series = line.replace(/series:/i, "").trim();
+        } else if (line.match(/^[a-d][\.\)]/i)) {
+          const letter = line[0].toLowerCase();
+          const text = line.substring(2).trim();
+          options.push({ letter, text });
+        } else if (line.toLowerCase().startsWith("correct answer:") || line.toLowerCase().startsWith("answer:")) {
+          const match = line.match(/(?:correct answer|answer):\s*([a-d])/i);
+          if (match) {
+            correctAnswer = match[1].toLowerCase();
+          }
+        }
+      }
+      
+      // Fallback for older puzzles that don't have answer logged
+      if (!correctAnswer && options.length > 0) {
+        // Try to solve sequence or set a deterministic placeholder
+        // For POC, we warn or default to the first letter if not specified
+        correctAnswer = "c"; // Default fallback
+      }
+      
+      return { title, question, series, options, correctAnswer };
+    }
+
+    // Create custom particle confetti animation
+    function triggerConfetti() {
+      const colors = ['#f472b6', '#38bdf8', '#34d399', '#fbbf24', '#a78bfa'];
+      const cardRect = gameCard.getBoundingClientRect();
+      
+      for (let i = 0; i < 50; i++) {
+        const particle = document.createElement("div");
+        particle.className = "particle";
+        
+        // Random style properties
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const size = Math.random() * 8 + 4;
+        
+        particle.style.width = `${size}px`;
+        particle.style.height = `${size}px`;
+        particle.style.backgroundColor = color;
+        
+        // Shoot origin: center of card
+        particle.style.left = `50%`;
+        particle.style.top = `50%`;
+        
+        // Random vectors
+        const xDist = (Math.random() - 0.5) * 350;
+        const yDist = (Math.random() - 0.8) * 300 - 100;
+        particle.style.setProperty('--x', `${xDist}px`);
+        particle.style.setProperty('--y', `${yDist}px`);
+        
+        gameCard.appendChild(particle);
+        
+        // Clean up
+        setTimeout(() => particle.remove(), 1200);
+      }
+    }
+
+    // Handle option click
+    function handleOptionSelect(letter) {
+      if (selectedOption !== null) return;
+      selectedOption = letter;
+      
+      const buttons = optionsGrid.querySelectorAll(".option-btn");
+      const isCorrect = letter === challengeData.correctAnswer;
+      
+      buttons.forEach(btn => {
+        btn.classList.add("disabled");
+        const btnLetter = btn.getAttribute("data-letter");
+        
+        if (btnLetter === challengeData.correctAnswer) {
+          btn.classList.add("correct");
+        } else if (btnLetter === letter && !isCorrect) {
+          btn.classList.add("wrong");
+        }
+      });
+      
+      if (isCorrect) {
+        gameCard.classList.add("success-glow");
+        feedbackMsg.textContent = "Correct Answer! 🎉 Great Job!";
+        feedbackMsg.className = "feedback-msg show correct";
+        triggerConfetti();
+      } else {
+        gameCard.classList.add("fail-shake");
+        feedbackMsg.textContent = `Incorrect! Try again. ❌`;
+        feedbackMsg.className = "feedback-msg show wrong";
+        
+        // Remove shake after animation completes
+        setTimeout(() => {
+          gameCard.classList.remove("fail-shake");
+        }, 500);
+      }
+    }
+
+    // Load and Render the Challenge
+    async function loadChallenge() {
+      // Show Loader
+      loader.style.display = "flex";
+      errorState.style.display = "none";
+      gameContent.style.display = "none";
+      gameCard.classList.remove("success-glow", "fail-shake");
+      feedbackMsg.className = "feedback-msg";
+      selectedOption = null;
+      
+      const challengeParam = getQueryParam("challenge");
+      if (!challengeParam) {
+        showError("Missing query parameter '?challenge=ddmonyy'. Example: ?challenge=24jul26");
+        return;
+      }
+      
+      const dateInfo = parseChallengeDate(challengeParam);
+      if (!dateInfo) {
+        showError(`Invalid challenge format '${challengeParam}'. Use format like '24jul26'`);
+        return;
+      }
+      
+      try {
+        const textContent = await fetchChallengeText(dateInfo);
+        challengeData = parseTeaserData(textContent);
+        
+        // Render content
+        challengeDate.textContent = dateInfo.day + " " + dateInfo.monthName + " " + dateInfo.year;
+        challengeQuestion.textContent = challengeData.question;
+        challengeSequence.textContent = challengeData.series;
+        
+        // Build option buttons
+        optionsGrid.innerHTML = "";
+        challengeData.options.forEach(opt => {
+          const btn = document.createElement("button");
+          btn.className = "option-btn";
+          btn.setAttribute("data-letter", opt.letter);
+          btn.innerHTML = `<span style="font-weight: 700; margin-right: 12px; color: #a78bfa;">${opt.letter.toUpperCase()}.</span> ${opt.text}`;
+          btn.addEventListener("click", () => handleOptionSelect(opt.letter));
+          optionsGrid.appendChild(btn);
+        });
+        
+        // Show Content, Hide Loader
+        loader.style.display = "none";
+        gameContent.style.display = "block";
+      } catch (err) {
+        showError(`Could not retrieve the puzzle file from GitHub or local archive: ${err.message}`);
+      }
+    }
+
+    function showError(msg) {
+      loader.style.display = "none";
+      errorMsg.textContent = msg;
+      errorState.style.display = "block";
+    }
+
+    // Run on Load
+    window.addEventListener("DOMContentLoaded", loadChallenge);
+  </script>
+</body>
+</html>

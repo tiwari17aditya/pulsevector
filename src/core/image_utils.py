@@ -259,13 +259,18 @@ def parse_teaser_file(file_path):
             
     # Extract hashtags
     hashtags = re.findall(r'#\w+', content)
+    
+    # Extract correct answer if present
+    answer_match = re.search(r'(?:Correct Answer|Answer):\s*([a-d])', clean_content, re.IGNORECASE)
+    correct_answer = answer_match.group(1).lower() if answer_match else None
             
     return {
         "question_header": question_header,
         "series": series_text,
         "options": options,
         "date": date_text,
-        "hashtags": hashtags
+        "hashtags": hashtags,
+        "correct_answer": correct_answer
     }
 
 def create_teaser_plain_image(data, font_path, font_bold_path, font_regular_path, output_path):

@@ -40,6 +40,8 @@ b. [Option B]
 c. [Option C]
 d. [Option D]
 
+Correct Answer: [Option Letter, e.g. a, b, c, or d]
+
 [50 high-reach hashtags separated by spaces]
 
 ---
