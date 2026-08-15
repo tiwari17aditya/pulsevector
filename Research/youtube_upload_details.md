@@ -79,3 +79,4 @@ This log tracks all uploaded videos, their metadata, category, related video set
 | 2026-07-25 04:47 IST | Daily Current Affairs 25 July 2026 | Education (27) | Short (9:16) | Linked to Latest Weekly Masterclass / Prev Episode | Pinned Standard Comment | _qNc3gnLYWo |
 | 2026-07-26 04:42 IST | Daily Current Affairs 26 July 2026 | Education (27) | Short (9:16) | Linked to Latest Weekly Masterclass / Prev Episode | Pinned Standard Comment | xx0KCvHRMzU |
 | 2026-07-26 08:08 IST | Weekly Current Affairs ( 20 July 2026 - 26 July 2026 ) | Education (27) | Long-Form Masterclass | Linked to Channel Homepage & Current Affairs Playlist | Pinned Standard Comment | MtFeb78Ppz0 |
+| 2026-08-16 04:10 IST | Weekly Current Affairs ( 10 August 2026 - 16 August 2026 ) | Education (27) | Long-Form Masterclass | Linked to Channel Homepage & Current Affairs Playlist | Pinned Standard Comment | ekPGGd7SRiQ |
