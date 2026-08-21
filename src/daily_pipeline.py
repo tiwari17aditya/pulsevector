@@ -45,6 +45,8 @@ def run_daily_generation(target_date=None):
     while current_target.date() <= now.date():
         engine.stage_generate_text("daily", current_target, client=client)
         current_target += datetime.timedelta(days=1)
+        if current_target.date() <= now.date():
+            time.sleep(3)
 
 def generate_daily_slides(target_date=None):
     if target_date:

@@ -1,11 +1,13 @@
 import os
 import re
 import time
+import json
 import random
 import logging
 import datetime
 import pathlib
 import urllib.request
+import urllib.parse
 import xml.etree.ElementTree as ET
 from typing import Optional, List, Dict, Tuple
 from google import genai
@@ -116,36 +118,98 @@ def read_prompt_section(section_heading: str) -> str:
         return match.group(1).strip()
     return ""
 
+def _call_openai_compatible_api(endpoint: str, api_key: str, model_name: str, prompt: str) -> Optional[str]:
+    """Universal caller for OpenAI-compatible REST APIs (Groq, OpenRouter, Together AI, HuggingFace)."""
+    try:
+        payload = {
+            "model": model_name,
+            "messages": [
+                {"role": "system", "content": "You are an expert news researcher and educational content writer for Pulse Vector."},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.7
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+            "User-Agent": "PulseVector/3.0.0"
+        }
+        req = urllib.request.Request(endpoint, data=json.dumps(payload).encode("utf-8"), headers=headers)
+        with urllib.request.urlopen(req, timeout=30) as res:
+            if res.status == 200:
+                body = json.loads(res.read().decode("utf-8"))
+                if "choices" in body and body["choices"]:
+                    text = body["choices"][0].get("message", {}).get("content", "")
+                    if text and text.strip():
+                        return text.strip()
+    except Exception as e:
+        logging.warning(f"Open-source provider {endpoint} ({model_name}) error: {e}")
+    return None
+
 def generate_content(client_obj, model_name: str, prompt: str, context_data: str = "") -> str:
     """
-    Robust Gemini content generation with multi-model fallback and resilient error handling.
-    If Google Search grounding fails with APIError, it automatically falls back to ungrounded generation.
+    Ultra-resilient Multi-Tier content generation engine:
+    Tier 1: Google Gemini & Gemma Open-Source Models (gemini-2.5-flash, gemini-3.5-flash-lite, gemini-flash-latest, gemma-4-31b-it, gemma-4-26b-a4b-it)
+    Tier 2: Groq Open-Source LLMs (llama-3.3-70b-versatile, deepseek-r1-distill-llama-70b, mixtral-8x7b-32768, gemma2-9b-it)
+    Tier 3: OpenRouter Open-Source LLMs (meta-llama/llama-3.3-70b-instruct:free, deepseek/deepseek-r1:free, mistralai/mistral-small-3.2-24b-instruct:free)
+    Tier 4: Together AI Open-Source LLMs (meta-llama/Llama-3.3-70B-Instruct-Turbo)
     """
     use_grounding = not context_data or not context_data.strip()
     full_prompt = f"{prompt}\n\nContext Data / Verified News:\n{context_data}" if context_data.strip() else prompt
     
+    # 1. Tier 1: Google Gemini & Open-Source Gemma Models
     models_to_try = [model_name]
-    fallbacks = ['gemini-2.5-flash', 'gemini-2.5-pro']
-    for fb in fallbacks:
+    google_fallbacks = [
+        'gemini-2.5-flash',
+        'gemini-3.5-flash-lite',
+        'gemini-flash-latest',
+        'gemma-4-31b-it',
+        'gemma-4-26b-a4b-it'
+    ]
+    for fb in google_fallbacks:
         if fb not in models_to_try:
             models_to_try.append(fb)
             
     last_err = None
-    for current_model in models_to_try:
-        max_retries = 3
-        base_delay = 2
-        
-        for attempt in range(max_retries):
-            # Attempt 1: Try with grounding if no context was passed
-            if use_grounding:
+    if client_obj:
+        for current_model in models_to_try:
+            max_retries = 2
+            base_delay = 2
+            
+            for attempt in range(max_retries):
+                # Attempt 1: Try with Search Grounding if applicable and model supports it
+                if use_grounding and 'gemini' in current_model:
+                    try:
+                        logging.info(f"Generating content: {current_model} with Google Search grounding (Attempt {attempt+1}/{max_retries})")
+                        print(f"  > Attempting content generation with {current_model} + Google Search grounding...")
+                        response = client_obj.models.generate_content(
+                            model=current_model,
+                            contents=full_prompt,
+                            config=types.GenerateContentConfig(
+                                tools=[types.Tool(google_search=types.GoogleSearch())],
+                                temperature=0.7
+                            )
+                        )
+                        if response and hasattr(response, 'text') and response.text and response.text.strip():
+                            return response.text.strip()
+                        elif response and hasattr(response, 'candidates') and response.candidates:
+                            cand = response.candidates[0]
+                            if cand.content and cand.content.parts:
+                                text_parts = [p.text for p in cand.content.parts if hasattr(p, 'text') and p.text]
+                                if text_parts and "".join(text_parts).strip():
+                                    return "".join(text_parts).strip()
+                    except Exception as g_err:
+                        logging.warning(f"Google Search grounding failed on {current_model}: {g_err}. Falling back to standard generation.")
+                        print(f"  ⚠️ Grounding failed ({g_err}). Falling back to standard {current_model} generation...")
+                
+                # Attempt 2 (or Direct): Standard generation
                 try:
-                    logging.info(f"Generating content: {current_model} with Google Search grounding (Attempt {attempt+1}/{max_retries})")
-                    print(f"  > Attempting content generation with {current_model} + Google Search grounding...")
+                    logging.info(f"Generating content: {current_model} standard (Attempt {attempt+1}/{max_retries})")
+                    print(f"  > Attempting content generation with {current_model}...")
                     response = client_obj.models.generate_content(
                         model=current_model,
                         contents=full_prompt,
                         config=types.GenerateContentConfig(
-                            tools=[types.Tool(google_search=types.GoogleSearch())],
                             temperature=0.7
                         )
                     )
@@ -157,40 +221,54 @@ def generate_content(client_obj, model_name: str, prompt: str, context_data: str
                             text_parts = [p.text for p in cand.content.parts if hasattr(p, 'text') and p.text]
                             if text_parts and "".join(text_parts).strip():
                                 return "".join(text_parts).strip()
-                except Exception as g_err:
-                    logging.warning(f"Google Search grounding failed on {current_model}: {g_err}. Falling back to standard generation.")
-                    print(f"  ⚠️ Grounding failed ({g_err}). Falling back to standard {current_model} generation...")
-            
-            # Attempt 2 (or Direct): Standard generation without grounding tools
-            try:
-                logging.info(f"Generating content: {current_model} standard (Attempt {attempt+1}/{max_retries})")
-                print(f"  > Attempting content generation with {current_model}...")
-                response = client_obj.models.generate_content(
-                    model=current_model,
-                    contents=full_prompt,
-                    config=types.GenerateContentConfig(
-                        temperature=0.7
-                    )
-                )
-                if response and hasattr(response, 'text') and response.text and response.text.strip():
-                    return response.text.strip()
-                elif response and hasattr(response, 'candidates') and response.candidates:
-                    cand = response.candidates[0]
-                    if cand.content and cand.content.parts:
-                        text_parts = [p.text for p in cand.content.parts if hasattr(p, 'text') and p.text]
-                        if text_parts and "".join(text_parts).strip():
-                            return "".join(text_parts).strip()
-                raise ValueError(f"Empty text payload returned from {current_model}")
-            except Exception as e:
-                last_err = e
-                delay = base_delay * (2 ** attempt) + random.uniform(0.5, 1.5)
-                if attempt < max_retries - 1:
-                    logging.warning(f"Model {current_model} failed: {e}. Retrying in {delay:.2f}s...")
-                    time.sleep(delay)
-                else:
-                    logging.warning(f"Model {current_model} failed all {max_retries} attempts: {e}")
-                    
-    raise RuntimeError(f"All GenAI generation attempts failed across fallback models. Last error: {last_err}")
+                    raise ValueError(f"Empty text payload returned from {current_model}")
+                except Exception as e:
+                    last_err = e
+                    delay = base_delay * (2 ** attempt) + random.uniform(0.5, 1.5)
+                    if attempt < max_retries - 1:
+                        logging.warning(f"Model {current_model} failed: {e}. Retrying in {delay:.2f}s...")
+                        time.sleep(delay)
+                    else:
+                        logging.warning(f"Model {current_model} failed all {max_retries} attempts: {e}")
+
+    # 2. Tier 2: Groq Open-Source Fallback (Llama 3.3 70B, DeepSeek R1, Mixtral)
+    groq_key = os.environ.get("GROQ_API_KEY")
+    if groq_key:
+        print("  🔄 Google models exhausted. Trying Groq Open-Source Models...")
+        groq_models = ["llama-3.3-70b-versatile", "deepseek-r1-distill-llama-70b", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
+        for g_model in groq_models:
+            print(f"  > Attempting content generation with Groq ({g_model})...")
+            text = _call_openai_compatible_api("https://api.groq.com/openai/v1/chat/completions", groq_key, g_model, full_prompt)
+            if text:
+                return text
+
+    # 3. Tier 3: OpenRouter Open-Source Fallback
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY")
+    if openrouter_key:
+        print("  🔄 Trying OpenRouter Open-Source Models...")
+        openrouter_models = [
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "deepseek/deepseek-r1:free",
+            "mistralai/mistral-small-3.2-24b-instruct:free"
+        ]
+        for or_model in openrouter_models:
+            print(f"  > Attempting content generation with OpenRouter ({or_model})...")
+            text = _call_openai_compatible_api("https://openrouter.ai/api/v1/chat/completions", openrouter_key, or_model, full_prompt)
+            if text:
+                return text
+
+    # 4. Tier 4: Together AI Open-Source Fallback
+    together_key = os.environ.get("TOGETHER_API_KEY")
+    if together_key:
+        print("  🔄 Trying Together AI Open-Source Models...")
+        together_models = ["meta-llama/Llama-3.3-70B-Instruct-Turbo", "mistralai/Mixtral-8x7B-Instruct-v0.1"]
+        for tog_model in together_models:
+            print(f"  > Attempting content generation with Together AI ({tog_model})...")
+            text = _call_openai_compatible_api("https://api.together.xyz/v1/chat/completions", together_key, tog_model, full_prompt)
+            if text:
+                return text
+                
+    raise RuntimeError(f"All GenAI and Open-Source fallback models failed. Last error: {last_err}")
 
 def save_file(content: str, filepath: pathlib.Path):
     if not isinstance(content, str) or not content.strip():
