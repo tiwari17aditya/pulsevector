@@ -260,5 +260,6 @@ This document tracks the input and output token consumption for each developer c
 | **Turn 8** | 18:27 | Configure 1-Day Artifact Retention for all GitHub Actions Pipelines | 18,000 | 1,200 | 19,200 | Set `retention-days: 1` across all workflow files (`cleanup.yml`, `pulse_daily.yml`, `pulse_weekly.yml`, `pulse_monthly.yml`, `pulse_brainteaser.yml`) and verified via automated test suite. |
 | **Turn 9** | 18:31 | Run July 2026 Monthly Masterclass & Verify Public YouTube Upload | 20,000 | 1,500 | 21,500 | Generated July 2026 Monthly Current Affairs (50 points, 10 slides, 4.27MB video), uploaded public to YouTube (`0oMtXcgXzVU`), synced to remote Git. |
 | **Turn 10** | 18:36 | Session Packup & Final Repository Sign-Off | 15,000 | 1,200 | 16,200 | Completed packup checklist: verified 10/10 automated tests, clean git state, synchronized all remote changes, and prepared session summary. |
+| **Turn 11** | 18:42 | Remove QR Code Functionality from Brain Teasers | 16,000 | 1,200 | 17,200 | Removed QR code API loading, frame pasting, and 'Scan to Play' badge from `brainteaser_pipeline.py`; verified clean layout with automated tests. |
 
 *Note: Token counts are estimated based on context window load (included libraries, workspace codebase context, active logs, and previous turns history).*

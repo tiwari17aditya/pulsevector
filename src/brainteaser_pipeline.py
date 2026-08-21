@@ -713,25 +713,6 @@ def generate_brainteaser_video(target_date):
     
     card_img = Image.open(styled_path).convert("RGBA")
     
-    # Load QR code in a completely fail-safe, non-disruptive way
-    qr_img = None
-    font_qr_label = None
-    try:
-        challenge_id = target_date.strftime(BT_DATE_FMT).lower()
-        game_url = f"https://tiwari17aditya.github.io/pulsevector/play/?challenge={challenge_id}"
-        import requests
-        from io import BytesIO
-        api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={requests.utils.quote(game_url)}"
-        response = requests.get(api_url, timeout=3)
-        if response.ok:
-            qr_img = Image.open(BytesIO(response.content)).convert("RGBA")
-            font_qr_label = ImageFont.truetype(str(font_bold_path), 20)
-            print("  > Successfully loaded QR code for interactive play.")
-        else:
-            print(f"  > Warning: QR code API returned status {response.status_code}. Skipping QR overlay.")
-    except Exception as e:
-        print(f"  > Warning: Could not retrieve QR code ({e}). Skipping QR overlay.")
-        
     fps = 10
     total_duration = 10.0
     total_frames = int(fps * total_duration)
@@ -751,22 +732,7 @@ def generate_brainteaser_video(target_date):
         card_y = (H_canvas - 656) // 2
         frame_img.paste(card_img, (card_x, card_y), card_img)
         
-        if qr_img:
-            qr_x, qr_y = 820, 1405
-            frame_img.paste(qr_img, (qr_x, qr_y), qr_img)
-            
         draw = ImageDraw.Draw(frame_img)
-        
-        if qr_img and font_qr_label:
-            qr_x, qr_y = 820, 1405
-            draw.rounded_rectangle(
-                [(qr_x - 10, qr_y - 40), (qr_x + 160, qr_y - 10)],
-                radius=8,
-                fill=(15, 23, 42, 220),
-                outline=(255, 255, 255, 30),
-                width=1
-            )
-            draw_text_with_shadow_helper(draw, "Scan to Play! 📲", qr_x + 75, qr_y - 25, font_qr_label, text_color=(56, 189, 248))
         
         draw_text_with_shadow_helper(draw, "DAILY BRAIN TEASER", W_canvas/2, 450, font_title, text_color=(251, 191, 36))
         draw_text_with_shadow_helper(draw, "Can you solve this puzzle?", W_canvas/2, 530, font_subtitle, text_color=(229, 231, 235))
