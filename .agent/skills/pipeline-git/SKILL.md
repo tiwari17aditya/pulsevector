@@ -27,11 +27,14 @@ description: Domain skill for pipeline orchestration CLI, date-based archive sor
 3. **Structured Archive Organization**:
    - Enforce date-based hierarchy: `pulse_archive/[Year]/[Month Name]/Daily/` (or `Weekly/`, `Monthly/`, `Brain_Teasers/`).
 
-## Domain Constraints
-- Commit tracked metadata files cleanly after every render/compile run.
+## Domain Constraints & Directives
+- **Continuous Automated Testing**: Run `python scripts/test_pipeline.py` or stage dry-runs immediately upon implementing any code change.
+- **Git Push on Modification**: After tests pass, immediately stage, commit, and push changes to `origin/main`.
 - Do not commit secure credential files (`credentials/*.json`) or `.env`.
 
 ## Verification Checklist
-- [ ] Test CLI flags (`--help`, `--list-models`).
+- [ ] Run `python scripts/test_pipeline.py` to ensure 100% test pass rate.
+- [ ] Test CLI flags (`--help`, `--daily --dry-run`, `--weekly --dry-run`, `--monthly --dry-run`).
 - [ ] Verify `pulse_archive/` file path structure matching target date.
 - [ ] Check token usage log formatting in `Research/developer_token_usage.md`.
+- [ ] Push clean state to `origin main`.

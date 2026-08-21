@@ -14,6 +14,17 @@
 - Load ONLY the skill relevant to the target files or action being performed.
 - Do NOT load unrelated skills into agent context.
 
+## Continuous Implementation & Testing Directives
+- **Immediate Automated Testing**: As soon as any code change, feature, or refactoring is implemented on tracked files, immediately run `python scripts/test_pipeline.py` (or stage dry-runs). Thoroughly report test outcomes and flag any issues, warnings, or regressions right away.
+- **Git Push on Modification**: Whenever modifications to tracked files are completed and verified with tests, automatically stage, commit, and push the changes to remote (`git push origin main`) to keep remote CI / GitHub Actions synchronized.
+
+## Available Slash Workflows
+- `/pulse_test`: Run full component test suite & dry-runs (`test_pipeline.py`).
+- `/pulse_daily`: Generate Daily Current Affairs & Brain Teasers.
+- `/pulse_clean`: Audit & clean workspace artifacts safely.
+- `/pulse_monitor`: System health diagnostics (APIs, FFmpeg, Supabase, OAuth).
+- `/pulse_structure`: Audit asset hierarchy, fonts, audio libraries & archives.
+
 ## Packup Command Sign-Off Checklist
 When the user triggers "packup" or "/packup", the agent must execute the following operations before signing off:
 - Stage, commit, and push all modifications to the remote repository (`git push origin main`).
