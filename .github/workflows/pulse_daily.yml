@@ -67,6 +67,15 @@ jobs:
 
 
 
+      - name: Upload Pipeline Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-pipeline-logs
+          path: logs/
+          retention-days: 1
+          if-no-files-found: ignore
+
       - name: Cleanup Credentials
         if: always()
         run: |

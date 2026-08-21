@@ -66,6 +66,15 @@ jobs:
           git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update: Standalone Brain Teaser Pipeline Run" && (git pull --rebase -X theirs origin main || (git rebase --abort && git pull --no-rebase -X theirs origin main --no-edit || (git checkout --ours . && git add . && git commit -m "Auto-resolve merge conflicts"))) && git push origin main)
 
 
+      - name: Upload Pipeline Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: brainteaser-pipeline-logs
+          path: logs/
+          retention-days: 1
+          if-no-files-found: ignore
+
       - name: Cleanup Credentials
         if: always()
         run: |

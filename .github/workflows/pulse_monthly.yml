@@ -74,6 +74,15 @@ jobs:
           git pull --rebase -X theirs origin main || (git rebase --abort && git pull --no-rebase -X theirs origin main --no-edit || (git checkout --ours . && git add . && git commit -m "Auto-resolve merge conflicts"))
           git push origin main
 
+      - name: Upload Pipeline Logs
+        if: steps.check-month-end.outputs.run_pipeline == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: monthly-pipeline-logs
+          path: logs/
+          retention-days: 1
+          if-no-files-found: ignore
+
       - name: Cleanup Credentials
         if: steps.check-month-end.outputs.run_pipeline == 'true' && always()
         run: |
