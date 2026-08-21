@@ -1,65 +1,35 @@
 import os
-import re
+import sys
+import argparse
 import datetime
 import logging
 from pathlib import Path
 
+SRC_DIR = Path(__file__).resolve().parent
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
 from core.config import ARCHIVE_DIR, BT_DATE_FMT
+from core.pipeline_engine import PipelineEngine
 from core.genai_utils import (
-    configure_genai, get_current_date_info, get_news_search_results,
-    read_prompts, generate_content, save_file, get_last_processed_date
+    configure_genai, read_prompts, get_last_processed_date
 )
-from core.image_utils import (
-    ensure_fonts, create_slide_image_file, parse_teaser_file,
-    create_teaser_plain_image, create_teaser_styled_image
-)
-from core.video_utils import (
-    download_audio_library, get_random_audio_track, merge_audio_video,
-    generate_thumbnail_slide_image, generate_animated_end_slide_frames_pipeline,
-    compile_images_to_video_enhanced
-)
-from core.youtube_utils import get_authenticated_service, get_quarter_info, upload_video_to_youtube, add_video_to_playlist, log_upload_details
 from core.git_backup_utils import run_git_operations, run_backup_operations
 from core.database_utils import run_database_upload
 
-def generate_daily_content(client, target_date, ca_prompt, bt_prompt):
-    print(f"\nProcessing Daily content generation for: {target_date.strftime('%d %B %Y')}")
-    date_str = target_date.strftime("%d %B %Y")
-    d_str = str(target_date.day)
-    mon_short = target_date.strftime("%b").lower()
-    year = target_date.strftime("%Y")
-    month_name = target_date.strftime("%B")
-    
-    # Current Affairs
-    print("  > Generating Daily Current Affairs...")
-    search_query = f"current affairs news headlines {date_str}"
-    news_context = get_news_search_results(search_query)
-    
-    ca_prompt_specific = f"Today is {date_str}. CRITICAL: You must generate ONLY the daily news for today. DO NOT generate a weekly or monthly summary. {ca_prompt}"
-    ca_content = generate_content(client, 'gemini-2.5-flash', ca_prompt_specific, news_context)
-    
-    processed_month_dir = ARCHIVE_DIR / year / month_name
-    ca_filename = f"daily-{d_str}{mon_short}-{year}_formatted.txt"
-    ca_path = processed_month_dir / "Daily" / ca_filename
-    save_file(ca_content, ca_path)
-    
-    # Brain Teaser
-    print("  > Generating Daily Brain Teaser...")
-    bt_prompt_specific = f"Today is {date_str}. {bt_prompt}"
-    bt_content = generate_content(client, 'gemini-2.5-flash', bt_prompt_specific)
-    
-    bt_filename = f"brainteaser-{target_date.strftime(BT_DATE_FMT).lower()}.txt"
-    bt_path = processed_month_dir / "Brain_Teasers" / "Text" / bt_filename
-    save_file(bt_content, bt_path)
+engine = PipelineEngine(ARCHIVE_DIR)
 
-def run_daily_generation():
+def generate_daily_content(client, target_date, ca_prompt=None, bt_prompt=None):
+    return engine.stage_generate_text("daily", target_date, client=client)
+
+def run_daily_generation(target_date=None):
     print("\n🚀 Starting Daily Content Generation...")
     client = configure_genai()
     ca_prompt, bt_prompt = read_prompts()
     if not ca_prompt or not bt_prompt:
         return
         
-    now = datetime.datetime.now()
+    now = target_date or datetime.datetime.now()
     start_date = datetime.datetime(2026, 6, 15)
     last_processed = get_last_processed_date(ARCHIVE_DIR)
     
@@ -73,224 +43,60 @@ def run_daily_generation():
         current_target = start_date
         
     while current_target.date() <= now.date():
-        generate_daily_content(client, current_target, ca_prompt, bt_prompt)
+        engine.stage_generate_text("daily", current_target, client=client)
         current_target += datetime.timedelta(days=1)
 
-def generate_daily_slides():
-    print("\n🚀 Starting Daily Slide Generation...")
-    font_regular, font_bold = ensure_fonts(ARCHIVE_DIR)
-    
+def generate_daily_slides(target_date=None):
+    if target_date:
+        engine.stage_generate_slides("daily", target_date)
+        return
+        
+    # Process all missing slides in archive
     for root, dirs, files in os.walk(ARCHIVE_DIR):
         if "Daily" in Path(root).parts and "Images" not in root:
             for file in files:
                 if file.startswith("daily-") and file.endswith("_formatted.txt"):
-                    file_path = Path(root) / file
+                    text_path = Path(root) / file
                     try:
-                        images_dir = Path(root).parent / "Daily_Images" / file.replace(".txt", "")
-                        images_dir.mkdir(parents=True, exist_ok=True)
-                        
-                        content = file_path.read_text(encoding='utf-8')
-                        # Strip YouTube metadata section before parsing points
-                        metadata_markers = ['YouTube Metadata:', 'Title:', 'Reel Description:', 'Hashtags:', 'Source URLs:']
-                        content_for_parsing = content
-                        for marker in metadata_markers:
-                            idx = content_for_parsing.find(marker)
-                            if idx != -1:
-                                content_for_parsing = content_for_parsing[:idx]
-                                break
-                        # Regex for points
-                        point_pattern = re.compile(r"^\s*(\d+)\.\s+(.*?)(?=\n\s*\d+\.|\Z)", re.MULTILINE | re.DOTALL)
-                        matches = point_pattern.findall(content_for_parsing)
-                        points = [(int(m[0]), m[1].replace('\n', ' ').strip()) for m in matches]
-                        
-                        if not points:
-                            raise ValueError(f"No points successfully parsed from {file_path}! The LLM format may be broken.")
-                            
-                        date_str = ""
-                        date_match = re.search(r"Daily Current Affairs\s+(\d{1,2}\s+[A-Za-z]+\s+\d{4})", content)
-                        if date_match:
-                            date_str = date_match.group(1).upper()
-                            
-                        points_per_page = 5
-                        total_pages = (len(points) + points_per_page - 1) // points_per_page
-                        
-                        all_exist = True
-                        for p in range(1, total_pages + 1):
-                            img_path = images_dir / f"{file_path.stem}_page-{p}.png"
-                            if not img_path.exists():
-                                all_exist = False
-                                break
-                        if all_exist:
-                            continue
-                            
-                        print(f"Generating slides for {file} ({total_pages} pages)...")
-                        for i in range(0, len(points), points_per_page):
-                            page_points = points[i:i+points_per_page]
-                            page_num = (i // points_per_page) + 1
-                            out_path = images_dir / f"{file_path.stem}_page-{page_num}.png"
-                            create_slide_image_file(date_str, page_points, page_num, total_pages, font_regular, font_bold, out_path, "DAILY CURRENT AFFAIRS")
+                        from core.genai_utils import parse_date_from_filename
+                        d = parse_date_from_filename(file)
+                        if d:
+                            engine.stage_generate_slides("daily", d)
                     except Exception as e:
-                        print(f"❌ Error generating slides for '{file}': {e}")
-                        logging.error(f"Error generating slides for '{file}': {e}", exc_info=True)
+                        logging.error(f"Error rendering daily slides for {file}: {e}")
 
-def generate_teaser_images():
+def generate_teaser_images(target_date=None):
     print("\n🚀 Starting Daily Brain Teaser Image Generation...")
-    font_regular, font_bold = ensure_fonts(ARCHIVE_DIR)
-    font_path = ARCHIVE_DIR.parent / "fonts" / "Poppins-Bold.ttf"
-    
-    for root, dirs, files in os.walk(ARCHIVE_DIR):
-        if "Brain_Teasers" in Path(root).parts and "Text" in Path(root).parts:
-            for file in files:
-                if file.startswith("brainteaser-") and file.endswith(".txt"):
-                    file_path = Path(root) / file
-                    images_dir = Path(root).parent / "Images"
-                    images_dir.mkdir(parents=True, exist_ok=True)
-                    
-                    base_name = file_path.stem
-                    plain_img_path = images_dir / f"{base_name}_plain.png"
-                    styled_img_path = images_dir / f"{base_name}_styled.png"
-                    
-                    if plain_img_path.exists() and styled_img_path.exists():
-                        continue
-                        
-                    data = parse_teaser_file(file_path)
-                    if data:
-                        if not plain_img_path.exists():
-                            create_teaser_plain_image(data, font_path, font_bold, font_regular, plain_img_path)
-                        if not styled_img_path.exists():
-                            create_teaser_styled_image(data, font_path, font_bold, font_regular, styled_img_path)
+    engine.stage_generate_teasers(target_date)
     print("Brain Teaser Card Generation Complete!")
 
 def run_daily_youtube(target_date=None, enable_tts=True):
-    print("\n🚀 Starting Daily YouTube Video Generation & Upload...")
     now = target_date or datetime.datetime.now()
-    year_str = now.strftime("%Y")
-    month_name = now.strftime("%B")
-    
-    date_str_daily = f"{now.day}{now.strftime('%b').lower()}-{now.year}"
-    quarter_name, daily_playlist_title = get_quarter_info(now)
-    
-    text_file = ARCHIVE_DIR / year_str / month_name / "Daily" / f"daily-{date_str_daily}_formatted.txt"
-    img_dir = ARCHIVE_DIR / year_str / month_name / "Daily_Images" / f"daily-{date_str_daily}_formatted"
-    video_path = ARCHIVE_DIR / year_str / month_name / "Daily_Videos" / f"daily-{date_str_daily}_formatted.mp4"
-    
-    if video_path.exists():
-        print(f"ℹ️ [Daily] video {video_path.name} already exists. Skipping upload.")
-        return
-        
-    if not text_file.exists() or not img_dir.exists():
-        raise FileNotFoundError(f"❌ [Daily] Missing text or images for {date_str_daily}. Cannot generate video.")
-        
-    try:
-        content = text_file.read_text(encoding='utf-8')
-        
-        # Robust Title parsing (case-insensitive, optional bolding, optional quotes)
-        title_match = re.search(r"(?i)\*?\*?Title\*?\*?:\s*['\"`]?(.*?)['\"`]?\s*$", content, re.MULTILINE)
-        
-        # Robust Description parsing (case-insensitive, optional "Reel ", optional bolding)
-        desc_match = re.search(r"(?i)\*?\*?(?:Reel\s+)?Description\*?\*?:\s*(.+)", content, re.DOTALL)
-        
-        if not title_match or not desc_match:
-            raise ValueError("Could not parse Title/Description from Daily text.")
-            
-        title = title_match.group(1).strip().strip("'\"`")
-        desc_raw = desc_match.group(1)
-        
-        # Robust stop markers truncation using regex (case-insensitive, optional bolding/newlines/spaces)
-        stop_match = re.search(r"(?i)\n+\s*\*?\*?(?:Hashtags|Source\s+URLs)\*?\*?", desc_raw)
-        if stop_match:
-            desc_raw = desc_raw[:stop_match.start()]
-            
-        desc = desc_raw.strip()
-        if len(desc) > 4950:
-            desc = desc[:4947] + '...'
-        tags = ["DailyCurrentAffairs", "GlobalNews", "PulseVector", "Shorts"]
-        
-        font_regular, font_bold = ensure_fonts(ARCHIVE_DIR)
-        
-        # Thumbnail
-        thumb_path = img_dir / "thumbnail.png"
-        generate_thumbnail_slide_image(now, font_bold, font_regular, thumb_path, "DAILY")
-        
-        # End Animation
-        anim_dir = ARCHIVE_DIR / "temp_end_frames"
-        anim_frames = generate_animated_end_slide_frames_pipeline(font_bold, font_regular, anim_dir)
-        
-        # Voiceover & Dynamic Durations
-        voiceover_data = None
-        per_slide_durations = None
-        voiceover_path = None
-        
-        if enable_tts:
-            try:
-                from core.tts_utils import generate_voiceover, HAS_TTS
-                if HAS_TTS:
-                    content_for_parsing = content
-                    for marker in ['YouTube Metadata:', 'Title:', 'Reel Description:', 'Hashtags:', 'Source URLs:']:
-                        idx = content_for_parsing.find(marker)
-                        if idx != -1:
-                            content_for_parsing = content_for_parsing[:idx]
-                            break
-                    point_pattern = re.compile(r"^\s*(\d+)\.\s+(.*?)(?=\n\s*\d+\.|\Z)", re.MULTILINE | re.DOTALL)
-                    matches = point_pattern.findall(content_for_parsing)
-                    points = [(int(m[0]), m[1].replace('\n', ' ').strip()) for m in matches]
-                    
-                    if points:
-                        date_fmt_str = now.strftime("%B %d, %Y")
-                        v_dir = video_path.parent
-                        voiceover_data = generate_voiceover(points, date_fmt_str, v_dir, category_title="DAILY CURRENT AFFAIRS", rate="+35%")
-                        if voiceover_data:
-                            per_slide_durations = voiceover_data["all_slide_durations"]
-                            voiceover_path = voiceover_data["full_voice_path"]
-            except Exception as tts_err:
-                print(f"⚠️ [TTS] Voiceover generation warning: {tts_err}. Continuing with standard durations.")
-                
-        # Compile
-        slide_images = sorted(list(img_dir.glob("*_page-*.png")))
-        temp_video = img_dir / "temp_video.mp4"
-        compile_images_to_video_enhanced(
-            thumb_path, slide_images, anim_frames, str(temp_video),
-            duration_per_static=3.5, per_slide_durations=per_slide_durations
-        )
-        
-        # Audio
-        download_audio_library()
-        audio_track = get_random_audio_track()
-        
-        video_path.parent.mkdir(parents=True, exist_ok=True)
-        if audio_track:
-            merge_audio_video(str(temp_video), str(audio_track), str(video_path), voiceover_path=voiceover_path)
-        else:
-            temp_video.rename(video_path)
-            
-        # Upload
-        youtube = get_authenticated_service()
-        print("Uploading to YouTube...")
-        video_id = upload_video_to_youtube(youtube, str(video_path), title, desc, tags)
-        print(f"✅ Upload Complete! Video ID: {video_id}")
-        
-        add_video_to_playlist(youtube, video_id, daily_playlist_title)
-        log_upload_details(
-            title=title,
-            category_name="Education (27)",
-            video_type="Short (9:16)",
-            related_video_setting="Linked to Latest Weekly Masterclass / Prev Episode",
-            pinned_comment_status="Pinned Standard Comment",
-            video_id=video_id
-        )
-        
-    except Exception as e:
-        print(f"❌ Failed to process Daily YouTube video: {e}")
-        raise
+    engine.stage_compile_video("daily", now, enable_tts=enable_tts)
+    engine.stage_youtube_publish("daily", now)
 
-def run_all(target_date=None):
-    run_daily_generation()
-    generate_daily_slides()
-    generate_teaser_images()
-    run_daily_youtube(target_date)
-    run_git_operations("Auto-update: Daily Pulse Vector Pipeline Run")
-    run_backup_operations()
-    run_database_upload()
+def run_all(target_date=None, enable_tts=True, stages=None, dry_run=False):
+    now = target_date or datetime.datetime.now()
+    if stages or dry_run:
+        engine.run_pipeline("daily", target_date=now, stages=stages, enable_tts=enable_tts, dry_run=dry_run)
+    else:
+        run_daily_generation(now)
+        generate_daily_slides()
+        generate_teaser_images()
+        run_daily_youtube(now, enable_tts=enable_tts)
+        run_git_operations("Auto-update: Daily Pulse Vector Pipeline Run")
+        run_backup_operations()
+        run_database_upload()
 
 if __name__ == "__main__":
-    run_all()
+    parser = argparse.ArgumentParser(description="Pulse Vector Daily Pipeline")
+    parser.add_argument("--date", type=str, help="Target date in YYYY-MM-DD format")
+    parser.add_argument("--stages", type=str, help="Comma-separated stages (text,slides,video,youtube,sync)")
+    parser.add_argument("--no-tts", action="store_true", help="Disable AI voiceover")
+    parser.add_argument("--dry-run", action="store_true", help="Perform a dry run without modifying files")
+    
+    args = parser.parse_args()
+    target_dt = datetime.datetime.strptime(args.date, "%Y-%m-%d") if args.date else None
+    stage_list = [s.strip() for s in args.stages.split(",")] if args.stages else None
+    
+    run_all(target_date=target_dt, enable_tts=not args.no_tts, stages=stage_list, dry_run=args.dry_run)

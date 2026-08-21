@@ -4,10 +4,14 @@ import datetime
 import pathlib
 import requests
 import logging
+from typing import List, Tuple, Optional, Dict, Any
+from concurrent.futures import ThreadPoolExecutor
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
-from .config import ARCHIVE_DIR, BT_DATE_FMT
 
-def wrap_text(text, font, max_width):
+from .config import ARCHIVE_DIR, BT_DATE_FMT
+from .content_parser import parse_teaser_content
+
+def wrap_text(text: str, font: ImageFont.ImageFont, max_width: int) -> List[str]:
     words = text.split(' ')
     lines = []
     current_line = []
@@ -17,19 +21,33 @@ def wrap_text(text, font, max_width):
         if width <= max_width:
             current_line.append(word)
         else:
-            lines.append(' '.join(current_line))
+            if current_line:
+                lines.append(' '.join(current_line))
             current_line = [word]
     if current_line:
         lines.append(' '.join(current_line))
     return lines
 
-def create_slide_image_file(date_str, page_points, page_num, total_pages, font_regular_path, font_bold_path, output_path, category_title="DAILY CURRENT AFFAIRS"):
+def create_slide_image_file(
+    date_str: str,
+    page_points: List[Tuple[int, str]],
+    page_num: int,
+    total_pages: int,
+    font_regular_path: pathlib.Path,
+    font_bold_path: pathlib.Path,
+    output_path: pathlib.Path,
+    category_title: str = "DAILY CURRENT AFFAIRS"
+) -> bool:
     W, H = 1080, 1920
+    
+    # Clean category and date strings
+    clean_date = re.sub(r"^[\(\:\-\s]+|[\)\:\-\s]+$", "", date_str).strip()
+    clean_cat = category_title.strip()
     
     # Base dark background
     image = Image.new("RGBA", (W, H), (3, 7, 18, 255))
     
-    # Glow
+    # Glowing Ambient Orbs
     glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     draw_glow = ImageDraw.Draw(glow)
     draw_glow.ellipse([(-200, -200), (600, 600)], fill=(6, 182, 212, 90))
@@ -38,7 +56,7 @@ def create_slide_image_file(date_str, page_points, page_num, total_pages, font_r
     blurred_glow = glow.filter(ImageFilter.GaussianBlur(200))
     image.alpha_composite(blurred_glow)
     
-    # Glassmorphism Card Layer
+    # Glassmorphic Main Card Layer
     card = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     draw_card = ImageDraw.Draw(card)
     card_box = [(80, 160), (1000, 1760)]
@@ -51,32 +69,40 @@ def create_slide_image_file(date_str, page_points, page_num, total_pages, font_r
     )
     image.alpha_composite(card)
     
-    # Watermark Layer
+    # Subtle Watermark
     watermark_canvas = Image.new("RGBA", (2200, 2200), (0, 0, 0, 0))
     watermark_draw = ImageDraw.Draw(watermark_canvas)
-    font_watermark = ImageFont.truetype(str(font_bold_path), 150)
+    try:
+        font_watermark = ImageFont.truetype(str(font_bold_path), 150)
+    except Exception:
+        font_watermark = ImageFont.load_default()
+        
     watermark_draw.text((1100, 1100), "PULSE VECTOR", font=font_watermark, fill=(255, 255, 255, 6), anchor="mm")
     rotated_watermark = watermark_canvas.rotate(40, resample=Image.BICUBIC)
     image.paste(rotated_watermark, (-560, -140), rotated_watermark)
     
-    # Content
-    draw = ImageDraw.Draw(image)
-    font_logo = ImageFont.truetype(str(font_bold_path), 26)
-    font_title = ImageFont.truetype(str(font_bold_path), 44)
-    font_subtitle = ImageFont.truetype(str(font_regular_path), 30)
-    font_body = ImageFont.truetype(str(font_regular_path), 38)
-    font_badge = ImageFont.truetype(str(font_bold_path), 40)
-    font_footer = ImageFont.truetype(str(font_regular_path), 26)
-    font_source = ImageFont.truetype(str(font_regular_path), 24)
+    # Typography Setup
+    try:
+        font_logo = ImageFont.truetype(str(font_bold_path), 26)
+        font_title = ImageFont.truetype(str(font_bold_path), 44)
+        font_subtitle = ImageFont.truetype(str(font_regular_path), 30)
+        font_body = ImageFont.truetype(str(font_regular_path), 38)
+        font_badge = ImageFont.truetype(str(font_bold_path), 40)
+        font_footer = ImageFont.truetype(str(font_regular_path), 26)
+        font_source = ImageFont.truetype(str(font_regular_path), 24)
+    except Exception:
+        font_logo = font_title = font_subtitle = font_body = font_badge = font_footer = font_source = ImageFont.load_default()
     
-    # Header
+    draw = ImageDraw.Draw(image)
+    
+    # Header Branding
     draw.text((140, 215), "P U L S E   V E C T O R", font=font_logo, fill=(255, 255, 255, 80))
-    date_width = draw.textlength(date_str, font=font_subtitle)
-    draw.text((940 - date_width, 212), date_str, font=font_subtitle, fill=(156, 163, 175, 255))
-    draw.text((540, 285), category_title, font=font_title, fill=(255, 255, 255, 255), anchor="mm")
+    date_width = draw.textlength(clean_date, font=font_subtitle)
+    draw.text((940 - date_width, 212), clean_date, font=font_subtitle, fill=(156, 163, 175, 255))
+    draw.text((540, 285), clean_cat, font=font_title, fill=(255, 255, 255, 255), anchor="mm")
     draw.line([(140, 335), (940, 335)], fill=(255, 255, 255, 25), width=1)
     
-    # 5 Points
+    # Points Layout (5 per page)
     start_y = 380
     max_text_width = 690
     line_spacing = 50
@@ -86,7 +112,7 @@ def create_slide_image_file(date_str, page_points, page_num, total_pages, font_r
     total_text_height = 0
     for num, text in page_points:
         source_name = None
-        source_match = re.search(r"\[Source:\s*([^\]]+)\]", text)
+        source_match = re.search(r"\[Source:\s*([^\]]+)\]", text, re.IGNORECASE)
         if source_match:
             source_name = source_match.group(1).strip()
             text = text.replace(source_match.group(0), "").strip()
@@ -120,19 +146,20 @@ def create_slide_image_file(date_str, page_points, page_num, total_pages, font_r
             
         current_y += item_height + item_gap
             
-    # Footer
+    # Page Footer
     page_indicator = f"Page {page_num} of {total_pages}"
     draw.text((540, 1710), page_indicator, font=font_footer, fill=(156, 163, 175, 255), anchor="mm")
     
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(output_path, "PNG")
-    print(f"✅ Generated slide image: {output_path.name}")
+    return True
 
 def draw_teaser_text_with_shadow(draw, text, x, y, font, shadow_color=(51, 51, 51), text_color=(255, 255, 255), offset=(2, 2), anchor="mm"):
     if shadow_color:
         draw.text((x + offset[0], y + offset[1]), text, font=font, fill=shadow_color, anchor=anchor)
     draw.text((x, y), text, font=font, fill=text_color, anchor=anchor)
 
-def create_teaser_gradient(width, height):
+def create_teaser_gradient(width: int, height: int):
     start_color = (255, 69, 117)
     end_color = (100, 50, 200)
     img = Image.new("RGB", (width, height))
@@ -146,134 +173,14 @@ def create_teaser_gradient(width, height):
             pixels[x, y] = (r, g, b)
     return img
 
-def parse_teaser_file(file_path):
+def parse_teaser_file(file_path: pathlib.Path) -> Optional[Dict[str, Any]]:
     path = pathlib.Path(file_path)
     if not path.exists():
         return None
     content = path.read_text(encoding="utf-8")
-    
-    # 1. Clean content up to the first instance of '---' or 'image generation'
-    clean_content = content
-    for marker in ['---', 'image generation', 'image_generation', 'Image Generation']:
-        idx = clean_content.lower().find(marker.lower())
-        if idx != -1:
-            clean_content = clean_content[:idx]
-            
-    lines = [line.strip() for line in clean_content.splitlines() if line.strip()]
-    if not lines:
-        return None
-        
-    # 2. Parse Date
-    date_text = ""
-    first_line = lines[0]
-    match_date = re.search(r"(?:Daily Brain Teaser|Brain Teaser)\s*-\s*(\d{1,2}\s+[A-Za-z]+\s+\d{4})", first_line, re.IGNORECASE)
-    if match_date:
-        date_text = match_date.group(1).strip()
-    else:
-        match_fn = re.search(r"brainteaser-(\d{1,2}[a-zA-Z]{3}\d{2})", path.name, re.IGNORECASE)
-        if match_fn:
-            date_str = match_fn.group(1)
-            try:
-                dt = datetime.datetime.strptime(date_str, BT_DATE_FMT)
-                date_text = dt.strftime("%d %B %Y")
-            except Exception:
-                pass
-        if not date_text:
-            date_text = datetime.datetime.now().strftime("%d %B %Y")
-            
-    # 3. Parse Options
-    option_matches = re.findall(r'\b([a-d])[\.\)]\s*([^\n]+?)(?=\s+\b[a-d][\.\)]|\n|$)', clean_content, re.IGNORECASE)
-    options = []
-    for opt_letter, opt_val in option_matches:
-        options.append(f"{opt_letter.lower()}. {opt_val.strip()}")
-        
-    # 4. Parse Question and Series
-    q_s_content = clean_content
-    # Remove title line prefix
-    q_s_content = re.sub(r'^(?:Daily Brain Teaser|Brain Teaser)\s*-\s*\d{1,2}\s+[A-Za-z]+\s+\d{4}\s*🧠\s*', '', q_s_content, flags=re.IGNORECASE)
-    
-    # Remove options and everything after them
-    opt_start = re.search(r'\b[a-d][\.\)]\s*', q_s_content, re.IGNORECASE)
-    if opt_start:
-        q_s_content = q_s_content[:opt_start.start()]
-        
-    # Remove hashtags
-    q_s_content = re.sub(r'#\w+', '', q_s_content)
-    
-    q_s_lines = [l.strip() for l in q_s_content.splitlines() if l.strip()]
-    
-    question_header = "Q. what's next in the series:-"
-    series_text = ""
-    
-    full_text = "\n".join(q_s_lines)
-    
-    series_match = re.search(r'Series:\s*(.+)', full_text, re.IGNORECASE)
-    q_match = re.search(r'Q\.\s*(.+?)(?=\nSeries:|\Z)', full_text, re.IGNORECASE | re.DOTALL)
-    
-    if series_match:
-        series_text = series_match.group(1).strip()
-        if q_match:
-            question_header = f"Q. {q_match.group(1).strip()}"
-        else:
-            before_series = full_text.split("Series:")[0].strip()
-            if before_series:
-                before_series = re.sub(r'^Q\.\s*', '', before_series, flags=re.IGNORECASE).strip()
-                question_header = f"Q. {before_series}"
-    else:
-        if q_s_lines:
-            first_val = q_s_lines[0]
-            first_val_clean = re.sub(r'^Q\.\s*', '', first_val, flags=re.IGNORECASE).strip()
-            
-            if len(q_s_lines) > 1:
-                question_header = f"Q. {first_val_clean}"
-                series_text = q_s_lines[1]
-            else:
-                if ":" in first_val_clean:
-                    parts = first_val_clean.split(":", 1)
-                    q_part = parts[0].strip()
-                    s_part = parts[1].strip()
-                    if "what number comes next" in q_part.lower() or "what's next" in q_part.lower():
-                        question_header = "Q. what's next in the series"
-                    else:
-                        question_header = f"Q. {q_part}"
-                    series_text = s_part
-                else:
-                    series_text = first_val_clean
-                    
-    # Clean up series_text
-    series_text = re.sub(r'\b[a-d][\.\)].*', '', series_text, flags=re.IGNORECASE).strip()
-    
-    # Ensure question_header has a proper format (e.g. ends with ":-" and is capitalized)
-    question_header = question_header.strip()
-    if not question_header.endswith(":-"):
-        if question_header.endswith("?"):
-            question_header = question_header + " :-"
-        else:
-            question_header = question_header + " :-"
-            
-    # Capitalize the first letter of question_header (after "Q. ")
-    if question_header.startswith("Q. "):
-        rest = question_header[3:]
-        if rest:
-            question_header = "Q. " + rest[0].upper() + rest[1:]
-            
-    # Extract hashtags
-    hashtags = re.findall(r'#\w+', content)
-    
-    # Extract correct answer if present
-    answer_match = re.search(r'(?:Correct Answer|Answer):\s*([a-d])', clean_content, re.IGNORECASE)
-    correct_answer = answer_match.group(1).lower() if answer_match else None
-            
-    return {
-        "question_header": question_header,
-        "series": series_text,
-        "options": options,
-        "date": date_text,
-        "hashtags": hashtags,
-        "correct_answer": correct_answer
-    }
+    return parse_teaser_content(content, file_path=path)
 
-def create_teaser_plain_image(data, font_path, font_bold_path, font_regular_path, output_path):
+def create_teaser_plain_image(data: Dict[str, Any], font_path: pathlib.Path, font_bold_path: pathlib.Path, font_regular_path: pathlib.Path, output_path: pathlib.Path):
     W, H = 656, 656
     image = create_teaser_gradient(W, H)
     draw = ImageDraw.Draw(image)
@@ -291,13 +198,12 @@ def create_teaser_plain_image(data, font_path, font_bold_path, font_regular_path
             font_series = ImageFont.truetype(str(font_bold_path), 40)
             font_options = ImageFont.truetype(str(font_regular_path), 30)
             font_watermark = ImageFont.truetype(str(font_regular_path), 16)
-    except Exception as e:
+    except Exception:
         font_header = font_sub = font_series = font_options = font_watermark = ImageFont.load_default()
 
     draw_teaser_text_with_shadow(draw, "Daily Brain Teaser:-", W / 2, 80, font_header)
     
-    # Wrapped Question Statement
-    question_text = data["question_header"]
+    question_text = data.get("question_header", "Q. What's next in the series:-")
     wrapped_q = wrap_text(question_text, font_sub, 560)
     current_y = 145
     line_h_q = 34
@@ -305,8 +211,7 @@ def create_teaser_plain_image(data, font_path, font_bold_path, font_regular_path
         draw_teaser_text_with_shadow(draw, line, W / 2, current_y, font_sub)
         current_y += line_h_q
         
-    # Wrapped Series
-    series_text = data["series"]
+    series_text = data.get("series", "")
     wrapped_series = wrap_text(series_text, font_series, 540)
     line_h_s = 48
     
@@ -315,13 +220,9 @@ def create_teaser_plain_image(data, font_path, font_bold_path, font_regular_path
         draw_teaser_text_with_shadow(draw, line, W / 2, current_y, font_series, text_color=(56, 189, 248))
         current_y += line_h_s
 
-    # Options (Vertical Stack)
-    options = data["options"]
+    options = data.get("options", [])
     start_y = current_y + 25
-    
-    gap = 42
-    if len(options) == 2:
-        gap = 55
+    gap = 42 if len(options) != 2 else 55
         
     for idx, opt in enumerate(options):
         y_pos = start_y + (idx * gap)
@@ -334,22 +235,22 @@ def create_teaser_plain_image(data, font_path, font_bold_path, font_regular_path
     print(f"✅ Generated plain teaser image: {output_path.name}")
     return True
 
-def create_teaser_styled_image(data, font_path, font_bold_path, font_regular_path, output_path):
+def create_teaser_styled_image(data: Dict[str, Any], font_path: pathlib.Path, font_bold_path: pathlib.Path, font_regular_path: pathlib.Path, output_path: pathlib.Path):
     import random
     W, H = 656, 656
     
     image = None
     templates_dir = ARCHIVE_DIR.parent / "samples" / "Templates"
-    templates = list(templates_dir.glob("template_*.png"))
-    
-    if templates:
-        random_template = random.choice(templates)
-        try:
-            image = Image.open(random_template).convert("RGBA")
-            if image.size != (W, H):
-                image = image.resize((W, H), Image.Resampling.LANCZOS)
-        except Exception:
-            pass
+    if templates_dir.exists():
+        templates = list(templates_dir.glob("template_*.png"))
+        if templates:
+            random_template = random.choice(templates)
+            try:
+                image = Image.open(random_template).convert("RGBA")
+                if image.size != (W, H):
+                    image = image.resize((W, H), Image.Resampling.LANCZOS)
+            except Exception:
+                image = None
             
     if image is None:
         image = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -411,15 +312,13 @@ def create_teaser_styled_image(data, font_path, font_bold_path, font_regular_pat
     image.paste(rotated_watermark, (-272, -272), rotated_watermark)
     
     draw = ImageDraw.Draw(image)
-    
     draw_teaser_text_with_shadow(draw, "Daily Brain Teaser:-", W / 2, 70, f_header, text_color=(251, 191, 36))
     
     date_text = data.get("date", "")
     if date_text:
         draw_teaser_text_with_shadow(draw, date_text, W - 40, 35, f_date, text_color=(255, 255, 255, 160), anchor="rt")
     
-    # Dynamic Wrapped Question
-    question_text = data["question_header"]
+    question_text = data.get("question_header", "Q. What's next in the series:-")
     wrapped_q = wrap_text(question_text, f_sub, 560)
     current_y = 125
     line_h_q = 28
@@ -427,8 +326,7 @@ def create_teaser_styled_image(data, font_path, font_bold_path, font_regular_pat
         draw_teaser_text_with_shadow(draw, line, W / 2, current_y, f_sub, text_color=(229, 231, 235))
         current_y += line_h_q
         
-    # Dynamic Wrapped Series
-    series_text = data["series"]
+    series_text = data.get("series", "")
     wrapped_series = wrap_text(series_text, f_series, 460)
     line_h_s = 44
     series_content_h = len(wrapped_series) * line_h_s
@@ -450,9 +348,7 @@ def create_teaser_styled_image(data, font_path, font_bold_path, font_regular_pat
         draw_teaser_text_with_shadow(draw, line, W / 2, s_y, f_series, text_color=(56, 189, 248))
         s_y += line_h_s
         
-    # Options Layout (Adaptive: 2x2 grid vs 1x4 stack)
-    options = data["options"]
-    
+    options = data.get("options", [])
     max_opt_w = 0
     for opt in options:
         w = f_options.getlength(opt)
@@ -528,7 +424,7 @@ def create_teaser_styled_image(data, font_path, font_bold_path, font_regular_pat
     print(f"✅ Generated styled teaser image: {output_path.name}")
     return True
 
-def ensure_fonts(ARCHIVE_DIR):
+def ensure_fonts(ARCHIVE_DIR: pathlib.Path) -> Tuple[pathlib.Path, pathlib.Path]:
     fonts_dir = ARCHIVE_DIR.parent / "fonts"
     fonts_dir.mkdir(parents=True, exist_ok=True)
     font_regular_path = fonts_dir / "Roboto-Regular.ttf"
@@ -537,15 +433,14 @@ def ensure_fonts(ARCHIVE_DIR):
     font_regular_url = "https://raw.githubusercontent.com/googlefonts/roboto/main/src/hinted/Roboto-Regular.ttf"
     font_bold_url = "https://raw.githubusercontent.com/googlefonts/roboto/main/src/hinted/Roboto-Bold.ttf"
     
-    def download_font(dest_path, url):
+    def download_font(dest_path: pathlib.Path, url: str):
         if not dest_path.exists():
-            print(f"Downloading font to {dest_path.name}...")
             try:
                 response = requests.get(url, timeout=30)
                 response.raise_for_status()
                 dest_path.write_bytes(response.content)
             except Exception as e:
-                logging.error(f"Error downloading font: {e}")
+                logging.warning(f"Could not download font {dest_path.name}: {e}")
                 
     download_font(font_regular_path, font_regular_url)
     download_font(font_bold_path, font_bold_url)

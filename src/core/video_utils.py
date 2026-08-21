@@ -1,27 +1,27 @@
 import os
-import urllib.request
+import re
+import math
+import shutil
 import logging
 import random
-import math
-import subprocess
 import datetime
+import subprocess
+import pathlib
+from typing import List, Optional, Tuple
 import cv2
+import numpy as np
 import imageio_ffmpeg
-import shutil
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
+
 from .config import ARCHIVE_DIR
-try:
-    from .tts_utils import generate_voiceover, HAS_TTS
-except ImportError:
-    HAS_TTS = False
+from .tts_utils import get_ffmpeg_executable
 
 def download_audio_library():
     audio_dir = ARCHIVE_DIR.parent / "samples" / "Audio"
-    if not audio_dir.exists():
-        audio_dir.mkdir(parents=True, exist_ok=True)
+    audio_dir.mkdir(parents=True, exist_ok=True)
         
     logging.info("Checking background music assets (15 open-source copyright-free tracks)...")
-    ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+    ffmpeg_exe = get_ffmpeg_executable()
     
     chord_presets = [
         "0.03*sin(220*2*PI*t)*(1+0.1*sin(2*PI*0.5*t))+0.03*sin(261.63*2*PI*t)*(1+0.1*sin(2*PI*0.3*t))+0.03*sin(329.63*2*PI*t)+0.02*sin(440*2*PI*t)",
@@ -46,8 +46,6 @@ def download_audio_library():
         file_path = audio_dir / file_name
         if not file_path.exists():
             preset_expr = chord_presets[(i - 1) % len(chord_presets)]
-            msg = f"Synthesizing 100% copyright-free open-source background music track {i}/15..."
-            print(msg)
             cmd = [
                 ffmpeg_exe, "-y",
                 "-f", "lavfi",
@@ -62,7 +60,7 @@ def download_audio_library():
             except Exception as e:
                 logging.warning(f"Failed to generate synthetic track {i}: {e}")
 
-def get_random_audio_track():
+def get_random_audio_track() -> Optional[pathlib.Path]:
     audio_dir = ARCHIVE_DIR.parent / "samples" / "Audio"
     if not audio_dir.exists():
         return None
@@ -71,9 +69,9 @@ def get_random_audio_track():
         return None
     return random.choice(mp3_files)
 
-def merge_audio_video(video_path, audio_path, output_path, video_duration=None, voiceover_path=None):
+def merge_audio_video(video_path: str, audio_path: str, output_path: str, video_duration: Optional[float] = None, voiceover_path: Optional[str] = None):
     logging.info(f"Muxing background audio '{os.path.basename(audio_path)}' into video...")
-    ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+    ffmpeg_exe = get_ffmpeg_executable()
     
     if not video_duration:
         cap = cv2.VideoCapture(str(video_path))
@@ -84,7 +82,7 @@ def merge_audio_video(video_path, audio_path, output_path, video_duration=None, 
                 video_duration = frame_count / fps
             cap.release()
         if not video_duration:
-            video_duration = 9.0
+            video_duration = 10.0
             
     st_fade = max(0.0, video_duration - 1.0)
     
@@ -99,23 +97,28 @@ def merge_audio_video(video_path, audio_path, output_path, video_duration=None, 
             "-map", "0:v",
             "-map", "[a]",
             "-c:v", "libx264",
+            "-preset", "medium",
+            "-crf", "23",
             "-pix_fmt", "yuv420p",
             "-c:a", "aac",
+            "-b:a", "128k",
             "-shortest",
             str(output_path)
         ]
     else:
         cmd = [
-            ffmpeg_exe,
-            "-y",
+            ffmpeg_exe, "-y",
             "-i", str(video_path),
             "-i", str(audio_path),
             "-filter_complex", f"[1:a]volume=0.35,afade=t=out:st={st_fade}:d=1.0[a]",
             "-map", "0:v",
             "-map", "[a]",
             "-c:v", "libx264",
+            "-preset", "medium",
+            "-crf", "23",
             "-pix_fmt", "yuv420p",
             "-c:a", "aac",
+            "-b:a", "128k",
             "-shortest",
             str(output_path)
         ]
@@ -125,13 +128,13 @@ def merge_audio_video(video_path, audio_path, output_path, video_duration=None, 
         raise RuntimeError(f"FFmpeg error: {result.stderr}")
     logging.info(f"Finalized video with audio generated: {output_path}")
 
-def format_date_custom(dt):
+def format_date_custom(dt: datetime.datetime) -> str:
     day = str(dt.day)
-    mon = dt.strftime("%b")
+    mon = dt.strftime("%b").upper()
     year = str(dt.year)
     return f"{day} {mon} {year}"
 
-def create_base_background_with_glow(W, H, t=0.0):
+def create_base_background_with_glow(W: int, H: int, t: float = 0.0) -> Image.Image:
     image = Image.new("RGBA", (W, H), (3, 7, 18, 255))
     glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     draw_glow = ImageDraw.Draw(glow)
@@ -153,10 +156,13 @@ def create_base_background_with_glow(W, H, t=0.0):
     image.alpha_composite(blurred_glow)
     return image
 
-def draw_watermark_on_image(image, font_bold_path):
+def draw_watermark_on_image(image: Image.Image, font_bold_path: pathlib.Path):
     watermark_canvas = Image.new("RGBA", (2200, 2200), (0, 0, 0, 0))
     watermark_draw = ImageDraw.Draw(watermark_canvas)
-    font_watermark = ImageFont.truetype(str(font_bold_path), 150)
+    try:
+        font_watermark = ImageFont.truetype(str(font_bold_path), 150)
+    except Exception:
+        font_watermark = ImageFont.load_default()
     watermark_draw.text((1100, 1100), "PULSE VECTOR", font=font_watermark, fill=(255, 255, 255, 6), anchor="mm")
     rotated_watermark = watermark_canvas.rotate(40, resample=Image.BICUBIC)
     image.paste(rotated_watermark, (-560, -140), rotated_watermark)
@@ -166,7 +172,7 @@ def draw_text_with_shadow_helper(draw, text, x, y, font, shadow_color=(0, 0, 0, 
         draw.text((x + offset[0], y + offset[1]), text, font=font, fill=shadow_color, anchor=anchor)
     draw.text((x, y), text, font=font, fill=text_color, anchor=anchor)
 
-def generate_thumbnail_slide_image(date_obj, font_bold_path, font_regular_path, output_path, category_name="DAILY"):
+def generate_thumbnail_slide_image(date_obj: datetime.datetime, font_bold_path: pathlib.Path, font_regular_path: pathlib.Path, output_path: pathlib.Path, category_name: str = "DAILY"):
     logging.info(f"Generating dynamic thumbnail slide for: {date_obj} (Category: {category_name})")
     W, H = 1080, 1920
     
@@ -185,28 +191,32 @@ def generate_thumbnail_slide_image(date_obj, font_bold_path, font_regular_path, 
     )
     image.alpha_composite(card)
     
-    font_logo = ImageFont.truetype(str(font_bold_path), 26)
-    font_sublogo = ImageFont.truetype(str(font_regular_path), 36)
-    font_title = ImageFont.truetype(str(font_bold_path), 72)
-    font_size_date = 46 if category_name == "WEEKLY" else 54
-    font_date = ImageFont.truetype(str(font_bold_path), font_size_date)
+    try:
+        font_logo = ImageFont.truetype(str(font_bold_path), 26)
+        font_sublogo = ImageFont.truetype(str(font_regular_path), 36)
+        font_title = ImageFont.truetype(str(font_bold_path), 72)
+        font_size_date = 46 if category_name == "WEEKLY" else 54
+        font_date = ImageFont.truetype(str(font_bold_path), font_size_date)
+    except Exception:
+        font_logo = font_sublogo = font_title = font_date = ImageFont.load_default()
     
     draw = ImageDraw.Draw(image)
     draw.text((140, 215), "P U L S E   V E C T O R", font=font_logo, fill=(255, 255, 255, 80))
     
     cx = 540
-    draw_text_with_shadow_helper(draw, category_name, cx, 660, font_sublogo, text_color=(56, 189, 248, 200))
+    cat_label = category_name.upper().strip()
+    draw_text_with_shadow_helper(draw, cat_label, cx, 660, font_sublogo, text_color=(56, 189, 248, 200))
     draw_text_with_shadow_helper(draw, "CURRENT AFFAIRS", cx, 780, font_title, text_color=(255, 255, 255, 255))
     draw.line([(240, 890), (840, 890)], fill=(255, 255, 255, 35), width=2)
     
     if category_name == "WEEKLY":
         week_start = date_obj - datetime.timedelta(days=6)
         if week_start.year != date_obj.year:
-            formatted_date_str = f"{week_start.strftime('%d %b %Y')} to {date_obj.strftime('%d %b %Y')}"
+            formatted_date_str = f"{week_start.strftime('%d %b %Y')} to {date_obj.strftime('%d %b %Y')}".upper()
         else:
-            formatted_date_str = f"{week_start.strftime('%d %b')} to {date_obj.strftime('%d %b %Y')}"
+            formatted_date_str = f"{week_start.strftime('%d %b')} to {date_obj.strftime('%d %b %Y')}".upper()
     elif category_name == "MONTHLY":
-        formatted_date_str = date_obj.strftime("%B %Y")
+        formatted_date_str = date_obj.strftime("%B %Y").upper()
     else:
         formatted_date_str = format_date_custom(date_obj)
         
@@ -215,13 +225,12 @@ def generate_thumbnail_slide_image(date_obj, font_bold_path, font_regular_path, 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     image.convert("RGB").save(output_path, "PNG")
 
-def draw_bell_icon_image(W_bell, H_bell, angle):
+def draw_bell_icon_image(W_bell: int, H_bell: int, angle: float) -> Image.Image:
     bell_img = Image.new("RGBA", (W_bell, H_bell), (0, 0, 0, 0))
     bell_draw = ImageDraw.Draw(bell_img)
     
     clapper_offset = int(5 * math.sin(math.radians(angle * 3)))
     bell_draw.ellipse([(135 + clapper_offset, 205), (165 + clapper_offset, 235)], fill=(251, 191, 36, 255))
-    
     bell_draw.ellipse([(135, 35), (165, 65)], outline=(255, 255, 255, 255), width=6)
     
     body_points = [
@@ -235,15 +244,18 @@ def draw_bell_icon_image(W_bell, H_bell, angle):
     rotated_bell = bell_img.rotate(angle, resample=Image.BICUBIC)
     return rotated_bell
 
-def generate_animated_end_slide_frames_pipeline(font_bold_path, font_regular_path, output_dir, fps=10, duration=3.0):
+def generate_animated_end_slide_frames_pipeline(font_bold_path: pathlib.Path, font_regular_path: pathlib.Path, output_dir: pathlib.Path, fps: int = 10, duration: float = 3.0) -> List[pathlib.Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     W, H = 1080, 1920
     total_frames = int(fps * duration)
     
-    font_bold_title = ImageFont.truetype(str(font_bold_path), 56)
-    font_regular_sub = ImageFont.truetype(str(font_regular_path), 38)
-    font_body = ImageFont.truetype(str(font_regular_path), 32)
-    font_logo = ImageFont.truetype(str(font_bold_path), 26)
+    try:
+        font_bold_title = ImageFont.truetype(str(font_bold_path), 56)
+        font_regular_sub = ImageFont.truetype(str(font_regular_path), 38)
+        font_body = ImageFont.truetype(str(font_regular_path), 32)
+        font_logo = ImageFont.truetype(str(font_bold_path), 26)
+    except Exception:
+        font_bold_title = font_regular_sub = font_body = font_logo = ImageFont.load_default()
     
     frame_paths = []
     
@@ -294,16 +306,12 @@ def generate_animated_end_slide_frames_pipeline(font_bold_path, font_regular_pat
         
     return frame_paths
 
-import numpy as np
-
-def create_transition_frames(img1, img2, num_transition_frames=10, transition_type="slide_left"):
-    """Generates transition frames between img1 and img2."""
+def create_transition_frames(img1, img2, num_transition_frames: int = 10, transition_type: str = "slide_left"):
     h, w, c = img1.shape
     frames = []
     
     for i in range(1, num_transition_frames + 1):
         alpha = i / float(num_transition_frames + 1)
-        
         if transition_type == "fade":
             frame = cv2.addWeighted(img1, 1 - alpha, img2, alpha, 0)
         elif transition_type == "slide_left":
@@ -321,13 +329,20 @@ def create_transition_frames(img1, img2, num_transition_frames=10, transition_ty
             frame = cv2.addWeighted(cropped1, 1 - alpha, img2, alpha, 0)
         else:
             frame = cv2.addWeighted(img1, 1 - alpha, img2, alpha, 0)
-            
         frames.append(frame)
         
     return frames
 
-def compile_images_with_transitions(thumbnail_path, daily_image_paths, animated_frame_paths, output_path, duration_per_slide=3.5, fps=30, transition_sec=0.5, per_slide_durations=None):
-    """Compiles slide images into a video with smooth dynamic transitions and optional per-slide TTS durations."""
+def compile_images_with_transitions(
+    thumbnail_path: pathlib.Path,
+    daily_image_paths: List[pathlib.Path],
+    animated_frame_paths: List[pathlib.Path],
+    output_path: pathlib.Path,
+    duration_per_slide: float = 3.5,
+    fps: int = 30,
+    transition_sec: float = 0.5,
+    per_slide_durations: Optional[List[float]] = None
+):
     all_images_paths = [thumbnail_path] + list(daily_image_paths)
     loaded_imgs = []
     
@@ -393,10 +408,19 @@ def compile_images_with_transitions(thumbnail_path, daily_image_paths, animated_
         
     out.release()
 
-def compile_images_to_video_enhanced(thumbnail_path, daily_image_paths, animated_frame_paths, output_path, duration_per_static=3.0, fps=10, use_transitions=True, per_slide_durations=None):
+def compile_images_to_video_enhanced(
+    thumbnail_path: pathlib.Path,
+    daily_image_paths: List[pathlib.Path],
+    animated_frame_paths: List[pathlib.Path],
+    output_path: str,
+    duration_per_static: float = 3.0,
+    fps: int = 10,
+    use_transitions: bool = True,
+    per_slide_durations: Optional[List[float]] = None
+):
     if use_transitions:
         compile_images_with_transitions(
-            thumbnail_path, daily_image_paths, animated_frame_paths, output_path,
+            thumbnail_path, daily_image_paths, animated_frame_paths, pathlib.Path(output_path),
             duration_per_slide=duration_per_static, fps=30, transition_sec=0.5,
             per_slide_durations=per_slide_durations
         )
@@ -411,7 +435,6 @@ def compile_images_to_video_enhanced(thumbnail_path, daily_image_paths, animated
     out = cv2.VideoWriter(str(output_path), fourcc, fps, (w, h))
     
     frames_per_static = int(duration_per_static * fps)
-    
     img = cv2.imread(str(thumbnail_path))
     for _ in range(frames_per_static):
         out.write(img)

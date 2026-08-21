@@ -32,7 +32,7 @@ jobs:
       - name: Check if Month End
         id: check-month-end
         run: |
-          python -c "import datetime, os; now = datetime.datetime.now(); is_month_end = (now + datetime.timedelta(days=1)).month != now.month; is_dispatch = '${{ github.event_name }}' == 'workflow_dispatch'; run_pipeline = 'true' if (is_month_end or is_dispatch) else 'false'; with open(os.environ['GITHUB_OUTPUT'], 'a') as f: f.write(f'run_pipeline={run_pipeline}\n')"
+          python -c "import datetime, os; now = datetime.datetime.now(); is_month_end = (now + datetime.timedelta(days=1)).month != now.month; is_dispatch = '${{ github.event_name }}' == 'workflow_dispatch'; run_pipeline = 'true' if (is_month_end or is_dispatch) else 'false'; open(os.environ['GITHUB_OUTPUT'], 'a').write(f'run_pipeline={run_pipeline}\n')"
 
       - name: Install System Dependencies (FFmpeg)
         if: steps.check-month-end.outputs.run_pipeline == 'true'
@@ -73,8 +73,6 @@ jobs:
         run: |
           git pull --rebase -X theirs origin main || (git rebase --abort && git pull --no-rebase -X theirs origin main --no-edit || (git checkout --ours . && git add . && git commit -m "Auto-resolve merge conflicts"))
           git push origin main
-
-
 
       - name: Cleanup Credentials
         if: steps.check-month-end.outputs.run_pipeline == 'true' && always()

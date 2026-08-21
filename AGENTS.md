@@ -2,11 +2,13 @@
 
 | File Pattern / Task Scope | Skill Trigger | Skill Path |
 | :--- | :--- | :--- |
-| `src/*_pipeline.py`, `src/core/genai_utils.py` | Content Gen & AI Prompts | `.agent/skills/content-gen/SKILL.md` |
+| `src/*_pipeline.py`, `src/core/genai_utils.py`, `content_parser.py` | Content Gen & AI Prompts | `.agent/skills/content-gen/SKILL.md` |
 | `src/core/image_utils.py`, `video_utils.py`, `tts_utils.py` | Media & Video Rendering | `.agent/skills/media-rendering/SKILL.md` |
 | `src/core/youtube_utils.py`, `credentials/*` | YouTube API & Uploads | `.agent/skills/youtube-dist/SKILL.md` |
 | `src/core/database_utils.py`, `scripts/*supabase*` | Supabase Cloud & DB | `.agent/skills/cloud-db/SKILL.md` |
-| `src/pipeline.py`, `src/core/git_backup_utils.py` | Pipeline & Git Automation | `.agent/skills/pipeline-git/SKILL.md` |
+| `src/pipeline.py`, `src/core/pipeline_engine.py`, `git_backup_utils.py` | Pipeline & Git Automation | `.agent/skills/pipeline-git/SKILL.md` |
+| `scripts/test_pipeline.py`, `scripts/monitor_health.py` | Testing & Monitoring | `.agent/workflows/pulse_test.md` |
+| `scripts/cleanup_workspace.py`, `scratch/*` | Workspace Storage & Cleanup | `.agent/skills/clean-optimizer/SKILL.md` |
 
 ## Skill Invocation Rules
 - Load ONLY the skill relevant to the target files or action being performed.
