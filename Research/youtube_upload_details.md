@@ -83,3 +83,4 @@ This log tracks all uploaded videos, their metadata, category, related video set
 | 2026-08-21 16:04 IST | Monthly Current Affairs - August 2026 | Education (27) | Monthly Masterclass | Linked to Playlist | Pinned Standard Comment | wo1YX4RQmdM |
 | 2026-08-21 17:35 IST | Daily Current Affairs 21 August 2026 | Education (27) | Short (9:16) | Linked to Playlist | Pinned Standard Comment | P5TkMoJ9iQM |
 | 2026-08-21 18:29 IST | Monthly Current Affairs - July 2026 | Education (27) | Monthly Masterclass | Linked to Playlist | Pinned Standard Comment | 0oMtXcgXzVU |
+| 2026-08-23 04:10 IST | Weekly Current Affairs ( 17 August 2026 - 23 August 2026 ) | Education (27) | Weekly Masterclass | Linked to Playlist | Pinned Standard Comment | 8HOuxX632Xw |
