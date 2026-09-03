@@ -9,7 +9,7 @@ import random
 import datetime
 import subprocess
 import pathlib
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Any
 import cv2
 import numpy as np
 import imageio_ffmpeg
@@ -591,3 +591,85 @@ def compile_images_to_video_enhanced(
         out.write(img)
         
     out.release()
+
+def compute_word_timings(text: str, total_duration: float, start_offset: float = 0.0) -> List[Dict[str, Any]]:
+    """
+    Calculates precise start and end timestamps for each word in text
+    proportional to character lengths across total_duration.
+    """
+    words = [w.strip() for w in text.split() if w.strip()]
+    if not words or total_duration <= 0:
+        return []
+    total_chars = sum(len(w) for w in words)
+    if total_chars == 0:
+        total_chars = len(words)
+        
+    cur_time = start_offset
+    timings = []
+    for w in words:
+        w_dur = (len(w) / total_chars) * total_duration
+        timings.append({
+            "word": w,
+            "start": cur_time,
+            "end": cur_time + w_dur
+        })
+        cur_time += w_dur
+    return timings
+
+def render_karaoke_subtitle_overlay(
+    draw: ImageDraw.ImageDraw,
+    current_time: float,
+    word_timings: List[Dict[str, Any]],
+    font_subtitle: ImageFont.ImageFont,
+    center_x: int = 540,
+    pos_y: int = 1380,
+    words_per_group: int = 4,
+    active_color: Tuple[int, int, int] = (250, 204, 21),
+    passive_color: Tuple[int, int, int] = (255, 255, 255),
+    border_pulse: bool = True
+) -> bool:
+    """
+    Renders an animated glowing karaoke caption box on the frame if current_time falls
+    within word timings. Returns True if subtitle was rendered, False otherwise.
+    """
+    if not word_timings:
+        return False
+        
+    groups = [word_timings[i:i + words_per_group] for i in range(0, len(word_timings), words_per_group)]
+    
+    active_group = None
+    for g in groups:
+        if g[0]["start"] <= current_time <= g[-1]["end"] + 0.25:
+            active_group = g
+            break
+            
+    if not active_group:
+        return False
+        
+    word_widths = [draw.textlength(w["word"] + " ", font=font_subtitle) for w in active_group]
+    tot_w = sum(word_widths)
+    start_x = center_x - tot_w // 2
+    
+    pw = tot_w + 50
+    ph = 72
+    pulse_alpha = int(140 + 60 * math.sin(current_time * 8.0)) if border_pulse else 160
+    border_col = (*active_color[:3], pulse_alpha)
+    
+    draw.rounded_rectangle(
+        [center_x - pw // 2, pos_y - ph // 2, center_x + pw // 2, pos_y + ph // 2],
+        radius=22,
+        fill=(15, 23, 42, 225),
+        outline=border_col,
+        width=2
+    )
+    
+    cur_x = start_x
+    for w_obj in active_group:
+        w_text = w_obj["word"]
+        is_active = w_obj["start"] <= current_time <= w_obj["end"]
+        color = active_color if is_active else passive_color
+        draw.text((cur_x + 2, pos_y + 2), w_text, font=font_subtitle, fill=(0, 0, 0, 180), anchor="lm")
+        draw.text((cur_x, pos_y), w_text, font=font_subtitle, fill=color, anchor="lm")
+        cur_x += draw.textlength(w_text + " ", font=font_subtitle)
+        
+    return True

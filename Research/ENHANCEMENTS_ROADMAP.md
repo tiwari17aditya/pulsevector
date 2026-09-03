@@ -70,27 +70,25 @@ This document outlines the versioned progression of the automated content creati
   * **Shorts Compliance (< 60s)**: Tuned TTS speech rate (`+35%` / `+48%`) for Daily Shorts to ensure full 15-headline coverage stays under 60 seconds (verified 58.30s sample: `samples/Videos/test_synced_short_58s.mp4`).
   * **CLI & Fallback**: Added `--no-tts` flag to `pipeline.py` for silent/backwards-compatible execution.
 
+### 🟢 v2.1.0 - Dynamic Animated "Karaoke" Subtitles (Completed — 4 September 2026)
+* **Word Timing Engine**: `compute_word_timings()` extracts word-level speech duration metadata aligned with neural audio pronunciation.
+* **Animated Highlight Renderer**: `render_karaoke_subtitle_overlay()` groups words into readable capsules, rendering active words in electric neon yellow/gold with subtle breathing border pulses.
+
+### 🟢 v2.2.0 - Telegram & Discord Community Auto-Broadcast (Completed — 4 September 2026)
+* **Multi-Platform Engine**: `broadcast_utils.py` automates daily broadcast of Current Affairs headlines, puzzle cards, and YouTube links.
+* **Safe Fallbacks**: Reads `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, and `DISCORD_WEBHOOK_URL` from `.env`, gracefully skipping when unconfigured.
+
+### 🟢 v2.3.0 - Category Badges & Thematic Styling for Current Affairs (Completed — 4 September 2026)
+* **Smart Classifier**: `classify_news_category()` assigns headlines to `DEFENCE` 🛡️, `ECONOMY` 📈, `TECH & AI` 🚀, `GEOPOLITICS` 🌐, `ENVIRONMENT` 🌱, `NATIONAL` 🏛️, or `GLOBAL` 🌍.
+* **Editorial Slide Pills**: Renders glowing category micro-pills with domain-specific accent palettes on news slides.
+
+### 🟢 v2.4.0 - Automated Brain Teaser Solution Reveal & Comment Ledger (Completed — 4 September 2026)
+* **Challenge Comments**: Generates 24-hour challenge comments upon upload to stimulate viewer answers in the comments section.
+* **Automatic Solution Reveal**: Reads yesterday's archive text, extracts verified answers, and formats official solution reveals.
+
 ---
 
 ## 🚀 Future Roadmap & Proposals
-
-### 🕒 v2.1.0 - Caption Burn-In & Subtitles
-* **Goal**: Burn dynamic subtitles/captions onto the video.
-* **Implementation Plan**:
-  * Extract word-level timings from `edge-tts` SSML/WebVTT output.
-  * Render captions directly onto video frames using FFmpeg `drawtext` filters, aligned with vocal announcements.
-
-### 🕒 v2.2.0 - Interactive QR Code Mini-Games
-* **Goal**: Embed QR codes on Daily Brain Teaser slides linking to interactive web puzzles.
-* **Implementation Plan**:
-  * Auto-generate a QR code pointing to a static GitHub Pages web app (HTML/JS).
-  * Overlay the QR code on the Brain Teaser slide at render time.
-
-### 🕒 v2.3.0 - Multi-Platform Cross-Posting (Instagram & TikTok)
-* **Goal**: Automatically publish daily content to Instagram Reels and TikTok.
-* **Implementation Plan**:
-  * Integrate Instagram Graph API and TikTok Content Posting API.
-  * Auto-schedule posts to go live simultaneously with YouTube uploads.
 
 ### 🕒 v2.4.0 - Generative AI Visual Assets per Headline
 * **Goal**: Replace generic background slides with topic-specific AI illustrations.

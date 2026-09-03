@@ -10,7 +10,7 @@ import datetime
 import pathlib
 import tempfile
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 # Ensure src/ is on sys.path
 SRC_DIR = pathlib.Path(__file__).resolve().parent.parent / "src"
@@ -20,13 +20,16 @@ if str(SRC_DIR) not in sys.path:
 from core.content_parser import (
     clean_markdown_decorations, strip_metadata_section, extract_news_points,
     extract_metadata_fields, extract_date_str, parse_news_content, parse_teaser_content,
-    format_community_poll_text
+    format_community_poll_text, classify_news_category, format_teaser_challenge_comment,
+    format_solution_reveal_comment
 )
 from core.tts_utils import sanitize_text_for_speech, verify_speech_points_alignment, get_ffmpeg_executable
 from core.image_utils import wrap_text, create_slide_image_file, ensure_fonts
 from core.video_utils import (
-    create_transition_frames, generate_countdown_sfx, merge_brainteaser_audio
+    create_transition_frames, generate_countdown_sfx, merge_brainteaser_audio,
+    compute_word_timings, render_karaoke_subtitle_overlay
 )
+from core.broadcast_utils import broadcast_daily_content
 from core.pipeline_engine import PipelineEngine
 from core.genai_utils import build_brainteaser_prompt, BRAIN_TEASER_TYPES
 
@@ -171,6 +174,28 @@ Correct Answer: c
         self.assertIn("• b. 9", poll_str)
         self.assertIn("#BODMAS", poll_str)
 
+    def test_classify_news_category(self):
+        self.assertEqual(classify_news_category("India procures advanced missile defence system"), "DEFENCE")
+        self.assertEqual(classify_news_category("RBI projects 7.2% GDP growth as stock markets rally"), "ECONOMY")
+        self.assertEqual(classify_news_category("ISRO launches quantum satellite for deep space mission"), "TECH & AI")
+        self.assertEqual(classify_news_category("Global solar energy installations cut carbon emissions"), "ENVIRONMENT")
+        self.assertEqual(classify_news_category("Bilateral diplomatic summit concludes with historic peace treaty"), "GEOPOLITICS")
+        self.assertEqual(classify_news_category("Parliament passes landmark digital governance bill"), "NATIONAL")
+
+    def test_teaser_challenge_and_solution_reveal(self):
+        sample = {
+            "date": "04 September 2026",
+            "correct_answer": "c",
+            "options": ["a. 10", "b. 20", "c. 30", "d. 40"]
+        }
+        challenge = format_teaser_challenge_comment(sample)
+        self.assertIn("04 September 2026", challenge)
+        self.assertIn("24 hours", challenge)
+        
+        reveal = format_solution_reveal_comment(sample)
+        self.assertIn("c. 30", reveal)
+        self.assertIn("OFFICIAL SOLUTION REVEAL", reveal)
+
 class TestTTSUtils(unittest.TestCase):
     def test_speech_sanitization(self):
         text = "1. Wildfires rage in Spain. [Source: Reuters] Major disaster declared."
@@ -224,6 +249,28 @@ class TestImageAndVideoUtils(unittest.TestCase):
             self.assertTrue(out.exists())
             self.assertGreater(out.stat().st_size, 1000)
 
+    def test_compute_word_timings_and_karaoke(self):
+        sample_text = "Daily Brain Teaser solve this puzzle"
+        timings = compute_word_timings(sample_text, total_duration=3.0, start_offset=0.2)
+        self.assertEqual(len(timings), 6)
+        self.assertEqual(timings[0]["word"], "Daily")
+        self.assertAlmostEqual(timings[0]["start"], 0.2)
+        self.assertAlmostEqual(timings[-1]["end"], 3.2)
+        
+        # Test karaoke overlay rendering onto PIL draw context
+        dummy_img = Image.new("RGBA", (1080, 1920), (0, 0, 0, 255))
+        draw = ImageDraw.Draw(dummy_img)
+        font_reg, _ = ensure_fonts(pathlib.Path("pulse_archive"))
+        font_sub = ImageFont.truetype(str(font_reg), 32)
+        
+        # At t=1.0s, subtitle should render successfully
+        rendered = render_karaoke_subtitle_overlay(draw, 1.0, timings, font_sub)
+        self.assertTrue(rendered)
+        
+        # At t=10.0s (past audio), subtitle should return False
+        rendered_late = render_karaoke_subtitle_overlay(draw, 10.0, timings, font_sub)
+        self.assertFalse(rendered_late)
+
 class TestPipelineEngine(unittest.TestCase):
     def test_dry_run_execution(self):
         engine = PipelineEngine()
@@ -235,6 +282,17 @@ class TestPipelineEngine(unittest.TestCase):
         
         res_monthly = engine.run_pipeline("monthly", dry_run=True)
         self.assertEqual(len(res_monthly.errors), 0)
+
+    def test_broadcast_daily_content_graceful(self):
+        result = broadcast_daily_content(
+            content_type="daily",
+            date_obj=datetime.date(2026, 9, 4),
+            title="Test Broadcast Title",
+            summary_text="• Point 1 summary\n• Point 2 summary"
+        )
+        self.assertIsInstance(result, dict)
+        self.assertIn("telegram", result)
+        self.assertIn("discord", result)
 
 def main():
     print("==========================================================")

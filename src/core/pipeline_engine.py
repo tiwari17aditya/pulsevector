@@ -34,6 +34,7 @@ from .youtube_utils import (
 )
 from .git_backup_utils import run_git_operations, run_backup_operations
 from .database_utils import run_database_upload
+from .broadcast_utils import broadcast_daily_content
 
 class PipelineEngine:
     """Pluggable, modular pipeline engine for all Pulse Vector content types."""
@@ -374,6 +375,22 @@ class PipelineEngine:
             pinned_comment_status="Pinned Standard Comment",
             video_id=video_id
         )
+        
+        # Feature 2: Community Auto-Broadcast (Telegram & Discord)
+        try:
+            summary_points = "\n".join([f"• {p[1]}" for p in payload.points[:5]])
+            thumb_path = paths["image_dir"] / "thumbnail.png"
+            broadcast_daily_content(
+                content_type=content_type,
+                date_obj=target_date,
+                title=payload.title,
+                summary_text=summary_points,
+                image_path=thumb_path if thumb_path.exists() else None,
+                video_url=f"https://youtu.be/{video_id}"
+            )
+        except Exception as b_err:
+            print(f"  > Broadcast notice: {b_err}")
+            
         return video_id
 
     # -------------------------------------------------------------

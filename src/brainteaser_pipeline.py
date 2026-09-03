@@ -26,14 +26,19 @@ from core.video_utils import (
     draw_text_with_shadow_helper, download_audio_library,
     get_random_audio_track, merge_audio_video,
     generate_countdown_sfx, merge_brainteaser_audio,
-    draw_bell_icon_image
+    draw_bell_icon_image, compute_word_timings,
+    render_karaoke_subtitle_overlay
 )
 from core.youtube_utils import (
     get_authenticated_service, add_video_to_playlist, upload_video_to_youtube,
     add_video_comment
 )
-from core.content_parser import format_community_poll_text
-from core.tts_utils import synthesize_text, HAS_TTS
+from core.content_parser import (
+    format_community_poll_text, format_teaser_challenge_comment,
+    format_solution_reveal_comment
+)
+from core.broadcast_utils import broadcast_daily_content
+from core.tts_utils import synthesize_text, get_audio_duration, HAS_TTS
 from core.database_utils import run_database_upload
 W, H = 656, 656
 
@@ -749,6 +754,21 @@ def generate_brainteaser_video(target_date):
     
     W_canvas, H_canvas = 1080, 1920
     
+    # 1. Synthesize Intro Voiceover Hook & compute word timings for Karaoke Subtitles
+    intro_hook = "Daily Brain Teaser! Can you solve this puzzle before the countdown ends?"
+    temp_vo_path = videos_dir / f"temp_{bt_path.stem}_vo.mp3"
+    vo_timings = []
+    if HAS_TTS:
+        try:
+            synthesize_text(intro_hook, voice="en-US-ChristopherNeural", rate="+25%", output_path=temp_vo_path)
+            vo_dur = get_audio_duration(temp_vo_path)
+            vo_timings = compute_word_timings(intro_hook, vo_dur, start_offset=0.25)
+            print("  > Synthesized Brain Teaser voiceover intro with karaoke timings.")
+        except Exception as e:
+            print(f"  > Warning: Failed synthesizing voiceover intro: {e}")
+            if temp_vo_path.exists():
+                temp_vo_path.unlink()
+    
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(str(temp_video_path), fourcc, fps, (W_canvas, H_canvas))
     
@@ -774,6 +794,13 @@ def generate_brainteaser_video(target_date):
             create_countdown_bell_ring(draw, cx, cy, radius=65, progress=progress, text=str(remaining_secs), font_timer=font_timer)
             draw_text_with_shadow_helper(draw, str(remaining_secs), cx, cy, font_timer, text_color=(255, 255, 255))
             draw_text_with_shadow_helper(draw, "Seconds left to think...", W_canvas/2, 1610, font_subtitle, text_color=(156, 163, 175))
+            
+            # Feature 1: Dynamic Animated Karaoke Subtitles
+            if vo_timings and t <= vo_timings[-1]["end"] + 0.3:
+                render_karaoke_subtitle_overlay(
+                    draw, t, vo_timings, font_subtitle=font_subtitle,
+                    center_x=int(W_canvas / 2), pos_y=1380
+                )
         else:
             # Full Current Affairs Style Outro Card
             t_outro = (i - 80) / fps
@@ -831,7 +858,7 @@ def generate_brainteaser_video(target_date):
         
     out.release()
     
-    # 1. Generate Countdown SFX (woodblock ticks + chime)
+    # 2. Generate Countdown SFX (woodblock ticks + chime)
     temp_sfx_path = videos_dir / f"temp_{bt_path.stem}_sfx.wav"
     try:
         generate_countdown_sfx(temp_sfx_path, total_duration=total_duration, stop_at=8.0)
@@ -839,18 +866,6 @@ def generate_brainteaser_video(target_date):
         print(f"  > Warning: Failed generating countdown SFX: {e}")
         temp_sfx_path = None
         
-    # 2. Synthesize Intro Voiceover Hook
-    temp_vo_path = videos_dir / f"temp_{bt_path.stem}_vo.mp3"
-    if HAS_TTS:
-        try:
-            intro_hook = "Daily Brain Teaser! Can you solve this puzzle before the countdown ends?"
-            synthesize_text(intro_hook, voice="en-US-ChristopherNeural", rate="+25%", output_path=temp_vo_path)
-            print("  > Synthesized Brain Teaser voiceover intro.")
-        except Exception as e:
-            print(f"  > Warning: Failed synthesizing voiceover intro: {e}")
-            if temp_vo_path.exists():
-                temp_vo_path.unlink()
-    
     # 3. Mux multi-track audio (voiceover + SFX + background music)
     audio_track = get_random_audio_track()
     if audio_track:
@@ -965,18 +980,56 @@ def publish_teaser_to_youtube(video_path, data, target_date, privacy_status=None
         print(f"  > Adding to playlist: {playlist_title}...")
         add_video_to_playlist(youtube, video_id, playlist_title)
         
-        # Post interactive comment to trigger Shorts feed engagement
+        # Feature 4: Automated Brain Teaser Challenge & Solution Reveal System
+        comments_dir = ARCHIVE_DIR / year_str / target_date.strftime("%B") / "Brain_Teasers" / "Comments"
+        comments_dir.mkdir(parents=True, exist_ok=True)
+        date_file_str = target_date.strftime(BT_DATE_FMT)
+        
+        # Save today's challenge comment asset
+        challenge_comment = format_teaser_challenge_comment(data)
+        today_comment_file = comments_dir / f"challenge-comment-{date_file_str}.txt"
+        today_comment_file.write_text(challenge_comment, encoding="utf-8")
+        print(f"  > Saved challenge comment asset to: {today_comment_file}")
+        
+        # Save & attempt yesterday's solution reveal
+        yesterday_date = target_date - datetime.timedelta(days=1)
+        yesterday_file_str = yesterday_date.strftime(BT_DATE_FMT)
+        yesterday_txt_path = ARCHIVE_DIR / yesterday_date.strftime("%Y") / yesterday_date.strftime("%B") / "Brain_Teasers" / "Text" / f"brainteaser-{yesterday_file_str}.txt"
+        
+        if yesterday_txt_path.exists():
+            y_data = parse_teaser_file(yesterday_txt_path)
+            if y_data and y_data.get("correct_answer"):
+                solution_comment = format_solution_reveal_comment(y_data)
+                sol_file = comments_dir / f"solution-reveal-{yesterday_file_str}.txt"
+                sol_file.write_text(solution_comment, encoding="utf-8")
+                print(f"  > Generated official solution reveal for {yesterday_file_str} at: {sol_file}")
+        
+        # Post interactive challenge comment to video
         try:
-            options_list = data.get("options", [])
-            opt_str = "\n".join([f"• {opt}" for opt in options_list]) if options_list else ""
-            comment_body = (
-                f"🧠 Daily Brain Teaser: What is your answer? Drop your vote below! 👇\n\n"
-                f"{opt_str}\n\n"
-                f"(The correct answer will be revealed and pinned in 24 hours!)"
-            )
-            add_video_comment(youtube, video_id, comment_body)
+            add_video_comment(youtube, video_id, challenge_comment)
+            print(f"  > Posted interactive challenge comment to video: {video_id}")
         except Exception as e:
-            print(f"  > Warning: Could not post video comment: {e}")
+            print(f"  > Note on video comment: {e}")
+            
+        # Feature 2: Community Auto-Broadcast (Telegram & Discord)
+        try:
+            teaser_title = f"Daily Brain Teaser: {date_str} 🧠"
+            teaser_summary = (
+                f"{data.get('question_header', '')}\n{data.get('series', '')}\n\n"
+                f"Options:\n" + "\n".join([f"• {opt}" for opt in data.get('options', [])]) +
+                f"\n\n🧠 Drop your answer in the comments! Solution revealed in 24 hours."
+            )
+            img_path = ARCHIVE_DIR / year_str / target_date.strftime("%B") / "Brain_Teasers" / "Images" / f"brainteaser-{date_file_str}.png"
+            broadcast_daily_content(
+                content_type="Brain Teaser",
+                date_obj=target_date,
+                title=teaser_title,
+                summary_text=teaser_summary,
+                image_path=img_path if img_path.exists() else None,
+                video_url=f"https://youtu.be/{video_id}"
+            )
+        except Exception as b_err:
+            print(f"  > Broadcast notice: {b_err}")
             
         return True
     except Exception as e:

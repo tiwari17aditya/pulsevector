@@ -66,6 +66,46 @@ def extract_news_points(content: str) -> List[Tuple[int, str, Optional[str]]]:
         
     return points
 
+CATEGORY_PALETTES = {
+    "ECONOMY": {"pill_bg": (234, 179, 8, 45), "pill_border": (234, 179, 8, 180), "text_color": (253, 224, 71)},     # Gold/Amber
+    "DEFENCE": {"pill_bg": (239, 68, 68, 45), "pill_border": (239, 68, 68, 180), "text_color": (252, 165, 165)},     # Crimson/Coral
+    "TECH & AI": {"pill_bg": (6, 182, 212, 45), "pill_border": (6, 182, 212, 180), "text_color": (103, 232, 249)},   # Cyan
+    "GEOPOLITICS": {"pill_bg": (139, 92, 246, 45), "pill_border": (139, 92, 246, 180), "text_color": (196, 181, 253)}, # Purple/Violet
+    "ENVIRONMENT": {"pill_bg": (34, 197, 94, 45), "pill_border": (34, 197, 94, 180), "text_color": (134, 239, 172)}, # Emerald Green
+    "NATIONAL": {"pill_bg": (59, 130, 246, 45), "pill_border": (59, 130, 246, 180), "text_color": (147, 197, 253)},   # Blue
+    "GLOBAL": {"pill_bg": (148, 163, 184, 45), "pill_border": (148, 163, 184, 180), "text_color": (226, 232, 240)}   # Slate
+}
+
+def classify_news_category(headline_text: str) -> str:
+    """Classifies a news headline into a primary domain category using high-precision keyword patterns."""
+    text_lower = headline_text.lower()
+    
+    # Defence & Security
+    if re.search(r"\b(military|defence|defense|missile|army|navy|air force|drdo|pentagon|war|weapon|nato|combat|troops|frigate|carrier|iaf|ins )\b", text_lower):
+        return "DEFENCE"
+        
+    # Economy & Finance
+    if re.search(r"\b(gdp|inflation|rbi|fed|economy|market|sensex|nifty|stock|trade|tariff|billion|trillion|export|import|fiscal|rupee|dollar|imf|world bank|interest rate)\b", text_lower):
+        return "ECONOMY"
+        
+    # Tech & AI & Science
+    if re.search(r"\b(ai|artificial intelligence|tech|technology|space|isro|nasa|satellite|quantum|semiconductor|chip|google|microsoft|apple|openai|cyber|robot|deepseek)\b", text_lower):
+        return "TECH & AI"
+        
+    # Environment & Energy & Climate
+    if re.search(r"\b(climate|emission|solar|renewable|carbon|cop\d+|green|energy|monsoon|wildlife|forest|cyclone|pollution|ev|battery|biodiversity)\b", text_lower):
+        return "ENVIRONMENT"
+        
+    # Geopolitics & Foreign Relations
+    if re.search(r"\b(un|unsc|summit|treaty|bilateral|diplomatic|envoy|g20|brics|sanction|iran|china|russia|ukraine|us-india|taiwan|israel|gaza|middle east)\b", text_lower):
+        return "GEOPOLITICS"
+        
+    # National / Governance / Policy
+    if re.search(r"\b(parliament|supreme court|cabinet|bill|election|pm |president|ministry|scheme|constitution|delhi|lok sabha|rajya sabha|policy|judiciary)\b", text_lower):
+        return "NATIONAL"
+        
+    return "GLOBAL"
+
 def extract_metadata_fields(content: str) -> Dict[str, Any]:
     """
     Extracts Title, Reel Description, Hashtags, and Source URLs.
@@ -327,3 +367,35 @@ def format_community_poll_text(data: Dict[str, Any]) -> str:
         
     poll_lines.append("\n" + hashtags)
     return "\n".join(poll_lines)
+
+def format_teaser_challenge_comment(data: Dict[str, Any]) -> str:
+    """Formats the initial challenge comment posted when a Brain Teaser Short is published."""
+    date_str = data.get("date", "")
+    return (
+        f"🧠 Daily Brain Teaser Challenge ({date_str})!\n\n"
+        "Can you solve it before time runs out? Drop your answer and reasoning in the comments below! 👇\n\n"
+        "⏳ The verified step-by-step solution will be pinned right here in 24 hours. Turn on notifications so you don't miss it! 🔔"
+    )
+
+def format_solution_reveal_comment(yesterday_data: Dict[str, Any]) -> str:
+    """Formats the official solution reveal comment for yesterday's Brain Teaser."""
+    date_str = yesterday_data.get("date", "Yesterday")
+    ans_letter = yesterday_data.get("correct_answer", "")
+    options = yesterday_data.get("options", [])
+    
+    ans_display = ""
+    if ans_letter:
+        for opt in options:
+            if opt.lower().startswith(f"{ans_letter.lower()}."):
+                ans_display = opt
+                break
+        if not ans_display:
+            ans_display = f"Option ({ans_letter.upper()})"
+    else:
+        ans_display = "Revealed in community discussion"
+        
+    return (
+        f"💡 OFFICIAL SOLUTION REVEAL ({date_str}):\n\n"
+        f"✅ Correct Answer: {ans_display}\n\n"
+        f"Did you crack it? Try today's fresh brain teaser on the channel! 🧠🔥"
+    )

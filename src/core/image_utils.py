@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 from .config import ARCHIVE_DIR, BT_DATE_FMT
-from .content_parser import parse_teaser_content
+from .content_parser import parse_teaser_content, classify_news_category, CATEGORY_PALETTES
 
 def wrap_text(text: str, font: ImageFont.ImageFont, max_width: int) -> List[str]:
     raw_lines = text.splitlines()
@@ -97,8 +97,9 @@ def create_slide_image_file(
         font_badge = ImageFont.truetype(str(font_bold_path), 40)
         font_footer = ImageFont.truetype(str(font_regular_path), 26)
         font_source = ImageFont.truetype(str(font_regular_path), 24)
+        font_cat_badge = ImageFont.truetype(str(font_bold_path), 20)
     except Exception:
-        font_logo = font_title = font_subtitle = font_body = font_badge = font_footer = font_source = ImageFont.load_default()
+        font_logo = font_title = font_subtitle = font_body = font_badge = font_footer = font_source = font_cat_badge = ImageFont.load_default()
     
     draw = ImageDraw.Draw(image)
     
@@ -124,32 +125,50 @@ def create_slide_image_file(
             source_name = source_match.group(1).strip()
             text = text.replace(source_match.group(0), "").strip()
             
+        cat_name = classify_news_category(text)
+        cat_palette = CATEGORY_PALETTES.get(cat_name, CATEGORY_PALETTES["GLOBAL"])
+        
         lines = wrap_text(text, font_body, max_text_width)
-        item_height = len(lines) * line_spacing
-        if source_name:
-            item_height += 35
-        wrapped_items.append((num, lines, source_name, item_height))
+        item_height = len(lines) * line_spacing + 34
+        wrapped_items.append((num, lines, source_name, cat_name, cat_palette, item_height))
         total_text_height += item_height
         
     remaining_height = available_height - total_text_height
     if len(page_points) > 1:
         item_gap = remaining_height // (len(page_points) - 1)
-        item_gap = max(40, min(220, item_gap))
+        item_gap = max(35, min(200, item_gap))
     else:
         item_gap = 40
         
     current_y = start_y
-    for idx, (num, lines, source_name, item_height) in enumerate(wrapped_items):
+    for idx, (num, lines, source_name, cat_name, cat_palette, item_height) in enumerate(wrapped_items):
+        accent_col = cat_palette["text_color"]
         badge_text = f"{num:02d}"
-        draw.text((140, current_y + 3), badge_text, font=font_badge, fill=(56, 189, 248, 255))
-        draw.line([(185, current_y + 5), (185, current_y + max(35, item_height - 5))], fill=(56, 189, 248, 80), width=2)
+        
+        # Accented number badge and divider
+        draw.text((140, current_y + 3), badge_text, font=font_badge, fill=accent_col)
+        draw.line([(185, current_y + 5), (185, current_y + max(35, item_height - 5))], fill=(*accent_col[:3], 120), width=2)
         
         for l_idx, line in enumerate(lines):
             draw.text((210, current_y + (l_idx * line_spacing)), line, font=font_body, fill=(243, 244, 246, 255))
             
+        # Category pill badge + Source
+        pill_y = current_y + (len(lines) * line_spacing) + 6
+        bbox_cat = draw.textbbox((0, 0), cat_name, font=font_cat_badge)
+        cat_w = (bbox_cat[2] - bbox_cat[0]) + 18
+        cat_h = 24
+        
+        draw.rounded_rectangle(
+            [210, pill_y, 210 + cat_w, pill_y + cat_h],
+            radius=6,
+            fill=cat_palette["pill_bg"],
+            outline=cat_palette["pill_border"],
+            width=1
+        )
+        draw.text((210 + 9, pill_y + 2), cat_name, font=font_cat_badge, fill=accent_col)
+        
         if source_name:
-            source_y = current_y + (len(lines) * line_spacing) + 5
-            draw.text((210, source_y), f"Source: {source_name}", font=font_source, fill=(56, 189, 248, 200))
+            draw.text((210 + cat_w + 14, pill_y + 2), f"Source: {source_name}", font=font_source, fill=(156, 163, 175, 220))
             
         current_y += item_height + item_gap
             
