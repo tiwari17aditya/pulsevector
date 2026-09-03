@@ -90,31 +90,19 @@ This document outlines the versioned progression of the automated content creati
 
 ## 🚀 Future Roadmap & Proposals
 
-### 🕒 v2.4.0 - Generative AI Visual Assets per Headline
+### 🕒 v2.5.0 - Generative AI Visual Assets per Headline
 * **Goal**: Replace generic background slides with topic-specific AI illustrations.
 * **Implementation Plan**:
   * Query Google Imagen or DALL-E 3 API with condensed headline keywords to produce unique per-point backgrounds.
 
-### 🕒 v2.5.0 - Dynamic Analytics Feedback Loop
+### 🕒 v2.6.0 - Dynamic Analytics Feedback Loop
 * **Goal**: Optimize content topics based on historical view/engagement metrics.
 * **Implementation Plan**:
   * Fetch analytics (views, watch retention) daily via YouTube Reporting API.
   * Feed historical engagement data back into the Gemini prompt context to prioritize high-performing categories.
-
-### 🕒 v2.6.0 - Automated Multilingual Translation
-* **Goal**: Expand reach by automatically translating content to regional/international languages.
-* **Implementation Plan**:
-  * Integrate Google Cloud Translation API for text, slides, and audio voiceovers.
-  * Upload to region-specific YouTube playlists.
 
 ### 🕒 v2.7.0 - Interactive Channel Membership Dashboard
 * **Goal**: Web portal providing exclusive PDF downloads of current affairs for channel members.
 * **Implementation Plan**:
   * Build a React/Next.js frontend authenticated via YouTube Memberships API.
   * Export clean PDF versions of Monthly/Weekly current affairs for members.
-
-### 🕒 v2.8.0 - Audio Translation & Shorts Localization
-* **Goal**: Translate AI voiceover into multiple languages and format for YouTube Shorts.
-* **Implementation Plan**:
-  * POC with translated audio track.
-  * Integrate directly into the Shorts video publishing pipeline.
