@@ -736,12 +736,13 @@ def generate_brainteaser_video(target_date):
     font_title = ImageFont.truetype(str(font_bold_path), 54)
     font_subtitle = ImageFont.truetype(str(font_regular_path), 32)
     font_timer = ImageFont.truetype(str(font_bold_path), 48)
-    font_comment = ImageFont.truetype(str(font_bold_path), 42)
+    font_comment = ImageFont.truetype(str(font_bold_path), 44)
+    font_cta = ImageFont.truetype(str(font_bold_path), 34)
     
     card_img = Image.open(styled_path).convert("RGBA")
     
     fps = 10
-    total_duration = 10.0
+    total_duration = 12.0
     total_frames = int(fps * total_duration)
     
     W_canvas, H_canvas = 1080, 1920
@@ -773,17 +774,55 @@ def generate_brainteaser_video(target_date):
             draw_text_with_shadow_helper(draw, str(remaining_secs), cx, cy, font_timer, text_color=(255, 255, 255))
             draw_text_with_shadow_helper(draw, "Seconds left to think...", W_canvas/2, 1610, font_subtitle, text_color=(156, 163, 175))
         else:
-            alpha_val = 255 if (i // 3) % 2 == 0 else 100
+            # 1. Pulsing Comment CTA
+            alpha_val = int(180 + 75 * math.sin(t * 8.0))
             draw_text_with_shadow_helper(
-                draw, "Comment your answer below! 👇", 
-                W_canvas/2, 1480, font_comment, 
+                draw, "Comment your answer below!", 
+                W_canvas / 2, 1430, font_comment, 
                 text_color=(34, 197, 94, alpha_val)
             )
             draw_text_with_shadow_helper(
                 draw, "Correct answer pinned in 24 hours.", 
-                W_canvas/2, 1560, font_subtitle, 
-                text_color=(156, 163, 175)
+                W_canvas / 2, 1505, font_subtitle, 
+                text_color=(209, 213, 219)
             )
+            
+            # 2. Animated Pulsing Neon LIKE • SHARE • SUBSCRIBE Banner
+            cx_b, cy_b = W_canvas / 2, 1630
+            bw, bh, br = 760, 80, 26
+            pulse = 0.5 + 0.5 * math.sin(t * 7.0)
+            glow_r = int(225 + 30 * pulse)
+            glow_g = int(35 + 35 * pulse)
+            glow_b = int(45 + 35 * pulse)
+            border_color = (glow_r, glow_g, glow_b)
+            
+            # Glassmorphic dark card
+            draw.rounded_rectangle(
+                [cx_b - bw // 2, cy_b - bh // 2, cx_b + bw // 2, cy_b + bh // 2],
+                radius=br,
+                fill=(15, 23, 42, 240)
+            )
+            # Outer neon glow
+            draw.rounded_rectangle(
+                [cx_b - bw // 2 - 2, cy_b - bh // 2 - 2, cx_b + bw // 2 + 2, cy_b + bh // 2 + 2],
+                radius=br + 2,
+                outline=(glow_r, glow_g, glow_b, int(90 * pulse)),
+                width=2
+            )
+            # Neon border
+            draw.rounded_rectangle(
+                [cx_b - bw // 2, cy_b - bh // 2, cx_b + bw // 2, cy_b + bh // 2],
+                radius=br,
+                outline=border_color,
+                width=3
+            )
+            
+            cta_text = "LIKE   •   SHARE   •   SUBSCRIBE"
+            bbox_cta = draw.textbbox((0, 0), cta_text, font=font_cta)
+            tw_cta = bbox_cta[2] - bbox_cta[0]
+            th_cta = bbox_cta[3] - bbox_cta[1]
+            draw.text((cx_b - tw_cta // 2 + 2, cy_b - th_cta // 2), cta_text, font=font_cta, fill=(0, 0, 0, 200))
+            draw.text((cx_b - tw_cta // 2, cy_b - th_cta // 2 - 2), cta_text, font=font_cta, fill=(255, 255, 255))
             
         frame_cv = cv2.cvtColor(np.array(frame_img.convert("RGB")), cv2.COLOR_RGB2BGR)
         out.write(frame_cv)
