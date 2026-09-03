@@ -841,8 +841,8 @@ def generate_brainteaser_video(target_date):
     print(f"  > Generated H.264 Shorts video card with SFX & voiceover at: {final_video_path}")
     return final_video_path
 
-def publish_teaser_to_youtube(video_path, data, target_date):
-    print(f"\n🚀 Publishing Shorts Video to YouTube...")
+def publish_teaser_to_youtube(video_path, data, target_date, privacy_status=None):
+    print(f"\n🚀 Publishing Shorts Video to YouTube (Privacy: {privacy_status or 'default'})...")
     try:
         token_exists = os.path.exists('credentials/token.json') or os.path.exists('token.json')
         secrets_exists = os.path.exists('credentials/client_secrets.json') or os.path.exists('client_secrets.json')
@@ -917,7 +917,7 @@ def publish_teaser_to_youtube(video_path, data, target_date):
             description = description[:4947] + "..."
             
         print("  > Uploading video...")
-        video_id = upload_video_to_youtube(youtube, str(video_path), title, description, final_tags, category_id="27")
+        video_id = upload_video_to_youtube(youtube, str(video_path), title, description, final_tags, category_id="27", privacy_status=privacy_status)
         print(f"  > YouTube Upload Success! Video ID: {video_id}")
         
         playlist_title = f"Daily Brain Teasers - {year_str}"
@@ -942,7 +942,7 @@ def publish_teaser_to_youtube(video_path, data, target_date):
         print(f"  > Error publishing to YouTube: {e}")
         return False
 
-def run_all(target_date=None, force_style=None, force_bg=None, teaser_type=None):
+def run_all(target_date=None, force_style=None, force_bg=None, teaser_type=None, privacy_status=None):
     now = datetime.datetime.now()
     is_evening = False
     if target_date is None:
@@ -969,7 +969,7 @@ def run_all(target_date=None, force_style=None, force_bg=None, teaser_type=None)
     
     data = parse_teaser_file(bt_path)
     if data:
-        publish_teaser_to_youtube(video_path, data, target_date)
+        publish_teaser_to_youtube(video_path, data, target_date, privacy_status=privacy_status)
         
     run_database_upload()
         
@@ -979,6 +979,7 @@ def main():
     parser = argparse.ArgumentParser(description="Pulse Vector Daily Brain Teaser Autonomous Pipeline")
     parser.add_argument("--date", type=str, help="Target date in YYYY-MM-DD format")
     parser.add_argument("--type", type=str, choices=list(BRAIN_TEASER_TYPES.keys()) + ["random"], help="Specify puzzle type (bodmas, cipher, grid, trap, sequence, oddone, paradox, random)")
+    parser.add_argument("--privacy", type=str, choices=["public", "private", "unlisted"], default=None, help="Force YouTube privacy status")
     parser.add_argument("--generate-only", action="store_true", help="Only generate text content from GenAI")
     parser.add_argument("--slides-only", action="store_true", help="Only render image slide cards")
     parser.add_argument("--video-only", action="store_true", help="Only compile Shorts video")
@@ -1012,7 +1013,7 @@ def main():
             target_date = datetime.datetime.now()
         generate_brainteaser_video(target_date)
     else:
-        run_all(target_date, force_style=force_style_idx, force_bg=force_bg_idx, teaser_type=args.type)
+        run_all(target_date, force_style=force_style_idx, force_bg=force_bg_idx, teaser_type=args.type, privacy_status=args.privacy)
 
 if __name__ == "__main__":
     main()
