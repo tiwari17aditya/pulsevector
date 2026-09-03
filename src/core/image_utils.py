@@ -12,20 +12,27 @@ from .config import ARCHIVE_DIR, BT_DATE_FMT
 from .content_parser import parse_teaser_content
 
 def wrap_text(text: str, font: ImageFont.ImageFont, max_width: int) -> List[str]:
-    words = text.split(' ')
+    raw_lines = text.splitlines()
+    if not raw_lines:
+        return []
     lines = []
-    current_line = []
-    for word in words:
-        test_line = ' '.join(current_line + [word])
-        width = font.getlength(test_line)
-        if width <= max_width:
-            current_line.append(word)
-        else:
-            if current_line:
-                lines.append(' '.join(current_line))
-            current_line = [word]
-    if current_line:
-        lines.append(' '.join(current_line))
+    for raw_line in raw_lines:
+        words = raw_line.split(' ')
+        current_line = []
+        for word in words:
+            if not word and current_line:
+                current_line.append("")
+                continue
+            test_line = ' '.join(current_line + [word]) if current_line else word
+            width = font.getlength(test_line)
+            if width <= max_width:
+                current_line.append(word)
+            else:
+                if current_line:
+                    lines.append(' '.join(current_line))
+                current_line = [word]
+        if current_line:
+            lines.append(' '.join(current_line))
     return lines
 
 def create_slide_image_file(

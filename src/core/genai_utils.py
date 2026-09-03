@@ -92,6 +92,93 @@ def read_prompts():
     bt_prompt = read_prompt_section("Brain Teaser Prompt")
     return ca_prompt, bt_prompt
 
+BRAIN_TEASER_TYPES = {
+    "bodmas": {
+        "name": "BODMAS & Arithmetic Traps",
+        "description": "Order of operations precedence traps (division before multiplication, parentheses, zero multiplication rules, or missing operators).",
+        "examples": "e.g., 6 ÷ 2(1 + 2) = ? or 50 - 50 × 0 + 2 + 2 = ?"
+    },
+    "cipher": {
+        "name": "Alphanumeric Ciphers & Letter-Math",
+        "description": "Letter indexing and word values (A=1, B=2...), letter pair progressions, or alphabet skip cyphers.",
+        "examples": "e.g., If CAT = 24, DOG = 26, then BIRD = ? or AZ -> BY -> CX -> ?"
+    },
+    "grid": {
+        "name": "3x3 Logic Grids & Missing Value Matrices",
+        "description": "A 3x3 numeric grid or magic square where each row/column follows a mathematical rule, with exactly one missing cell marked with '?'. Format the grid compactly on 3 separate lines.",
+        "examples": "e.g.,\n[ 4  9  2 ]\n[ 3  5  7 ]\n[ 8  1  ? ]"
+    },
+    "trap": {
+        "name": "Cognitive Reflex Traps & Illusions",
+        "description": "High-virality quick reflex logic puzzles where intuitive first impressions mislead people (Kahneman Bat & Ball CRT, clock hand angle at 3:15, or speed reflex math).",
+        "examples": "e.g., Bat & Ball cost $1.10 total, bat costs $1.00 more than ball, what does ball cost? or Clock hands angle at 3:15."
+    },
+    "sequence": {
+        "name": "Advanced Sequences & Progressions",
+        "description": "Challenging number or letter series (alternating dual-step operations, Fibonacci transformations, or prime intervals).",
+        "examples": "e.g., 2, 6, 12, 20, 30, ? or 3, 5, 9, 17, 33, ?"
+    },
+    "oddone": {
+        "name": "Odd One Out & Pattern Breakers",
+        "description": "A set of 4 or 5 numbers, words, or codes where exactly one item violates a subtle hidden mathematical or logical property.",
+        "examples": "e.g., 121, 169, 225, 289, 361 (225 is not a prime square) or LEVEL, RADAR, KAYAK, RACE, ROTOR."
+    },
+    "paradox": {
+        "name": "Logic Paradoxes & Probability Quick-Hits",
+        "description": "A crisp probability puzzle or lateral deduction scenario with an unequivocal mathematical truth.",
+        "examples": "e.g., Conditional probability (two-children problem), coin dilemmas, or deductive logic."
+    }
+}
+
+WEEKDAY_THEME_MAP = {
+    0: "bodmas",     # Monday: Math Madness
+    1: "cipher",     # Tuesday: Cipher Tuesday
+    2: "grid",       # Wednesday: Grid Matrix
+    3: "trap",       # Thursday: Mind Trap
+    4: "sequence",   # Friday: Sequence Friday
+    5: "oddone",     # Saturday: Lateral Saturday
+    6: "paradox"     # Sunday: Mastermind Sunday
+}
+
+def build_brainteaser_prompt(
+    target_date: datetime.date,
+    base_prompt: str,
+    teaser_type: Optional[str] = None,
+    randomize: bool = True
+) -> Tuple[str, str]:
+    """
+    Builds a category-specific prompt for Daily Brain Teaser generation.
+    Returns: (final_prompt_text, selected_category_key)
+    """
+    date_str = target_date.strftime("%d %B %Y")
+    weekday_idx = target_date.weekday()
+    weekday_name = target_date.strftime("%A")
+    
+    selected_key = None
+    if teaser_type and str(teaser_type).lower() in BRAIN_TEASER_TYPES:
+        selected_key = str(teaser_type).lower()
+    elif randomize:
+        selected_key = random.choice(list(BRAIN_TEASER_TYPES.keys()))
+    else:
+        selected_key = WEEKDAY_THEME_MAP.get(weekday_idx, "sequence")
+        
+    type_info = BRAIN_TEASER_TYPES.get(selected_key, BRAIN_TEASER_TYPES["sequence"])
+    
+    prompt = (
+        f"Today is {weekday_name}, {date_str} (IST).\n\n"
+        f"TARGET PUZZLE CATEGORY FOR TODAY: **{type_info['name']}**\n"
+        f"Category Focus: {type_info['description']}\n"
+        f"Inspirational Pattern Example: {type_info['examples']}\n\n"
+        f"Generation Rules:\n"
+        f"1. Generate an original, clever, moderate-difficulty puzzle strictly within the '{type_info['name']}' category.\n"
+        f"2. Ensure there is a single, unequivocal, mathematically or logically verifiable correct answer.\n"
+        f"3. Provide exactly 4 distinct multiple-choice options labeled a., b., c., d. (ensure options are plausible and one is the exact answer).\n"
+        f"4. The puzzle must be solvable within 10 seconds on a short video or social post.\n"
+        f"5. Put the main puzzle/equation/grid/sequence clearly under the 'Series:' label.\n\n"
+        f"{base_prompt}"
+    )
+    return prompt, selected_key
+
 def read_prompt_section(section_heading: str) -> str:
     targets_to_try = [
         PROMPTS_FILE,

@@ -15,7 +15,10 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
 from core.config import ARCHIVE_DIR, BT_DATE_FMT
-from core.genai_utils import configure_genai, read_prompts, generate_content, save_file
+from core.genai_utils import (
+    configure_genai, read_prompts, generate_content, save_file,
+    build_brainteaser_prompt, BRAIN_TEASER_TYPES
+)
 from core.image_utils import ensure_fonts, parse_teaser_file, wrap_text
 
 from core.image_utils import draw_teaser_text_with_shadow
@@ -537,7 +540,7 @@ LAYOUTS = [
 
 # --- Standalone Pipeline API ---
 
-def generate_brainteaser_content(client, target_date):
+def generate_brainteaser_content(client, target_date, teaser_type=None, randomize=True):
     print(f"\nProcessing standalone Daily Brain Teaser generation for: {target_date.strftime('%d %B %Y')}")
     date_str = target_date.strftime("%d %B %Y")
     year = target_date.strftime("%Y")
@@ -555,9 +558,16 @@ def generate_brainteaser_content(client, target_date):
     if not bt_prompt:
         raise ValueError("Could not read prompts! Please make sure pulse_prompts.md is available.")
         
-    print("  > Querying Gemini API for Daily Brain Teaser...")
-    bt_prompt_specific = f"Today is {date_str}. {bt_prompt}"
-    bt_content = generate_content(client, 'gemini-2.5-flash', bt_prompt_specific)
+    effective_type = None if teaser_type == "random" else teaser_type
+    prompt_text, selected_key = build_brainteaser_prompt(
+        target_date=target_date,
+        base_prompt=bt_prompt,
+        teaser_type=effective_type,
+        randomize=(teaser_type == "random" or teaser_type is None)
+    )
+    type_name = BRAIN_TEASER_TYPES.get(selected_key, {}).get("name", selected_key)
+    print(f"  > Querying Gemini API for Daily Brain Teaser [{type_name}]...")
+    bt_content = generate_content(client, 'gemini-2.5-flash', prompt_text)
     
     save_file(bt_content, bt_path)
     return bt_path
@@ -863,7 +873,7 @@ def publish_teaser_to_youtube(video_path, data, target_date):
         print(f"  > Error publishing to YouTube: {e}")
         return False
 
-def run_all(target_date=None, force_style=None, force_bg=None):
+def run_all(target_date=None, force_style=None, force_bg=None, teaser_type=None):
     now = datetime.datetime.now()
     is_evening = False
     if target_date is None:
@@ -877,7 +887,7 @@ def run_all(target_date=None, force_style=None, force_bg=None):
             
     client = configure_genai()
     
-    bt_path = generate_brainteaser_content(client, target_date)
+    bt_path = generate_brainteaser_content(client, target_date, teaser_type=teaser_type)
     generate_brainteaser_slides(target_date, style_idx=force_style, bg_idx=force_bg)
     
     if is_evening:
@@ -899,6 +909,7 @@ def run_all(target_date=None, force_style=None, force_bg=None):
 def main():
     parser = argparse.ArgumentParser(description="Pulse Vector Daily Brain Teaser Autonomous Pipeline")
     parser.add_argument("--date", type=str, help="Target date in YYYY-MM-DD format")
+    parser.add_argument("--type", type=str, choices=list(BRAIN_TEASER_TYPES.keys()) + ["random"], help="Specify puzzle type (bodmas, cipher, grid, trap, sequence, oddone, paradox, random)")
     parser.add_argument("--generate-only", action="store_true", help="Only generate text content from GenAI")
     parser.add_argument("--slides-only", action="store_true", help="Only render image slide cards")
     parser.add_argument("--video-only", action="store_true", help="Only compile Shorts video")
@@ -922,7 +933,7 @@ def main():
         if target_date is None:
             target_date = datetime.datetime.now()
         client = configure_genai()
-        generate_brainteaser_content(client, target_date)
+        generate_brainteaser_content(client, target_date, teaser_type=args.type)
     elif args.slides_only:
         if target_date is None:
             target_date = datetime.datetime.now()
@@ -932,7 +943,7 @@ def main():
             target_date = datetime.datetime.now()
         generate_brainteaser_video(target_date)
     else:
-        run_all(target_date, force_style=force_style_idx, force_bg=force_bg_idx)
+        run_all(target_date, force_style=force_style_idx, force_bg=force_bg_idx, teaser_type=args.type)
 
 if __name__ == "__main__":
     main()

@@ -235,19 +235,21 @@ def parse_teaser_content(raw_text: str, target_date: Optional[datetime.datetime]
     q_s_content = re.sub(r'#\w+', '', q_s_content)
     
     q_s_lines = [l.strip() for l in q_s_content.splitlines() if l.strip()]
-    question_header = "Q. What's next in the series:-"
+    question_header = "Q. Solve the puzzle:-"
     series_text = ""
     full_text = "\n".join(q_s_lines)
     
-    series_match = re.search(r'Series:\s*(.+)', full_text, re.IGNORECASE)
-    q_match = re.search(r'Q\.\s*(.+?)(?=\nSeries:|\Z)', full_text, re.IGNORECASE | re.DOTALL)
+    tag_pattern = r'^[ \t]*(?:Series|Puzzle|Equation|Grid|Expression|Sequence|Problem):\s*'
+    series_match = re.search(rf'{tag_pattern}(.+)', full_text, re.IGNORECASE | re.MULTILINE | re.DOTALL)
+    q_match = re.search(r'^[ \t]*Q\.\s*(.+?)(?=\n[ \t]*(?:Series|Puzzle|Equation|Grid|Expression|Sequence|Problem):|\Z)', full_text, re.IGNORECASE | re.MULTILINE | re.DOTALL)
     
     if series_match:
         series_text = series_match.group(1).strip()
         if q_match:
             question_header = f"Q. {q_match.group(1).strip()}"
         else:
-            before_series = full_text.split("Series:")[0].strip()
+            parts = re.split(tag_pattern, full_text, flags=re.IGNORECASE | re.MULTILINE)
+            before_series = parts[0].strip() if parts else ""
             if before_series:
                 before_series = re.sub(r'^Q\.\s*', '', before_series, flags=re.IGNORECASE).strip()
                 question_header = f"Q. {before_series}"
@@ -257,7 +259,7 @@ def parse_teaser_content(raw_text: str, target_date: Optional[datetime.datetime]
             first_val_clean = re.sub(r'^Q\.\s*', '', first_val, flags=re.IGNORECASE).strip()
             if len(q_s_lines) > 1:
                 question_header = f"Q. {first_val_clean}"
-                series_text = q_s_lines[1]
+                series_text = "\n".join(q_s_lines[1:])
             else:
                 if ":" in first_val_clean:
                     parts = first_val_clean.split(":", 1)
@@ -271,13 +273,15 @@ def parse_teaser_content(raw_text: str, target_date: Optional[datetime.datetime]
                 else:
                     series_text = first_val_clean
                     
-    series_text = re.sub(r'\b[a-d][\.\)].*', '', series_text, flags=re.IGNORECASE).strip()
+    series_text = re.sub(r'\b[a-d][\.\)].*', '', series_text, flags=re.IGNORECASE | re.DOTALL).strip()
     question_header = question_header.strip()
     if not question_header.endswith(":-"):
         if question_header.endswith("?"):
             question_header = question_header + " :-"
+        elif question_header.endswith(":"):
+            question_header = question_header + "-"
         else:
-            question_header = question_header + " :-"
+            question_header = question_header + ":-"
             
     if question_header.startswith("Q. "):
         rest = question_header[3:]

@@ -16,7 +16,7 @@ from .stage_interfaces import ContentPayload, SlidePayload, AudioPayload, VideoP
 from .content_parser import parse_news_content, parse_teaser_content
 from .genai_utils import (
     configure_genai, get_news_search_results, read_prompts, read_prompt_section,
-    generate_content, save_file, get_last_processed_date
+    generate_content, save_file, get_last_processed_date, build_brainteaser_prompt
 )
 from .image_utils import (
     ensure_fonts, create_slide_image_file, create_teaser_plain_image,
@@ -119,7 +119,7 @@ class PipelineEngine:
             
             # Brain Teaser
             if bt_prompt and not paths["bt_text"].exists():
-                bt_prompt_specific = f"Today is {date_str}. {bt_prompt}"
+                bt_prompt_specific, _ = build_brainteaser_prompt(target_date, bt_prompt, randomize=True)
                 bt_content = generate_content(client, 'gemini-2.5-flash', bt_prompt_specific)
                 save_file(bt_content, paths["bt_text"])
                 

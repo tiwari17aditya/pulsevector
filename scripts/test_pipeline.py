@@ -25,6 +25,7 @@ from core.tts_utils import sanitize_text_for_speech, verify_speech_points_alignm
 from core.image_utils import wrap_text, create_slide_image_file, ensure_fonts
 from core.video_utils import create_transition_frames
 from core.pipeline_engine import PipelineEngine
+from core.genai_utils import build_brainteaser_prompt, BRAIN_TEASER_TYPES
 
 class TestContentParser(unittest.TestCase):
     def test_markdown_cleaning(self):
@@ -81,6 +82,76 @@ Answer: b
         self.assertIn("What number comes next", data["question_header"])
         self.assertEqual(len(data["options"]), 4)
         self.assertEqual(data["correct_answer"], "b")
+
+    def test_teaser_bodmas_parser(self):
+        text = """
+Daily Brain Teaser - 01 September 2026 🧠
+Q. Solve the equation:-
+Equation: 6 ÷ 2(1 + 2) = ?
+a. 1
+b. 9
+c. 6
+d. 0
+Correct Answer: b
+#Math #BODMAS
+"""
+        data = parse_teaser_content(text)
+        self.assertEqual(data["series"], "6 ÷ 2(1 + 2) = ?")
+        self.assertIn("Solve the equation", data["question_header"])
+        self.assertEqual(data["correct_answer"], "b")
+        self.assertEqual(len(data["options"]), 4)
+
+    def test_teaser_grid_parser(self):
+        text = """
+Daily Brain Teaser - 02 September 2026 🧠
+Q. Find the missing number (?):-
+Grid:
+[ 4  9  2 ]
+[ 3  5  7 ]
+[ 8  1  ? ]
+a. 6
+b. 5
+c. 9
+d. 4
+Correct Answer: a
+#BrainTeaser #LogicGrid
+"""
+        data = parse_teaser_content(text)
+        self.assertIn("[ 4  9  2 ]", data["series"])
+        self.assertIn("[ 8  1  ? ]", data["series"])
+        self.assertEqual(data["correct_answer"], "a")
+        self.assertEqual(len(data["options"]), 4)
+
+    def test_teaser_cipher_parser(self):
+        text = """
+Daily Brain Teaser - 03 September 2026 🧠
+Q. Decode the missing value:-
+Puzzle: If CAT = 24 and DOG = 26, then BIRD = ?
+a. 34
+b. 36
+c. 38
+d. 42
+Correct Answer: c
+#Cipher #Puzzle
+"""
+        data = parse_teaser_content(text)
+        self.assertEqual(data["series"], "If CAT = 24 and DOG = 26, then BIRD = ?")
+        self.assertEqual(data["correct_answer"], "c")
+
+    def test_build_brainteaser_prompt(self):
+        test_date = datetime.date(2026, 9, 7)  # A Monday -> bodmas
+        prompt, key = build_brainteaser_prompt(test_date, "Base prompt instructions", randomize=False)
+        self.assertEqual(key, "bodmas")
+        self.assertIn("BODMAS", prompt)
+        
+        # Test forced type
+        prompt_cipher, key_cipher = build_brainteaser_prompt(test_date, "Base prompt", teaser_type="cipher")
+        self.assertEqual(key_cipher, "cipher")
+        self.assertIn("Alphanumeric Ciphers", prompt_cipher)
+
+        # Test randomized selection returns a valid key from BRAIN_TEASER_TYPES
+        _, rand_key = build_brainteaser_prompt(test_date, "Base prompt", randomize=True)
+        self.assertIn(rand_key, BRAIN_TEASER_TYPES)
 
 class TestTTSUtils(unittest.TestCase):
     def test_speech_sanitization(self):
