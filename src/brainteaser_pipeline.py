@@ -799,7 +799,7 @@ def generate_brainteaser_video(target_date):
             if vo_timings and t <= vo_timings[-1]["end"] + 0.3:
                 render_karaoke_subtitle_overlay(
                     draw, t, vo_timings, font_subtitle=font_subtitle,
-                    center_x=int(W_canvas / 2), pos_y=1380
+                    center_x=int(W_canvas / 2), pos_y=1350
                 )
         else:
             # Full Current Affairs Style Outro Card
