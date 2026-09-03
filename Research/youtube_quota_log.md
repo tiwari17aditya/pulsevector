@@ -163,3 +163,16 @@ This document tracks daily YouTube uploads and API quota consumption to ensure w
 *Total Videos Uploaded Today*: 1 / 100  
 *Total Query Quota Consumed Today*: ~1600 units  
 *Remaining YouTube Quota*: 99 uploads and ~8400 query units
+
+## 📊 Daily Quota Log (September 03-04, 2026)
+
+| Date | Video Category | Video ID | Action taken | Video Count | Uploads Left | Query Cost (est) | Query Quota Left |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **03 Sep 2026** | Brain Teaser | `llAdD7VTrm8` | Uploaded & Added to Playlist (Private Sample) | 1 video | 99 left | ~100 units | 9,900 units |
+| **04 Sep 2026** | Brain Teaser | `iAqqge6pbhw` | Uploaded & Added to Playlist (10s Full Sample) | 2 videos | 98 left | ~100 units | 9,800 units |
+| **04 Sep 2026** | Brain Teaser | `v46UGRFb57Q` | Uploaded & Added to Playlist (12s Outro Sample) | 3 videos | 97 left | ~100 units | 9,700 units |
+| **04 Sep 2026** | Brain Teaser | `NuOwtBvT8Ew` | Uploaded & Added to Playlist (Official CA Outro) | 4 videos | 96 left | ~100 units | 9,600 units |
+
+*Total Videos Uploaded Today*: 4 / 100  
+*Total Query Quota Consumed Today*: ~400 units  
+*Remaining YouTube Quota*: 96 uploads and ~9,600 query units
