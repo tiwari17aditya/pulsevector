@@ -1,6 +1,7 @@
 import os
 import pathlib
 import logging
+from typing import Optional, List, Dict, Any
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
@@ -183,4 +184,32 @@ def log_upload_details(title, category_name="Education (27)", video_type="Short 
             print(f"✅ Upload details logged to {details_file.name}")
     except Exception as e:
         logging.error(f"Failed to log upload details: {e}")
+
+def add_video_comment(youtube, video_id: str, comment_text: str) -> Optional[str]:
+    """
+    Inserts a top-level interactive comment directly onto an uploaded YouTube video/Short.
+    Returns the comment ID if successful, or None on failure.
+    """
+    try:
+        request = youtube.commentThreads().insert(
+            part="snippet",
+            body={
+                "snippet": {
+                    "videoId": video_id,
+                    "topLevelComment": {
+                        "snippet": {
+                            "textOriginal": comment_text
+                        }
+                    }
+                }
+            }
+        )
+        response = request.execute()
+        comment_id = response.get("id")
+        print(f"✅ Posted interactive comment on video {video_id} (ID: {comment_id})")
+        return comment_id
+    except Exception as e:
+        print(f"  > Warning: Could not post video comment: {e}")
+        logging.warning(f"Could not post video comment on {video_id}: {e}")
+        return None
 

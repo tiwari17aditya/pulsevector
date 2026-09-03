@@ -25,11 +25,15 @@ from core.image_utils import draw_teaser_text_with_shadow
 from core.video_utils import (
     create_base_background_with_glow, draw_watermark_on_image,
     draw_text_with_shadow_helper, download_audio_library,
-    get_random_audio_track, merge_audio_video
+    get_random_audio_track, merge_audio_video,
+    generate_countdown_sfx, merge_brainteaser_audio
 )
 from core.youtube_utils import (
-    get_authenticated_service, add_video_to_playlist, upload_video_to_youtube
+    get_authenticated_service, add_video_to_playlist, upload_video_to_youtube,
+    add_video_comment
 )
+from core.content_parser import format_community_poll_text
+from core.tts_utils import synthesize_text, HAS_TTS
 from core.database_utils import run_database_upload
 W, H = 656, 656
 
@@ -570,6 +574,19 @@ def generate_brainteaser_content(client, target_date, teaser_type=None, randomiz
     bt_content = generate_content(client, 'gemini-2.5-flash', prompt_text)
     
     save_file(bt_content, bt_path)
+    
+    # Also format and save 1-click YouTube Community Poll asset
+    try:
+        data = parse_teaser_file(bt_path)
+        if data:
+            poll_text = format_community_poll_text(data)
+            poll_filename = f"poll-{target_date.strftime(BT_DATE_FMT).lower()}.txt"
+            poll_path = processed_month_dir / "Brain_Teasers" / "Text" / poll_filename
+            save_file(poll_text, poll_path)
+            print(f"  > Generated 1-click Community Poll asset at: {poll_path.name}")
+    except Exception as e:
+        print(f"  > Warning: Could not generate Community Poll asset: {e}")
+        
     return bt_path
 
 def generate_brainteaser_slides(target_date, style_idx=None, bg_idx=None):
@@ -773,17 +790,55 @@ def generate_brainteaser_video(target_date):
         
     out.release()
     
+    # 1. Generate Countdown SFX (woodblock ticks + chime)
+    temp_sfx_path = videos_dir / f"temp_{bt_path.stem}_sfx.wav"
+    try:
+        generate_countdown_sfx(temp_sfx_path, total_duration=total_duration, stop_at=8.0)
+    except Exception as e:
+        print(f"  > Warning: Failed generating countdown SFX: {e}")
+        temp_sfx_path = None
+        
+    # 2. Synthesize Intro Voiceover Hook
+    temp_vo_path = videos_dir / f"temp_{bt_path.stem}_vo.mp3"
+    if HAS_TTS:
+        try:
+            intro_hook = "Daily Brain Teaser! Can you solve this puzzle before the countdown ends?"
+            synthesize_text(intro_hook, voice="en-US-ChristopherNeural", rate="+25%", output_path=temp_vo_path)
+            print("  > Synthesized Brain Teaser voiceover intro.")
+        except Exception as e:
+            print(f"  > Warning: Failed synthesizing voiceover intro: {e}")
+            if temp_vo_path.exists():
+                temp_vo_path.unlink()
+    
+    # 3. Mux multi-track audio (voiceover + SFX + background music)
     audio_track = get_random_audio_track()
     if audio_track:
-        print(f"  > Muxing background music: {audio_track.name}")
-        merge_audio_video(str(temp_video_path), str(audio_track), str(final_video_path), video_duration=total_duration)
+        print(f"  > Muxing multi-track audio with background music: {audio_track.name}")
     else:
-        shutil.copy(str(temp_video_path), str(final_video_path))
+        print("  > Muxing audio without background music...")
         
-    if temp_video_path.exists():
-        temp_video_path.unlink()
+    vo_file = str(temp_vo_path) if temp_vo_path and temp_vo_path.exists() else None
+    sfx_file = str(temp_sfx_path) if temp_sfx_path and temp_sfx_path.exists() else None
+    bg_file = str(audio_track) if audio_track else None
+    
+    merge_brainteaser_audio(
+        video_path=str(temp_video_path),
+        voiceover_path=vo_file,
+        sfx_path=sfx_file,
+        bg_music_path=bg_file,
+        output_path=str(final_video_path),
+        total_duration=total_duration
+    )
+    
+    # Clean up temporary audio & video artifacts
+    for p in [temp_video_path, temp_sfx_path, temp_vo_path]:
+        if p and p.exists():
+            try:
+                p.unlink()
+            except Exception:
+                pass
         
-    print(f"  > Generated H.264 Shorts video card at: {final_video_path}")
+    print(f"  > Generated H.264 Shorts video card with SFX & voiceover at: {final_video_path}")
     return final_video_path
 
 def publish_teaser_to_youtube(video_path, data, target_date):
@@ -868,6 +923,20 @@ def publish_teaser_to_youtube(video_path, data, target_date):
         playlist_title = f"Daily Brain Teasers - {year_str}"
         print(f"  > Adding to playlist: {playlist_title}...")
         add_video_to_playlist(youtube, video_id, playlist_title)
+        
+        # Post interactive comment to trigger Shorts feed engagement
+        try:
+            options_list = data.get("options", [])
+            opt_str = "\n".join([f"• {opt}" for opt in options_list]) if options_list else ""
+            comment_body = (
+                f"🧠 Daily Brain Teaser: What is your answer? Drop your vote below! 👇\n\n"
+                f"{opt_str}\n\n"
+                f"(The correct answer will be revealed and pinned in 24 hours!)"
+            )
+            add_video_comment(youtube, video_id, comment_body)
+        except Exception as e:
+            print(f"  > Warning: Could not post video comment: {e}")
+            
         return True
     except Exception as e:
         print(f"  > Error publishing to YouTube: {e}")

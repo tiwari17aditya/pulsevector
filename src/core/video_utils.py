@@ -1,6 +1,8 @@
 import os
 import re
 import math
+import wave
+import struct
 import shutil
 import logging
 import random
@@ -127,6 +129,139 @@ def merge_audio_video(video_path: str, audio_path: str, output_path: str, video_
     if result.returncode != 0:
         raise RuntimeError(f"FFmpeg error: {result.stderr}")
     logging.info(f"Finalized video with audio generated: {output_path}")
+
+def generate_countdown_sfx(output_wav: pathlib.Path, total_duration: float = 10.0, tick_interval: float = 1.0, stop_at: float = 8.0) -> pathlib.Path:
+    """
+    Procedurally synthesizes high-quality countdown clock ticking and resonant bell chime.
+    Standard 16-bit 44.1kHz stereo PCM. Completely offline and asset-free.
+    """
+    sample_rate = 44100
+    total_samples = int(sample_rate * total_duration)
+    output_path = pathlib.Path(output_wav)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    samples = [0.0] * total_samples
+    
+    # 1. 1-second interval clock ticks up to stop_at
+    tick_times = [i * tick_interval for i in range(1, int(stop_at) + 1)]
+    for t_sec in tick_times:
+        start_idx = int(t_sec * sample_rate)
+        tick_duration = 0.04  # 40ms click
+        tick_samples_count = int(tick_duration * sample_rate)
+        for j in range(tick_samples_count):
+            idx = start_idx + j
+            if idx < total_samples:
+                t_rel = j / sample_rate
+                click = (math.sin(2 * math.pi * 1200 * t_rel) * 0.7 + 
+                         math.sin(2 * math.pi * 2400 * t_rel) * 0.3)
+                decay = math.exp(-t_rel * 90)
+                samples[idx] += click * decay * 0.8
+                
+    # 2. Resonant Bell Chime at stop_at
+    chime_start_idx = int(stop_at * sample_rate)
+    chime_duration = 1.8  # 1.8s decay
+    chime_samples_count = int(chime_duration * sample_rate)
+    for j in range(chime_samples_count):
+        idx = chime_start_idx + j
+        if idx < total_samples:
+            t_rel = j / sample_rate
+            bell = (math.sin(2 * math.pi * 1568 * t_rel) * 0.5 +
+                    math.sin(2 * math.pi * 3136 * t_rel) * 0.3 +
+                    math.sin(2 * math.pi * 4704 * t_rel) * 0.15)
+            decay = math.exp(-t_rel * 3.5)
+            samples[idx] += bell * decay * 0.75
+            
+    with wave.open(str(output_path), 'w') as wf:
+        wf.setnchannels(2)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        frames = bytearray()
+        for s in samples:
+            clamped = max(-1.0, min(1.0, s))
+            val = int(clamped * 32767)
+            frames.extend(struct.pack('<hh', val, val))
+        wf.writeframes(frames)
+        
+    return output_path
+
+def merge_brainteaser_audio(
+    video_path: str,
+    voiceover_path: Optional[str],
+    sfx_path: Optional[str],
+    bg_music_path: Optional[str],
+    output_path: str,
+    total_duration: float = 10.0
+):
+    """
+    Mixes voiceover, SFX ticks/chime, and background music onto a Brain Teaser Short.
+    Applies audio ducking and automatic fallbacks if voiceover or music is absent.
+    """
+    ffmpeg_exe = get_ffmpeg_executable()
+    has_vo = voiceover_path and os.path.exists(voiceover_path)
+    has_sfx = sfx_path and os.path.exists(sfx_path)
+    has_bg = bg_music_path and os.path.exists(bg_music_path)
+    
+    st_fade = max(0.0, total_duration - 1.0)
+    
+    inputs = ["-i", str(video_path)]
+    filter_parts = []
+    audio_labels = []
+    
+    in_idx = 1
+    if has_vo:
+        inputs.extend(["-i", str(voiceover_path)])
+        filter_parts.append(f"[{in_idx}:a]volume=1.0[vo]")
+        audio_labels.append("[vo]")
+        in_idx += 1
+        
+    if has_sfx:
+        inputs.extend(["-i", str(sfx_path)])
+        filter_parts.append(f"[{in_idx}:a]volume=0.85[sfx]")
+        audio_labels.append("[sfx]")
+        in_idx += 1
+        
+    if has_bg:
+        inputs.extend(["-i", str(bg_music_path)])
+        bg_vol = 0.18 if (has_vo or has_sfx) else 0.35
+        filter_parts.append(f"[{in_idx}:a]volume={bg_vol},afade=t=out:st={st_fade}:d=1.0[bg]")
+        audio_labels.append("[bg]")
+        in_idx += 1
+        
+    if not audio_labels:
+        shutil.copy(str(video_path), str(output_path))
+        return
+        
+    if len(audio_labels) == 1:
+        final_audio = audio_labels[0]
+        filter_complex = filter_parts[0]
+    else:
+        mix_inputs = "".join(audio_labels)
+        filter_parts.append(f"{mix_inputs}amix=inputs={len(audio_labels)}:duration=first:dropout_transition=0[a]")
+        final_audio = "[a]"
+        filter_complex = ";".join(filter_parts)
+        
+    cmd = [
+        ffmpeg_exe, "-y",
+        *inputs,
+        "-filter_complex", filter_complex,
+        "-map", "0:v",
+        "-map", final_audio,
+        "-t", str(total_duration),
+        "-c:v", "libx264",
+        "-preset", "medium",
+        "-crf", "23",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac",
+        "-b:a", "192k",
+        "-shortest",
+        str(output_path)
+    ]
+    
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if result.returncode != 0:
+        logging.error(f"FFmpeg Brain Teaser audio merge error: {result.stderr}")
+        raise RuntimeError(f"FFmpeg error: {result.stderr}")
+    logging.info(f"Finalized Brain Teaser Short with multi-track audio: {output_path}")
 
 def format_date_custom(dt: datetime.datetime) -> str:
     day = str(dt.day)

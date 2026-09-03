@@ -301,3 +301,29 @@ def parse_teaser_content(raw_text: str, target_date: Optional[datetime.datetime]
         "correct_answer": correct_answer,
         "file_path": file_path
     }
+
+def format_community_poll_text(data: Dict[str, Any]) -> str:
+    """
+    Formats a ready-to-post YouTube Community Poll text snippet.
+    Includes Question, Puzzle/Equation, cleanly enumerated Poll options, and tags.
+    """
+    date_str = data.get("date", "")
+    q_header = data.get("question_header", "Daily Brain Teaser")
+    series = data.get("series", "").strip()
+    options = data.get("options", [])
+    hashtags = " ".join(data.get("hashtags", ["#BrainTeaser", "#Quiz", "#PulseVector", "#Puzzle"]))
+    
+    poll_lines = [
+        f"🧠 Daily Brain Teaser ({date_str})",
+        f"{q_header}",
+    ]
+    if series:
+        poll_lines.append(f"\n{series}\n")
+        
+    poll_lines.append("Vote for your answer below! 👇")
+    poll_lines.append("")
+    for opt in options:
+        poll_lines.append(f"• {opt}")
+        
+    poll_lines.append("\n" + hashtags)
+    return "\n".join(poll_lines)

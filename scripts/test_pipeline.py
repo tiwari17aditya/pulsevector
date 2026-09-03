@@ -19,11 +19,14 @@ if str(SRC_DIR) not in sys.path:
 
 from core.content_parser import (
     clean_markdown_decorations, strip_metadata_section, extract_news_points,
-    extract_metadata_fields, extract_date_str, parse_news_content, parse_teaser_content
+    extract_metadata_fields, extract_date_str, parse_news_content, parse_teaser_content,
+    format_community_poll_text
 )
 from core.tts_utils import sanitize_text_for_speech, verify_speech_points_alignment, get_ffmpeg_executable
 from core.image_utils import wrap_text, create_slide_image_file, ensure_fonts
-from core.video_utils import create_transition_frames
+from core.video_utils import (
+    create_transition_frames, generate_countdown_sfx, merge_brainteaser_audio
+)
 from core.pipeline_engine import PipelineEngine
 from core.genai_utils import build_brainteaser_prompt, BRAIN_TEASER_TYPES
 
@@ -153,6 +156,21 @@ Correct Answer: c
         _, rand_key = build_brainteaser_prompt(test_date, "Base prompt", randomize=True)
         self.assertIn(rand_key, BRAIN_TEASER_TYPES)
 
+    def test_format_community_poll_text(self):
+        sample_data = {
+            "date": "03 September 2026",
+            "question_header": "Q. Solve the equation:-",
+            "series": "6 ÷ 2(1 + 2) = ?",
+            "options": ["a. 1", "b. 9", "c. 6", "d. 0"],
+            "hashtags": ["#BODMAS", "#MathPuzzle"]
+        }
+        poll_str = format_community_poll_text(sample_data)
+        self.assertIn("Daily Brain Teaser", poll_str)
+        self.assertIn("6 ÷ 2(1 + 2) = ?", poll_str)
+        self.assertIn("• a. 1", poll_str)
+        self.assertIn("• b. 9", poll_str)
+        self.assertIn("#BODMAS", poll_str)
+
 class TestTTSUtils(unittest.TestCase):
     def test_speech_sanitization(self):
         text = "1. Wildfires rage in Spain. [Source: Reuters] Major disaster declared."
@@ -198,6 +216,13 @@ class TestImageAndVideoUtils(unittest.TestCase):
         frames = create_transition_frames(img1, img2, num_transition_frames=5, transition_type="fade")
         self.assertEqual(len(frames), 5)
         self.assertEqual(frames[0].shape, (100, 100, 3))
+
+    def test_generate_countdown_sfx(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            wav_path = pathlib.Path(tmp_dir) / "test_sfx.wav"
+            out = generate_countdown_sfx(wav_path, total_duration=2.0, tick_interval=1.0, stop_at=1.0)
+            self.assertTrue(out.exists())
+            self.assertGreater(out.stat().st_size, 1000)
 
 class TestPipelineEngine(unittest.TestCase):
     def test_dry_run_execution(self):
