@@ -236,7 +236,7 @@ def merge_brainteaser_audio(
         filter_complex = filter_parts[0]
     else:
         mix_inputs = "".join(audio_labels)
-        filter_parts.append(f"{mix_inputs}amix=inputs={len(audio_labels)}:duration=first:dropout_transition=0[a]")
+        filter_parts.append(f"{mix_inputs}amix=inputs={len(audio_labels)}:duration=longest:dropout_transition=0,atrim=0:{total_duration},apad=whole_dur={total_duration}[a]")
         final_audio = "[a]"
         filter_complex = ";".join(filter_parts)
         
@@ -253,7 +253,6 @@ def merge_brainteaser_audio(
         "-pix_fmt", "yuv420p",
         "-c:a", "aac",
         "-b:a", "192k",
-        "-shortest",
         str(output_path)
     ]
     
