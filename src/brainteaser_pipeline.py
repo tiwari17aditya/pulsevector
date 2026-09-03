@@ -21,12 +21,12 @@ from core.genai_utils import (
 )
 from core.image_utils import ensure_fonts, parse_teaser_file, wrap_text
 
-from core.image_utils import draw_teaser_text_with_shadow
 from core.video_utils import (
     create_base_background_with_glow, draw_watermark_on_image,
     draw_text_with_shadow_helper, download_audio_library,
     get_random_audio_track, merge_audio_video,
-    generate_countdown_sfx, merge_brainteaser_audio
+    generate_countdown_sfx, merge_brainteaser_audio,
+    draw_bell_icon_image
 )
 from core.youtube_utils import (
     get_authenticated_service, add_video_to_playlist, upload_video_to_youtube,
@@ -736,8 +736,10 @@ def generate_brainteaser_video(target_date):
     font_title = ImageFont.truetype(str(font_bold_path), 54)
     font_subtitle = ImageFont.truetype(str(font_regular_path), 32)
     font_timer = ImageFont.truetype(str(font_bold_path), 48)
-    font_comment = ImageFont.truetype(str(font_bold_path), 44)
-    font_cta = ImageFont.truetype(str(font_bold_path), 34)
+    font_bold_title = ImageFont.truetype(str(font_bold_path), 56)
+    font_regular_sub = ImageFont.truetype(str(font_regular_path), 38)
+    font_body = ImageFont.truetype(str(font_regular_path), 32)
+    font_logo = ImageFont.truetype(str(font_bold_path), 26)
     
     card_img = Image.open(styled_path).convert("RGBA")
     
@@ -756,16 +758,15 @@ def generate_brainteaser_video(target_date):
         frame_img = create_base_background_with_glow(W_canvas, H_canvas, t=t)
         draw_watermark_on_image(frame_img, font_bold_path)
         
-        card_x = (W_canvas - 656) // 2
-        card_y = (H_canvas - 656) // 2
-        frame_img.paste(card_img, (card_x, card_y), card_img)
-        
-        draw = ImageDraw.Draw(frame_img)
-        
-        draw_text_with_shadow_helper(draw, "DAILY BRAIN TEASER", W_canvas/2, 450, font_title, text_color=(251, 191, 36))
-        draw_text_with_shadow_helper(draw, "Can you solve this puzzle?", W_canvas/2, 530, font_subtitle, text_color=(229, 231, 235))
-        
         if i < 80:
+            card_x = (W_canvas - 656) // 2
+            card_y = (H_canvas - 656) // 2
+            frame_img.paste(card_img, (card_x, card_y), card_img)
+            
+            draw = ImageDraw.Draw(frame_img)
+            draw_text_with_shadow_helper(draw, "DAILY BRAIN TEASER", W_canvas/2, 450, font_title, text_color=(251, 191, 36))
+            draw_text_with_shadow_helper(draw, "Can you solve this puzzle?", W_canvas/2, 530, font_subtitle, text_color=(229, 231, 235))
+            
             remaining_secs = math.ceil((80 - i) / fps)
             progress = (80 - i) / 80.0
             
@@ -774,55 +775,56 @@ def generate_brainteaser_video(target_date):
             draw_text_with_shadow_helper(draw, str(remaining_secs), cx, cy, font_timer, text_color=(255, 255, 255))
             draw_text_with_shadow_helper(draw, "Seconds left to think...", W_canvas/2, 1610, font_subtitle, text_color=(156, 163, 175))
         else:
-            # 1. Pulsing Comment CTA
-            alpha_val = int(180 + 75 * math.sin(t * 8.0))
-            draw_text_with_shadow_helper(
-                draw, "Comment your answer below!", 
-                W_canvas / 2, 1430, font_comment, 
-                text_color=(34, 197, 94, alpha_val)
-            )
-            draw_text_with_shadow_helper(
-                draw, "Correct answer pinned in 24 hours.", 
-                W_canvas / 2, 1505, font_subtitle, 
-                text_color=(209, 213, 219)
-            )
+            # Full Current Affairs Style Outro Card
+            t_outro = (i - 80) / fps
+            alpha = min(255, int(((i - 80) / 8.0) * 255))
             
-            # 2. Animated Pulsing Neon LIKE • SHARE • SUBSCRIBE Banner
-            cx_b, cy_b = W_canvas / 2, 1630
-            bw, bh, br = 760, 80, 26
-            pulse = 0.5 + 0.5 * math.sin(t * 7.0)
-            glow_r = int(225 + 30 * pulse)
-            glow_g = int(35 + 35 * pulse)
-            glow_b = int(45 + 35 * pulse)
-            border_color = (glow_r, glow_g, glow_b)
-            
-            # Glassmorphic dark card
-            draw.rounded_rectangle(
-                [cx_b - bw // 2, cy_b - bh // 2, cx_b + bw // 2, cy_b + bh // 2],
-                radius=br,
-                fill=(15, 23, 42, 240)
-            )
-            # Outer neon glow
-            draw.rounded_rectangle(
-                [cx_b - bw // 2 - 2, cy_b - bh // 2 - 2, cx_b + bw // 2 + 2, cy_b + bh // 2 + 2],
-                radius=br + 2,
-                outline=(glow_r, glow_g, glow_b, int(90 * pulse)),
+            card = Image.new("RGBA", (W_canvas, H_canvas), (0, 0, 0, 0))
+            draw_card = ImageDraw.Draw(card)
+            card_box = [(80, 300), (1000, 1620)]
+            draw_card.rounded_rectangle(
+                card_box,
+                radius=40,
+                fill=(15, 23, 42, 165),
+                outline=(255, 255, 255, 35),
                 width=2
             )
-            # Neon border
-            draw.rounded_rectangle(
-                [cx_b - bw // 2, cy_b - bh // 2, cx_b + bw // 2, cy_b + bh // 2],
-                radius=br,
-                outline=border_color,
-                width=3
-            )
+            frame_img.alpha_composite(card)
             
-            cta_text = "LIKE   •   SHARE   •   SUBSCRIBE"
-            bbox_cta = draw.textbbox((0, 0), cta_text, font=font_cta)
-            tw_cta = bbox_cta[2] - bbox_cta[0]
-            th_cta = bbox_cta[3] - bbox_cta[1]
-            draw.text((cx_b - tw_cta // 2 + 2, cy_b - th_cta // 2), cta_text, font=font_cta, fill=(0, 0, 0, 200))
-            draw.text((cx_b - tw_cta // 2, cy_b - th_cta // 2 - 2), cta_text, font=font_cta, fill=(255, 255, 255))
+            # Animated swinging bell icon (exact from Current Affairs)
+            bell_angle = 18 * math.sin(2 * math.pi * 3.0 * t_outro)
+            bell_icon = draw_bell_icon_image(300, 300, bell_angle)
+            frame_img.paste(bell_icon, (390, 400), bell_icon)
+            
+            text_layer = Image.new("RGBA", (W_canvas, H_canvas), (0, 0, 0, 0))
+            text_draw = ImageDraw.Draw(text_layer)
+            
+            cx = 540
+            draw_text_with_shadow_helper(
+                text_draw, "Like, Share & Subscribe", cx, 800, font_bold_title, 
+                shadow_color=(0, 0, 0, int(0.7 * alpha)), text_color=(255, 255, 255, alpha)
+            )
+            draw_text_with_shadow_helper(
+                text_draw, "(Press the Bell Icon)", cx, 890, font_regular_sub, 
+                shadow_color=(0, 0, 0, int(0.7 * alpha)), text_color=(56, 189, 248, alpha)
+            )
+            text_draw.line([(240, 960), (840, 960)], fill=(255, 255, 255, int(0.15 * alpha)), width=2)
+            
+            desc_lines = [
+                "Drop your answer in the comments below,",
+                "and subscribe for daily mind challenges!"
+            ]
+            for idx, line in enumerate(desc_lines):
+                draw_text_with_shadow_helper(
+                    text_draw, line, cx, 1040 + (idx * 55), font_body, 
+                    shadow_color=(0, 0, 0, int(0.7 * alpha)), text_color=(229, 231, 235, alpha)
+                )
+                
+            draw_text_with_shadow_helper(
+                text_draw, "P U L S E   V E C T O R", 140, 215, font_logo, 
+                shadow_color=(0, 0, 0, 50), text_color=(255, 255, 255, 80), anchor="la"
+            )
+            frame_img.alpha_composite(text_layer)
             
         frame_cv = cv2.cvtColor(np.array(frame_img.convert("RGB")), cv2.COLOR_RGB2BGR)
         out.write(frame_cv)
