@@ -148,16 +148,17 @@ def main():
         print("  ⚠️ Uncommitted changes detected. Auto-staging and committing...")
         subprocess.run(["git", "add", "."], cwd=str(ROOT_DIR))
         subprocess.run(["git", "commit", "-m", "chore(packup): automated sign-off and session synchronization"], cwd=str(ROOT_DIR))
-        push_res = subprocess.run(["git", "push", "origin", "main"], cwd=str(ROOT_DIR), capture_output=True, text=True)
-        if push_res.returncode == 0:
-            print("  ✅ Successfully pushed all changes to origin/main.")
-            results["git_push"] = True
-        else:
-            print(f"  ❌ Git push warning: {push_res.stderr.strip()}")
-            results["git_push"] = False
-    else:
-        print("  ✅ Working tree clean; remote repository is fully up to date.")
+
+    # Pull with rebase to ensure local is up-to-date with remote commits
+    print("  🔄 Rebase-syncing with origin/main...")
+    subprocess.run(["git", "pull", "--rebase", "origin", "main"], cwd=str(ROOT_DIR))
+    push_res = subprocess.run(["git", "push", "origin", "main"], cwd=str(ROOT_DIR), capture_output=True, text=True)
+    if push_res.returncode == 0:
+        print("  ✅ Successfully pushed all changes to origin/main.")
         results["git_push"] = True
+    else:
+        print(f"  ❌ Git push warning: {push_res.stderr.strip()}")
+        results["git_push"] = False
 
     # Final Scorecard
     print_header("Final Sign-Off Scorecard")
