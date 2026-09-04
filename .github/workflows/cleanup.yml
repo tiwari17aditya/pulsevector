@@ -4,7 +4,12 @@ on:
   schedule:
     # Runs every day at 1:00 AM UTC
     - cron: '0 1 * * *'
-  workflow_dispatch: # Allows manual triggering from the Actions tab
+  workflow_dispatch:
+    inputs:
+      purge_all:
+        description: 'Purge all artifacts immediately to clear storage quota'
+        type: boolean
+        default: true
 
 jobs:
   remove-old-artifacts:
@@ -13,8 +18,15 @@ jobs:
     permissions:
       actions: write # Required to delete artifacts
     steps:
-      - name: Remove old artifacts
-        uses: c-hive/gha-remove-artifacts@v1
-        with:
-          age: '1 day' # Purge artifacts older than 1 day
-          skip-recent: 1 # Keep only 1 recent artifact
+      - name: Purge artifacts to clear storage quota
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Scanning and deleting accumulated workflow artifacts..."
+          gh api --paginate repos/${{ github.repository }}/actions/artifacts --jq '.artifacts[].id' | while read -r id; do
+            if [ -n "$id" ]; then
+              echo "Deleting artifact ID: $id"
+              gh api --method DELETE "repos/${{ github.repository }}/actions/artifacts/$id" || true
+            fi
+          done
+          echo "✅ Artifact cleanup completed successfully."

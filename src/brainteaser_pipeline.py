@@ -19,7 +19,9 @@ from core.genai_utils import (
     configure_genai, read_prompts, generate_content, save_file,
     build_brainteaser_prompt, BRAIN_TEASER_TYPES
 )
-from core.image_utils import ensure_fonts, parse_teaser_file, wrap_text
+from core.image_utils import (
+    ensure_fonts, parse_teaser_file, wrap_text, draw_teaser_text_with_shadow
+)
 
 from core.video_utils import (
     create_base_background_with_glow, draw_watermark_on_image,

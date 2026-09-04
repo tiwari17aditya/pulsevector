@@ -271,6 +271,30 @@ class TestImageAndVideoUtils(unittest.TestCase):
         rendered_late = render_karaoke_subtitle_overlay(draw, 10.0, timings, font_sub)
         self.assertFalse(rendered_late)
 
+    def test_brainteaser_all_layouts_rendering(self):
+        import brainteaser_pipeline
+        font_reg, font_bold = ensure_fonts(pathlib.Path("pulse_archive"))
+        fonts = (
+            ImageFont.truetype(str(font_bold), 40),
+            ImageFont.truetype(str(font_reg), 24),
+            ImageFont.truetype(str(font_bold), 38),
+            ImageFont.truetype(str(font_reg), 26),
+            ImageFont.truetype(str(font_reg), 14),
+            ImageFont.truetype(str(font_reg), 15)
+        )
+        sample_data = {
+            "date": "05 September 2026",
+            "question_header": "Q. Find the missing number in the sequence:-",
+            "series": "2, 6, 12, 20, 30, ?",
+            "options": ["a. 40", "b. 42", "c. 44", "d. 46"],
+            "correct_answer": "b",
+            "hashtags": ["#Math", "#Puzzle"]
+        }
+        for idx, layout in enumerate(brainteaser_pipeline.LAYOUTS, 1):
+            img = Image.new("RGB", (656, 656), color=(20, 20, 30))
+            draw = ImageDraw.Draw(img)
+            layout(draw, sample_data, fonts)
+
 class TestPipelineEngine(unittest.TestCase):
     def test_dry_run_execution(self):
         engine = PipelineEngine()

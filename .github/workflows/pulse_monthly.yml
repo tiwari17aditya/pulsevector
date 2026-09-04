@@ -2,8 +2,9 @@ name: Pulse Monthly Automation
 
 on:
   schedule:
-    # Run daily from the 28th to the 31st at 3:45 AM IST (10:15 PM UTC the night before)
-    - cron: '15 22 28-31 * *'
+    # Trigger near month-end dates at 3:45 AM IST (10:15 PM UTC the night before)
+    # Days 27-31 cover leap and non-leap February (28/29 days), 30-day, and 31-day months
+    - cron: '15 22 27-31 * *'
   workflow_dispatch:
     # Allows manual triggering from the Actions tab on GitHub
 
@@ -11,7 +12,27 @@ env:
   TZ: Asia/Kolkata
 
 jobs:
+  check-month-end:
+    runs-on: ubuntu-latest
+    outputs:
+      run_pipeline: ${{ steps.check.outputs.run_pipeline }}
+    steps:
+      - name: Check if Last Day of Month
+        id: check
+        run: |
+          # In Asia/Kolkata timezone, check if tomorrow is the 1st of next month
+          TOMORROW_DAY=$(TZ='Asia/Kolkata' date -d "tomorrow" +%d)
+          if [ "$TOMORROW_DAY" = "01" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run_pipeline=true" >> "$GITHUB_OUTPUT"
+            echo "✅ Month-end detected (tomorrow is 1st of month) or workflow_dispatch triggered. Proceeding with pipeline."
+          else
+            echo "run_pipeline=false" >> "$GITHUB_OUTPUT"
+            echo "⏭️ Not month-end (tomorrow is day $TOMORROW_DAY). Skipping monthly pipeline."
+          fi
+
   run-pipeline:
+    needs: check-month-end
+    if: needs.check-month-end.outputs.run_pipeline == 'true'
     runs-on: ubuntu-latest
 
     permissions:
@@ -27,40 +48,29 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          cache: 'pip'
-
-      - name: Check if Month End
-        id: check-month-end
-        run: |
-          python -c "import datetime, os; now = datetime.datetime.now(); is_month_end = (now + datetime.timedelta(days=1)).month != now.month; is_dispatch = '${{ github.event_name }}' == 'workflow_dispatch'; run_pipeline = 'true' if (is_month_end or is_dispatch) else 'false'; open(os.environ['GITHUB_OUTPUT'], 'a').write(f'run_pipeline={run_pipeline}\n')"
 
       - name: Install System Dependencies (FFmpeg)
-        if: steps.check-month-end.outputs.run_pipeline == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
       - name: Install Python Dependencies
-        if: steps.check-month-end.outputs.run_pipeline == 'true'
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Recreate YouTube Credentials
-        if: steps.check-month-end.outputs.run_pipeline == 'true'
         run: |
           mkdir -p credentials
           echo '${{ secrets.YOUTUBE_CLIENT_SECRETS }}' > credentials/client_secrets.json
           echo '${{ secrets.YOUTUBE_TOKEN_JSON }}' > credentials/token.json
 
       - name: Configure Git
-        if: steps.check-month-end.outputs.run_pipeline == 'true'
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Run Pulse Vector Monthly Pipeline
-        if: steps.check-month-end.outputs.run_pipeline == 'true'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           YOUTUBE_PRIVACY_STATUS: ${{ secrets.YOUTUBE_PRIVACY_STATUS || 'public' }}
@@ -72,13 +82,14 @@ jobs:
         run: python src/pipeline.py --monthly
 
       - name: Push Git Commits
-        if: steps.check-month-end.outputs.run_pipeline == 'true' && always()
+        if: always()
         run: |
           git pull --rebase -X theirs origin main || (git rebase --abort && git pull --no-rebase -X theirs origin main --no-edit || (git checkout --ours . && git add . && git commit -m "Auto-resolve merge conflicts"))
           git push origin main
 
       - name: Upload Pipeline Logs
-        if: steps.check-month-end.outputs.run_pipeline == 'true' && always()
+        if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: monthly-pipeline-logs
@@ -87,6 +98,6 @@ jobs:
           if-no-files-found: ignore
 
       - name: Cleanup Credentials
-        if: steps.check-month-end.outputs.run_pipeline == 'true' && always()
+        if: always()
         run: |
           rm -f credentials/client_secrets.json credentials/token.json
