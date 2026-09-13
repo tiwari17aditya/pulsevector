@@ -135,11 +135,15 @@ def extract_metadata_fields(content: str) -> Dict[str, Any]:
         result["description"] = desc
         
     # 3. Hashtags
+    # NOTE: We extract the raw #Word tokens from LLM output, then immediately
+    # strip the '#' prefix. The YouTube Data API snippet.tags field requires plain
+    # keyword strings — passing '#Word' causes HTTP 400 invalidTags errors.
     ht_match = re.search(r"(?i)\*?\*?Hashtags\*?\*?:\s*(.+?)(?=\n+\s*\*?\*?Source\s+URLs|\Z)", content, re.DOTALL)
     if ht_match:
         ht_text = ht_match.group(1)
-        tags = re.findall(r"#\w+", ht_text)
-        result["hashtags"] = tags
+        raw_tags = re.findall(r"#\w+", ht_text)
+        # Strip '#' — keep plain keywords for YouTube API tags array
+        result["hashtags"] = [t.lstrip("#") for t in raw_tags]
         
     # 4. Source URLs
     src_match = re.search(r"(?i)\*?\*?Source\s+URLs\*?\*?:\s*(.+)", content, re.DOTALL)
@@ -216,13 +220,17 @@ def parse_news_content(raw_text: str, content_type: str, target_date: datetime.d
         top_points = " ".join([p[1] for p in points_tuples[:5]])
         desc = f"Catch the top headlines: {top_points[:450]}... #CurrentAffairs #PulseVector"
         
-    # Fallback tags if missing
+    # Fallback tags if missing — plain keywords, no '#' prefix (YouTube API requirement)
     tags = meta["hashtags"]
     if not tags:
         default_tags = ["CurrentAffairs", "GlobalNews", "PulseVector", "Education"]
         if content_type == "daily":
             default_tags.append("Shorts")
-        tags = [f"#{t}" for t in default_tags]
+        elif content_type == "weekly":
+            default_tags.append("WeeklyCurrentAffairs")
+        elif content_type == "monthly":
+            default_tags.append("MonthlyCurrentAffairs")
+        tags = default_tags  # Already plain strings, no '#'
         
     date_header = extract_date_str(raw_text, content_type, target_date)
     
