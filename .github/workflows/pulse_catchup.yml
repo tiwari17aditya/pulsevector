@@ -1,0 +1,120 @@
+name: Pulse Vector Catchup - Failed Dates
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_daily:
+        description: "Skip Daily pipeline catchup"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+      skip_weekly:
+        description: "Skip Weekly pipeline catchup"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+      skip_bt:
+        description: "Skip Brain Teaser catchup"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+      force:
+        description: "Force re-run even if video already exists"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+      no_tts:
+        description: "Disable TTS voiceover"
+        required: false
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+
+env:
+  TZ: Asia/Kolkata
+
+jobs:
+  catchup:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install System Dependencies (FFmpeg)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Recreate YouTube Credentials
+        run: |
+          mkdir -p credentials
+          echo '${{ secrets.YOUTUBE_CLIENT_SECRETS }}' > credentials/client_secrets.json
+          echo '${{ secrets.YOUTUBE_TOKEN_JSON }}' > credentials/token.json
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Run Catchup Script
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          YOUTUBE_PRIVACY_STATUS: ${{ secrets.YOUTUBE_PRIVACY_STATUS || 'public' }}
+          YOUTUBE_PLAYLIST_TAG: ${{ secrets.YOUTUBE_PLAYLIST_TAG || 'DailyCurrentAffairs' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          EXTRA_FLAGS=""
+          if [ "${{ inputs.skip_daily }}" = "true" ]; then EXTRA_FLAGS="$EXTRA_FLAGS --skip-daily"; fi
+          if [ "${{ inputs.skip_weekly }}" = "true" ]; then EXTRA_FLAGS="$EXTRA_FLAGS --skip-weekly"; fi
+          if [ "${{ inputs.skip_bt }}" = "true" ]; then EXTRA_FLAGS="$EXTRA_FLAGS --skip-bt"; fi
+          if [ "${{ inputs.force }}" = "true" ]; then EXTRA_FLAGS="$EXTRA_FLAGS --force"; fi
+          if [ "${{ inputs.no_tts }}" = "true" ]; then EXTRA_FLAGS="$EXTRA_FLAGS --no-tts"; fi
+          python scripts/catchup_failed_dates.py $EXTRA_FLAGS
+
+      - name: Push Git Commits
+        if: always()
+        run: |
+          git add .
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update: Catchup Pipeline Run (Sep 1-13, 2026)"
+          git pull --rebase -X theirs origin main || (git rebase --abort && git pull --no-rebase -X theirs origin main --no-edit)
+          git push origin main
+
+      - name: Upload Pipeline Logs
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: catchup-pipeline-logs
+          path: logs/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Cleanup Credentials
+        if: always()
+        run: |
+          rm -f credentials/client_secrets.json credentials/token.json
