@@ -21,7 +21,7 @@ from core.content_parser import (
     clean_markdown_decorations, strip_metadata_section, extract_news_points,
     extract_metadata_fields, extract_date_str, parse_news_content, parse_teaser_content,
     format_community_poll_text, classify_news_category, format_teaser_challenge_comment,
-    format_solution_reveal_comment
+    format_solution_reveal_comment, format_brainteaser_description
 )
 from core.youtube_utils import sanitize_youtube_tags
 from core.tts_utils import sanitize_text_for_speech, verify_speech_points_alignment, get_ffmpeg_executable
@@ -199,6 +199,44 @@ Correct Answer: c
         reveal = format_solution_reveal_comment(sample)
         self.assertIn("c. 30", reveal)
         self.assertIn("OFFICIAL SOLUTION REVEAL", reveal)
+
+    def test_format_brainteaser_description(self):
+        sample = {
+            "question_header": "Q. What number comes next in the sequence?",
+            "series": "Series: 3, 6, 10, 15, 21, ?",
+            "options": ["a. 27", "b. 28", "c. 29", "d. 30"]
+        }
+        hashtags = ["#BrainTeaser", "#PulseVector", "#MathPuzzle"]
+        desc = format_brainteaser_description(
+            data=sample,
+            date_str="04 September 2026",
+            formatted_hashtags=hashtags,
+            date_file_str="04sep26"
+        )
+        self.assertIn("Daily Brain Teaser - 04 September 2026 🧠", desc)
+        self.assertIn("Series: 3, 6, 10, 15, 21, ?", desc)
+        self.assertIn("• a. 27" if "•" in desc else "a. 27", desc)
+        self.assertIn("Comment your answer below! 👇", desc)
+        self.assertIn("Correct answer pinned in 24 hours.", desc)
+        self.assertIn("🎮 Play Interactively:", desc)
+        self.assertIn("?challenge=04sep26", desc)
+        self.assertIn("💬 Telegram Community:", desc)
+        self.assertIn("📺 Subscribe on YouTube:", desc)
+        self.assertIn("#PulseVector", desc)
+        self.assertLessEqual(len(desc), 5000)
+        
+        # Test optional handles
+        custom_desc = format_brainteaser_description(
+            data=sample,
+            date_str="04 September 2026",
+            formatted_hashtags=hashtags,
+            discord_url="https://discord.gg/pulsevector",
+            instagram_url="https://instagram.com/pulsevector",
+            x_url="https://x.com/pulsevector"
+        )
+        self.assertIn("👾 Discord Community: https://discord.gg/pulsevector", custom_desc)
+        self.assertIn("📸 Instagram: https://instagram.com/pulsevector", custom_desc)
+        self.assertIn("🐦 X (Twitter): https://x.com/pulsevector", custom_desc)
 
 class TestTTSUtils(unittest.TestCase):
     def test_speech_sanitization(self):

@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 # Add src to python path if run directly
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
-from core.config import ARCHIVE_DIR, BT_DATE_FMT
+from core.config import ARCHIVE_DIR, BT_DATE_FMT, PULSE_PLAY_BASE_URL
 from core.genai_utils import (
     configure_genai, read_prompts, generate_content, save_file,
     build_brainteaser_prompt, BRAIN_TEASER_TYPES
@@ -37,7 +37,7 @@ from core.youtube_utils import (
 )
 from core.content_parser import (
     format_community_poll_text, format_teaser_challenge_comment,
-    format_solution_reveal_comment
+    format_solution_reveal_comment, format_brainteaser_description
 )
 from core.broadcast_utils import broadcast_daily_content
 from core.tts_utils import synthesize_text, get_audio_duration, HAS_TTS
@@ -955,24 +955,13 @@ def publish_teaser_to_youtube(video_path, data, target_date, privacy_status=None
             final_tags.append(tag)
             current_len += tag_len
             
-        desc_lines = []
-        desc_lines.append(f"Daily Brain Teaser - {date_str} 🧠")
-        desc_lines.append("")
-        desc_lines.append(data.get("question_header", ""))
-        desc_lines.append(data.get("series", ""))
-        desc_lines.append("")
-        for opt in data.get("options", []):
-            desc_lines.append(opt)
-        desc_lines.append("")
-        desc_lines.append("Comment your answer below! 👇")
-        desc_lines.append("Correct answer pinned in 24 hours.")
-        desc_lines.append("")
-        desc_lines.append(" ".join(formatted_hashtags))
-        
-        description = "\n".join(desc_lines)
-        # Safe description length truncation (YouTube limit is 5000 chars)
-        if len(description) > 4950:
-            description = description[:4947] + "..."
+        date_file_str = target_date.strftime(BT_DATE_FMT)
+        description = format_brainteaser_description(
+            data=data,
+            date_str=date_str,
+            formatted_hashtags=formatted_hashtags,
+            date_file_str=date_file_str
+        )
             
         print("  > Uploading video...")
         video_id = upload_video_to_youtube(youtube, str(video_path), title, description, final_tags, category_id="27", privacy_status=privacy_status)
@@ -985,7 +974,6 @@ def publish_teaser_to_youtube(video_path, data, target_date, privacy_status=None
         # Feature 4: Automated Brain Teaser Challenge & Solution Reveal System
         comments_dir = ARCHIVE_DIR / year_str / target_date.strftime("%B") / "Brain_Teasers" / "Comments"
         comments_dir.mkdir(parents=True, exist_ok=True)
-        date_file_str = target_date.strftime(BT_DATE_FMT)
         
         # Save today's challenge comment asset
         challenge_comment = format_teaser_challenge_comment(data)
@@ -1016,10 +1004,12 @@ def publish_teaser_to_youtube(video_path, data, target_date, privacy_status=None
         # Feature 2: Community Auto-Broadcast (Telegram & Discord)
         try:
             teaser_title = f"Daily Brain Teaser: {date_str} 🧠"
+            play_url = f"{PULSE_PLAY_BASE_URL.rstrip('/')}/?challenge={date_file_str}"
             teaser_summary = (
                 f"{data.get('question_header', '')}\n{data.get('series', '')}\n\n"
                 f"Options:\n" + "\n".join([f"• {opt}" for opt in data.get('options', [])]) +
                 f"\n\n🧠 Drop your answer in the comments! Solution revealed in 24 hours."
+                f"\n\n🎮 Play Interactively: {play_url}"
             )
             img_path = ARCHIVE_DIR / year_str / target_date.strftime("%B") / "Brain_Teasers" / "Images" / f"brainteaser-{date_file_str}.png"
             broadcast_daily_content(
@@ -1032,6 +1022,7 @@ def publish_teaser_to_youtube(video_path, data, target_date, privacy_status=None
             )
         except Exception as b_err:
             print(f"  > Broadcast notice: {b_err}")
+
             
         return True
     except Exception as e:

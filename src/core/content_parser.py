@@ -407,3 +407,83 @@ def format_solution_reveal_comment(yesterday_data: Dict[str, Any]) -> str:
         f"✅ Correct Answer: {ans_display}\n\n"
         f"Did you crack it? Try today's fresh brain teaser on the channel! 🧠🔥"
     )
+
+def format_brainteaser_description(
+    data: Dict[str, Any],
+    date_str: str,
+    formatted_hashtags: List[str],
+    date_file_str: str = "",
+    play_url: Optional[str] = None,
+    telegram_url: Optional[str] = None,
+    youtube_url: Optional[str] = None,
+    discord_url: Optional[str] = None,
+    instagram_url: Optional[str] = None,
+    x_url: Optional[str] = None
+) -> str:
+    """
+    Constructs the official, rich YouTube description for a Daily Brain Teaser Short.
+    Includes question details, series, options, answer call-to-action,
+    and verified social media & community handles.
+    """
+    from .config import (
+        PULSE_PLAY_BASE_URL, PULSE_TELEGRAM_URL, PULSE_YOUTUBE_URL,
+        PULSE_DISCORD_URL, PULSE_INSTAGRAM_URL, PULSE_X_URL
+    )
+    
+    if play_url is None:
+        if date_file_str:
+            play_url = f"{PULSE_PLAY_BASE_URL.rstrip('/')}/?challenge={date_file_str}"
+        else:
+            play_url = PULSE_PLAY_BASE_URL
+            
+    if telegram_url is None:
+        telegram_url = PULSE_TELEGRAM_URL
+    if youtube_url is None:
+        youtube_url = PULSE_YOUTUBE_URL
+    if discord_url is None:
+        discord_url = PULSE_DISCORD_URL
+    if instagram_url is None:
+        instagram_url = PULSE_INSTAGRAM_URL
+    if x_url is None:
+        x_url = PULSE_X_URL
+        
+    desc_lines = [
+        f"Daily Brain Teaser - {date_str} 🧠",
+        "",
+        data.get("question_header", ""),
+        data.get("series", ""),
+        ""
+    ]
+    for opt in data.get("options", []):
+        desc_lines.append(opt)
+        
+    desc_lines.extend([
+        "",
+        "Comment your answer below! 👇",
+        "Correct answer pinned in 24 hours.",
+        "",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "🧠 CONNECT & PLAY WITH PULSE VECTOR:",
+        f"🎮 Play Interactively: {play_url}",
+        f"💬 Telegram Community: {telegram_url}",
+        f"📺 Subscribe on YouTube: {youtube_url}"
+    ])
+    
+    if discord_url:
+        desc_lines.append(f"👾 Discord Community: {discord_url}")
+    if instagram_url:
+        desc_lines.append(f"📸 Instagram: {instagram_url}")
+    if x_url:
+        desc_lines.append(f"🐦 X (Twitter): {x_url}")
+        
+    desc_lines.extend([
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "",
+        " ".join(formatted_hashtags)
+    ])
+    
+    description = "\n".join(desc_lines)
+    if len(description) > 4950:
+        description = description[:4947] + "..."
+    return description
+

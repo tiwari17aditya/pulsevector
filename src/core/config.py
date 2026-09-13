@@ -34,3 +34,13 @@ BACKUP_DIR = os.getenv("PULSE_BACKUP_DIR", r"G:\PulseVectorBackups\pulse_archive
 API_KEY = os.getenv("GEMINI_API_KEY")
 
 BT_DATE_FMT = "%d%b%y"
+
+# Social Media & Community Handles / Links
+PULSE_PLAY_BASE_URL = os.getenv("PULSE_PLAY_URL", "https://tiwari17aditya.github.io/pulsevector/play/")
+PULSE_TELEGRAM_URL = os.getenv("PULSE_TELEGRAM_URL", "https://t.me/pulsevector_daily")
+PULSE_TELEGRAM_BOT = os.getenv("PULSE_TELEGRAM_BOT", "@PulseVectorOfficial_bot")
+PULSE_YOUTUBE_URL = os.getenv("PULSE_YOUTUBE_URL", "https://www.youtube.com/@PulseVector")
+PULSE_DISCORD_URL = os.getenv("PULSE_DISCORD_URL", "")
+PULSE_INSTAGRAM_URL = os.getenv("PULSE_INSTAGRAM_URL", "")
+PULSE_X_URL = os.getenv("PULSE_X_URL", "")
+
