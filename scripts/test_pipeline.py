@@ -23,6 +23,7 @@ from core.content_parser import (
     format_community_poll_text, classify_news_category, format_teaser_challenge_comment,
     format_solution_reveal_comment
 )
+from core.youtube_utils import sanitize_youtube_tags
 from core.tts_utils import sanitize_text_for_speech, verify_speech_points_alignment, get_ffmpeg_executable
 from core.image_utils import wrap_text, create_slide_image_file, ensure_fonts
 from core.video_utils import (
@@ -63,7 +64,10 @@ Source URLs:
         
         meta = extract_metadata_fields(sample_text)
         self.assertEqual(meta["title"], "Daily Current Affairs 26 July 2026")
-        self.assertIn("#CurrentAffairs", meta["hashtags"])
+        # Hashtags must be plain strings (no '#' prefix) — YouTube API requirement
+        self.assertIn("CurrentAffairs", meta["hashtags"])
+        self.assertNotIn("#CurrentAffairs", meta["hashtags"],
+                         "Hashtags must NOT contain '#' prefix for YouTube API compliance")
         self.assertIn("BBC News", meta["source_urls"])
         
     def test_monthly_50_points_parser(self):
@@ -317,6 +321,82 @@ class TestPipelineEngine(unittest.TestCase):
         self.assertIsInstance(result, dict)
         self.assertIn("telegram", result)
         self.assertIn("discord", result)
+
+
+class TestYouTubeTagSafety(unittest.TestCase):
+    """
+    Regression tests for the YouTube HTTP 400 invalidTags bug (Sep 2026).
+
+    Root cause: snippet.tags[] must contain plain keyword strings.
+    Passing '#Word' tags causes ResumableUploadError 400 invalidTags.
+    These tests guard both defence layers:
+      1. content_parser.py  — never emits '#'-prefixed tags from parse_news_content()
+      2. youtube_utils.py   — sanitize_youtube_tags() strips anything that slips through
+    """
+
+    # ---- Layer 1: content_parser must emit clean tags ----
+
+    def test_parser_hashtags_no_hash_prefix(self):
+        """extract_metadata_fields must return plain keywords, never '#Word'."""
+        raw = """Title: Test\nHashtags: #CurrentAffairs #PulseVector #GlobalNews"""
+        meta = extract_metadata_fields(raw)
+        for tag in meta["hashtags"]:
+            self.assertFalse(tag.startswith("#"),
+                f"Tag '{tag}' must not start with '#' — YouTube API rejects '#'-prefixed tags")
+
+    def test_parse_news_content_hashtags_clean(self):
+        """parse_news_content payload.hashtags must be '#'-free for all content types."""
+        sample = (
+            "Daily Current Affairs 13 September 2026\n\n"
+            "1. News point one. [Source: BBC]\n\n"
+            "Title: Daily Current Affairs 13 September 2026\n"
+            "Hashtags: #CurrentAffairs #India #Shorts\n"
+        )
+        for ctype in ("daily", "weekly", "monthly"):
+            payload = parse_news_content(sample, ctype, datetime.datetime(2026, 9, 13))
+            for tag in payload.hashtags:
+                self.assertFalse(tag.startswith("#"),
+                    f"[{ctype}] payload.hashtags contains '#' in '{tag}'")
+
+    def test_fallback_tags_no_hash_prefix(self):
+        """When no hashtags section is present, fallback tags must also be clean."""
+        bare_text = "Daily Current Affairs 13 Sep 2026\n\n1. Some news. [Source: Reuters]\n"
+        for ctype in ("daily", "weekly", "monthly"):
+            payload = parse_news_content(bare_text, ctype, datetime.datetime(2026, 9, 13))
+            for tag in payload.hashtags:
+                self.assertFalse(tag.startswith("#"),
+                    f"[{ctype}] fallback hashtag contains '#' in '{tag}'")
+
+    # ---- Layer 2: sanitize_youtube_tags is the final safety net ----
+
+    def test_sanitize_strips_hash_prefix(self):
+        """sanitize_youtube_tags must strip '#' from all incoming tags."""
+        dirty = ["#CurrentAffairs", "#PulseVector", "#India2026"]
+        clean = sanitize_youtube_tags(dirty)
+        for tag in clean:
+            self.assertFalse(tag.startswith("#"), f"Tag '{tag}' still has '#' after sanitize")
+        self.assertEqual(clean, ["CurrentAffairs", "PulseVector", "India2026"])
+
+    def test_sanitize_deduplication(self):
+        """sanitize_youtube_tags must deduplicate case-insensitively."""
+        tags = ["#News", "#news", "#NEWS", "PulseVector"]
+        result = sanitize_youtube_tags(tags)
+        self.assertEqual(len(result), 2)
+        self.assertIn("News", result)
+        self.assertIn("PulseVector", result)
+
+    def test_sanitize_500_char_budget(self):
+        """Total tag length must not exceed YouTube's 500-char limit."""
+        long_tags = [f"TagNumber{i}WithSomeMoreWords" for i in range(50)]
+        result = sanitize_youtube_tags(long_tags)
+        total = sum(len(t) for t in result) + max(0, 2 * (len(result) - 1))
+        self.assertLessEqual(total, 500,
+            f"Sanitized tags exceed 500 chars: {total} chars across {len(result)} tags")
+
+    def test_sanitize_empty_and_none(self):
+        """sanitize_youtube_tags must handle empty list and None gracefully."""
+        self.assertEqual(sanitize_youtube_tags([]), [])
+        self.assertEqual(sanitize_youtube_tags(None), [])
 
 def main():
     print("==========================================================")
