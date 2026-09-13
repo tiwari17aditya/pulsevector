@@ -1,4 +1,5 @@
 import os
+import re
 import pathlib
 import logging
 from typing import Optional, List, Dict, Any
@@ -10,6 +11,54 @@ from googleapiclient.http import MediaFileUpload
 
 # Scopes for YouTube Data API
 SCOPES = ['https://www.googleapis.com/auth/youtube.upload', 'https://www.googleapis.com/auth/youtube.force-ssl']
+
+# YouTube API tag constraints
+_YT_MAX_TAG_CHARS = 500   # total char budget across all tags
+_YT_MAX_SINGLE_TAG = 100  # single tag length limit
+
+
+def sanitize_youtube_tags(tags: List[str]) -> List[str]:
+    """
+    Cleans a list of tags so they pass YouTube Data API validation.
+
+    YouTube rules for snippet.tags:
+      - No leading '#' character (those are description hashtags, not API tags)
+      - No angle-brackets, quotes, or other chars that fail YouTube validation
+      - Each tag <= 100 chars
+      - Total length of all tags (comma-separated) <= 500 chars
+      - Duplicates removed (case-insensitive)
+
+    Returns a list of clean, API-safe tag strings.
+    """
+    seen: set = set()
+    clean: List[str] = []
+    total_chars = 0
+
+    for raw in (tags or []):
+        if not isinstance(raw, str):
+            continue
+        # Strip leading # (description hashtag prefix)
+        tag = raw.lstrip("#").strip()
+        # Remove characters YouTube rejects: < > " ' & and leading/trailing whitespace
+        tag = re.sub(r'[<>"\'\'\"&]', '', tag).strip()
+        # Collapse internal whitespace
+        tag = re.sub(r'\s+', ' ', tag)
+        # Skip empty or oversized individual tags
+        if not tag or len(tag) > _YT_MAX_SINGLE_TAG:
+            continue
+        # Deduplicate (case-insensitive)
+        key = tag.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        # Enforce total 500-char budget (YouTube counts comma+space separators)
+        budget_cost = len(tag) + (2 if clean else 0)  # ", " separator
+        if total_chars + budget_cost > _YT_MAX_TAG_CHARS:
+            break
+        clean.append(tag)
+        total_chars += budget_cost
+
+    return clean
 
 def get_authenticated_service(client_secrets_file='credentials/client_secrets.json'):
     if not pathlib.Path(client_secrets_file).exists() and os.path.exists('client_secrets.json'):
@@ -116,12 +165,17 @@ def add_video_to_playlist(youtube, video_id, playlist_title):
 def upload_video_to_youtube(youtube, file_path, title, description, tags, category_id="27", privacy_status=None):
     if not privacy_status:
         privacy_status = os.getenv("YOUTUBE_PRIVACY_STATUS", "public")
+    # Always sanitize tags before sending to YouTube API.
+    # Raw tags from Gemini output often carry '#' prefixes or special chars
+    # that cause HTTP 400 invalidTags errors.
+    safe_tags = sanitize_youtube_tags(tags or [])
+    logging.debug(f"YouTube upload tags (sanitized): {safe_tags}")
     try:
         body = {
             'snippet': {
                 'title': title,
                 'description': description,
-                'tags': tags,
+                'tags': safe_tags,
                 'categoryId': category_id
             },
             'status': {
