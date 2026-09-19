@@ -18,19 +18,32 @@ _FOLDER_CACHE: Dict[str, str] = {}
 
 def get_gdrive_service(
     client_secrets_file: str = 'credentials/client_secrets.json',
-    token_path: str = 'credentials/token.json'
+    token_path: Optional[str] = None
 ):
     """
     Initializes and returns an authenticated Google Drive v3 client.
-    Reuses credentials/token.json and credentials/client_secrets.json.
+    Prefers credentials/gdrive_token.json, falling back to credentials/token.json.
     """
-    token_file = pathlib.Path(token_path)
-    if not token_file.exists() and os.path.exists('token.json'):
-        token_file = pathlib.Path('token.json')
+    if token_path:
+        candidate_tokens = [token_path]
+    else:
+        candidate_tokens = [
+            'credentials/gdrive_token.json',
+            'gdrive_token.json',
+            'credentials/token.json',
+            'token.json'
+        ]
 
-    if not token_file.exists():
-        logging.warning(f"Google credentials token not found at {token_path}. Cannot access Google Drive.")
+    token_file = None
+    for cand in candidate_tokens:
+        if cand and os.path.exists(cand):
+            token_file = pathlib.Path(cand)
+            break
+
+    if not token_file:
+        logging.warning("Google Drive credentials token not found. Cannot access Google Drive API.")
         return None
+
 
     try:
         creds = Credentials.from_authorized_user_file(str(token_file))

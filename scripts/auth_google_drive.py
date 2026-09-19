@@ -40,31 +40,45 @@ def main():
         print("Please place your OAuth client secrets file in credentials/client_secrets.json.")
         sys.exit(1)
 
-    token_path = PROJECT_ROOT / "credentials" / "token.json"
+    token_path = PROJECT_ROOT / "credentials" / "gdrive_token.json"
     creds = None
 
-    print("\nRequested Google OAuth Scopes:", flush=True)
-    for s in ALL_GOOGLE_SCOPES:
+    print("\nRequested Google OAuth Scopes (Google Drive Only):", flush=True)
+    for s in GDRIVE_SCOPES:
         print(f"  - {s}", flush=True)
 
-    print("\nStarting local authentication flow...", flush=True)
+    print("\nStarting local authentication flow for Google Drive...", flush=True)
     flow = InstalledAppFlow.from_client_secrets_file(
         str(client_secrets_path),
-        scopes=ALL_GOOGLE_SCOPES
+        scopes=GDRIVE_SCOPES
     )
     
-    auth_url, _ = flow.authorization_url(prompt='consent', access_type='offline')
-    print("\n" + "=" * 65, flush=True)
-    print("👉 AUTHORIZATION LINK (Click to authorize Google Drive + YouTube):", flush=True)
-    print(auth_url, flush=True)
-    print("=" * 65 + "\n", flush=True)
+    port = 8090
+    url_file_path = PROJECT_ROOT / "credentials" / "auth_url.txt"
+    url_file_path.parent.mkdir(parents=True, exist_ok=True)
     
+    class UrlWriterMessage:
+        def format(self, **kwargs):
+            url = kwargs.get('url', '')
+            with open(url_file_path, 'w', encoding='utf-8') as f:
+                f.write(url)
+            return (
+                "\n" + "=" * 65 + "\n"
+                "👉 AUTHORIZATION LINK (Click to authorize Google Drive):\n" +
+                url + "\n" +
+                "=" * 65 + "\n"
+            )
+            
     creds = flow.run_local_server(
-        port=8090,
+        port=port,
         open_browser=True,
         prompt='consent',
-        authorization_prompt_message='Please visit this URL to authorize: {url}'
+        access_type='offline',
+        authorization_prompt_message=UrlWriterMessage()
     )
+
+
+
 
     token_path.parent.mkdir(parents=True, exist_ok=True)
     with open(token_path, "w") as token_file:
@@ -73,14 +87,15 @@ def main():
 
     print(f"\n✅ Successfully saved updated token to: {token_path}")
     print("\n" + "=" * 65)
-    print("📋 GITHUB ACTIONS SECRET UPDATE (Required for Headless Cloud Runs)")
+    print("📋 GITHUB ACTIONS SECRET UPDATE (For Headless Cloud Runs)")
     print("=" * 65)
-    print("Copy the JSON string below and update your GitHub Secret 'YOUTUBE_TOKEN_JSON':")
+    print("Copy the JSON string below and add it to GitHub Secrets as 'GDRIVE_TOKEN_JSON':")
     print("-" * 65)
     print(creds.to_json())
     print("-" * 65)
-    print("Once updated in GitHub Secrets, your headless GitHub Actions runs will")
-    print("automatically upload media to your 5 TB Google Drive while your laptop is off!")
+    print("Your headless GitHub Actions runs will now be able to upload media directly")
+    print("to your 5 TB Google Drive via the API even when your laptop is turned off!")
+
 
 
 if __name__ == "__main__":

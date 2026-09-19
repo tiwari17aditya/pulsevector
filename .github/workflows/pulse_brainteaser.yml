@@ -41,11 +41,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Recreate YouTube Credentials
+      - name: Recreate YouTube and Google Drive Credentials
         run: |
           mkdir -p credentials
           echo '${{ secrets.YOUTUBE_CLIENT_SECRETS }}' > credentials/client_secrets.json
           echo '${{ secrets.YOUTUBE_TOKEN_JSON }}' > credentials/token.json
+          echo '${{ secrets.GDRIVE_TOKEN_JSON }}' > credentials/gdrive_token.json
+
 
       - name: Configure Git
         run: |
@@ -85,4 +87,5 @@ jobs:
       - name: Cleanup Credentials
         if: always()
         run: |
-          rm -f credentials/client_secrets.json credentials/token.json
+          rm -f credentials/client_secrets.json credentials/token.json credentials/gdrive_token.json
+
