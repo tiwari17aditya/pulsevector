@@ -30,16 +30,18 @@ load_dotenv()
 ARCHIVE_DIR = pathlib.Path(os.getenv("PULSE_ARCHIVE_DIR", "pulse_archive"))
 INPUT_DIR = pathlib.Path(os.getenv("PULSE_INPUT_DIR", "incoming_data"))
 PROMPTS_FILE = pathlib.Path(os.getenv("PULSE_PROMPTS_FILE", ".agent/pulse_prompts.md"))
-BACKUP_DIR = os.getenv("PULSE_BACKUP_DIR", r"G:\PulseVectorBackups\pulse_archive")
+BACKUP_DIR = os.getenv("PULSE_BACKUP_DIR", r"G:\My Drive\antigravity-projects-storage\pulse-vector\pulse_archive")
 API_KEY = os.getenv("GEMINI_API_KEY")
 
 BT_DATE_FMT = "%d%b%y"
 
 # Cloud Storage & Google Drive Configuration
-GOOGLE_DRIVE_FOLDER_NAME = os.getenv("GOOGLE_DRIVE_FOLDER_NAME", "PulseVector_Archive")
+GOOGLE_DRIVE_FOLDER_PATH = os.getenv("GOOGLE_DRIVE_FOLDER_PATH", "antigravity-projects-storage/pulse-vector")
+GOOGLE_DRIVE_FOLDER_NAME = os.getenv("GOOGLE_DRIVE_FOLDER_NAME", "pulse-vector")
 GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", None)
 ENABLE_GDRIVE_UPLOAD = os.getenv("ENABLE_GDRIVE_UPLOAD", "true").lower() in ("true", "1", "yes")
 ENABLE_SUPABASE_STORAGE_UPLOAD = os.getenv("ENABLE_SUPABASE_STORAGE_UPLOAD", "false").lower() in ("true", "1", "yes")
+
 
 # Social Media & Community Handles / Links
 PULSE_PLAY_BASE_URL = os.getenv("PULSE_PLAY_URL", "https://tiwari17aditya.github.io/pulsevector/play/")

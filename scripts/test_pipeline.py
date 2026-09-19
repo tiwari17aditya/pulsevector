@@ -446,8 +446,9 @@ class TestGDriveUtils(unittest.TestCase):
         
         self.assertIsInstance(ENABLE_GDRIVE_UPLOAD, bool)
         self.assertIsInstance(ENABLE_SUPABASE_STORAGE_UPLOAD, bool)
-        self.assertEqual(GOOGLE_DRIVE_FOLDER_NAME, "PulseVector_Archive")
+        self.assertEqual(GOOGLE_DRIVE_FOLDER_NAME, "pulse-vector")
         self.assertIn("https://www.googleapis.com/auth/drive.file", GDRIVE_SCOPES)
+
         self.assertIn("https://www.googleapis.com/auth/drive.file", ALL_GOOGLE_SCOPES)
 
     def test_gdrive_service_missing_token_graceful(self):

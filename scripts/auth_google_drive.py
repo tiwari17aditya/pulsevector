@@ -8,7 +8,14 @@ import os
 import sys
 import json
 import pathlib
+
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
+
 from google_auth_oauthlib.flow import InstalledAppFlow
+
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 
@@ -36,21 +43,32 @@ def main():
     token_path = PROJECT_ROOT / "credentials" / "token.json"
     creds = None
 
-    print("\nRequested Google OAuth Scopes:")
+    print("\nRequested Google OAuth Scopes:", flush=True)
     for s in ALL_GOOGLE_SCOPES:
-        print(f"  - {s}")
+        print(f"  - {s}", flush=True)
 
-    print("\nStarting local authentication flow...")
-    print("Your web browser will open. Please sign in and grant the requested permissions.")
-
+    print("\nStarting local authentication flow...", flush=True)
     flow = InstalledAppFlow.from_client_secrets_file(
         str(client_secrets_path),
         scopes=ALL_GOOGLE_SCOPES
     )
-    creds = flow.run_local_server(port=0)
+    
+    auth_url, _ = flow.authorization_url(prompt='consent', access_type='offline')
+    print("\n" + "=" * 65, flush=True)
+    print("👉 AUTHORIZATION LINK (Click to authorize Google Drive + YouTube):", flush=True)
+    print(auth_url, flush=True)
+    print("=" * 65 + "\n", flush=True)
+    
+    creds = flow.run_local_server(
+        port=8090,
+        open_browser=True,
+        prompt='consent',
+        authorization_prompt_message='Please visit this URL to authorize: {url}'
+    )
 
     token_path.parent.mkdir(parents=True, exist_ok=True)
     with open(token_path, "w") as token_file:
+
         token_file.write(creds.to_json())
 
     print(f"\n✅ Successfully saved updated token to: {token_path}")
