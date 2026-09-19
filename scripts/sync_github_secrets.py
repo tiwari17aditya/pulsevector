@@ -77,6 +77,9 @@ def collect_project_secrets() -> dict:
         "YOUTUBE_PRIVACY_STATUS",
         "YOUTUBE_PLAYLIST_TAG",
         "GOOGLE_DRIVE_FOLDER_ID",
+        "SMTP_APP_PASSWORD",
+        "SMTP_USER",
+        "REPORT_RECIPIENT_EMAIL",
     ]
     for k in env_keys:
         val = os.getenv(k)
