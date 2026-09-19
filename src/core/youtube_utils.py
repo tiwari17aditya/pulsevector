@@ -9,8 +9,17 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-# Scopes for YouTube Data API
-SCOPES = ['https://www.googleapis.com/auth/youtube.upload', 'https://www.googleapis.com/auth/youtube.force-ssl']
+# Google API Scopes
+YOUTUBE_SCOPES = [
+    'https://www.googleapis.com/auth/youtube.upload',
+    'https://www.googleapis.com/auth/youtube.force-ssl'
+]
+GDRIVE_SCOPES = [
+    'https://www.googleapis.com/auth/drive.file'
+]
+ALL_GOOGLE_SCOPES = YOUTUBE_SCOPES + GDRIVE_SCOPES
+SCOPES = YOUTUBE_SCOPES  # Default YouTube scopes for backwards compatibility
+
 
 # YouTube API tag constraints
 _YT_MAX_TAG_CHARS = 500   # total char budget across all tags

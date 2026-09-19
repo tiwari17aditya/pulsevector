@@ -2,7 +2,8 @@ import os
 import logging
 import mimetypes
 from supabase import create_client, Client
-from .config import ARCHIVE_DIR
+from .config import ARCHIVE_DIR, ENABLE_GDRIVE_UPLOAD, ENABLE_SUPABASE_STORAGE_UPLOAD
+from .gdrive_utils import sync_archive_file_to_gdrive
 
 # Max file size for Supabase Free Tier storage uploads (in MB)
 MAX_STORAGE_UPLOAD_MB = float(os.getenv("SUPABASE_MAX_FILE_MB", "45.0"))
@@ -76,16 +77,16 @@ def run_database_upload(cutoff_hours: float = 24):
     import datetime
     import time
     
-    print("\n🚀 Starting Database Upload (Supabase)...")
-    logging.info("Starting database upload...")
+    print("\n🚀 Starting Cloud Sync (Google Drive & Supabase)...")
+    logging.info("Starting cloud sync...")
     
     supabase = get_supabase_client()
-    if not supabase:
-        print("ℹ️ Supabase credentials not set. Skipping cloud database upload.")
-        return
-        
+    
     cutoff_time = (time.time() - (cutoff_hours * 3600)) if cutoff_hours is not None else 0
-    uploaded_count = 0
+    gdrive_uploaded_count = 0
+    supabase_uploaded_count = 0
+    metadata_count = 0
+
     file_configs = [
         ("*.mp4", "video", "videos"),
         ("*.png", "image", "images"),
@@ -101,24 +102,55 @@ def run_database_upload(cutoff_hours: float = 24):
                     continue
                     
                 rel_path = os.path.relpath(file_path, ARCHIVE_DIR).replace("\\", "/")
-                bucket = "pulse-vector-media"
-                dest_path = f"{folder}/{rel_path}"
+                resolved_url = None
                 
-                url = upload_file_to_storage(file_path, bucket, dest_path)
-                mtime = os.path.getmtime(file_path)
-                run_date = datetime.datetime.fromtimestamp(mtime, tz=datetime.timezone.utc).isoformat()
+                # 1. Google Drive Cloud Upload (5 TB Storage)
+                if ENABLE_GDRIVE_UPLOAD:
+                    try:
+                        gdrive_res = sync_archive_file_to_gdrive(file_path)
+                        if gdrive_res:
+                            resolved_url = gdrive_res.get('webViewLink') or gdrive_res.get('webContentLink')
+                            gdrive_uploaded_count += 1
+                    except Exception as e:
+                        logging.warning(f"Google Drive upload warning for {rel_path}: {e}")
                 
-                save_metadata("pipeline_runs", {
-                    "run_date": run_date,
-                    "file_type": f_type,
-                    "file_path": rel_path,
-                    "url": url or f"local://{rel_path}"
-                })
-                if url:
-                    uploaded_count += 1
+                # 2. Supabase Storage Upload (Optional / Bypassed if storage is at free limits)
+                if ENABLE_SUPABASE_STORAGE_UPLOAD:
+                    bucket = "pulse-vector-media"
+                    dest_path = f"{folder}/{rel_path}"
+                    sp_url = upload_file_to_storage(file_path, bucket, dest_path)
+                    if sp_url:
+                        supabase_uploaded_count += 1
+                        if not resolved_url:
+                            resolved_url = sp_url
+                            
+                # Fallback to local reference if no cloud link
+                if not resolved_url:
+                    resolved_url = f"local://{rel_path}"
                 
-        print(f"✅ Database upload completed. Synced files with cloud.")
-        logging.info(f"Database upload completed. Synced {uploaded_count} storage objects.")
+                # 3. Save Execution & Media Metadata to Supabase Database
+                if supabase:
+                    mtime = os.path.getmtime(file_path)
+                    run_date = datetime.datetime.fromtimestamp(mtime, tz=datetime.timezone.utc).isoformat()
+                    
+                    save_metadata("pipeline_runs", {
+                        "run_date": run_date,
+                        "file_type": f_type,
+                        "file_path": rel_path,
+                        "url": resolved_url
+                    })
+                    metadata_count += 1
+                
+        print(f"✅ Cloud sync completed.")
+        if ENABLE_GDRIVE_UPLOAD:
+            print(f"   - Google Drive objects uploaded: {gdrive_uploaded_count}")
+        if ENABLE_SUPABASE_STORAGE_UPLOAD:
+            print(f"   - Supabase storage objects uploaded: {supabase_uploaded_count}")
+        if supabase:
+            print(f"   - Supabase metadata records synced: {metadata_count}")
+            
+        logging.info(f"Cloud sync completed. GDrive: {gdrive_uploaded_count}, Supabase: {supabase_uploaded_count}, Metadata: {metadata_count}")
     except Exception as e:
-        print(f"⚠️ Database upload encountered error: {e}")
-        logging.error(f"Database upload error: {e}")
+        print(f"⚠️ Cloud sync encountered error: {e}")
+        logging.error(f"Cloud sync error: {e}")
+

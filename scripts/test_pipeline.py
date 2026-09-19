@@ -436,6 +436,27 @@ class TestYouTubeTagSafety(unittest.TestCase):
         self.assertEqual(sanitize_youtube_tags([]), [])
         self.assertEqual(sanitize_youtube_tags(None), [])
 
+
+class TestGDriveUtils(unittest.TestCase):
+    def test_gdrive_config_and_imports(self):
+        """Verify Google Drive config flags and utilities load properly."""
+        from core.config import ENABLE_GDRIVE_UPLOAD, ENABLE_SUPABASE_STORAGE_UPLOAD, GOOGLE_DRIVE_FOLDER_NAME
+        from core.gdrive_utils import get_gdrive_service, find_or_create_folder, GDRIVE_SCOPES
+        from core.youtube_utils import ALL_GOOGLE_SCOPES, GDRIVE_SCOPES as YT_GDRIVE_SCOPES
+        
+        self.assertIsInstance(ENABLE_GDRIVE_UPLOAD, bool)
+        self.assertIsInstance(ENABLE_SUPABASE_STORAGE_UPLOAD, bool)
+        self.assertEqual(GOOGLE_DRIVE_FOLDER_NAME, "PulseVector_Archive")
+        self.assertIn("https://www.googleapis.com/auth/drive.file", GDRIVE_SCOPES)
+        self.assertIn("https://www.googleapis.com/auth/drive.file", ALL_GOOGLE_SCOPES)
+
+    def test_gdrive_service_missing_token_graceful(self):
+        """get_gdrive_service must return None without raising exception if token is missing."""
+        from core.gdrive_utils import get_gdrive_service
+        service = get_gdrive_service(token_path="non_existent_token.json")
+        self.assertIsNone(service)
+
+
 def main():
     print("==========================================================")
     print("  🧪 PULSE VECTOR AUTOMATED TEST SUITE                   ")

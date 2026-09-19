@@ -35,6 +35,12 @@ API_KEY = os.getenv("GEMINI_API_KEY")
 
 BT_DATE_FMT = "%d%b%y"
 
+# Cloud Storage & Google Drive Configuration
+GOOGLE_DRIVE_FOLDER_NAME = os.getenv("GOOGLE_DRIVE_FOLDER_NAME", "PulseVector_Archive")
+GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", None)
+ENABLE_GDRIVE_UPLOAD = os.getenv("ENABLE_GDRIVE_UPLOAD", "true").lower() in ("true", "1", "yes")
+ENABLE_SUPABASE_STORAGE_UPLOAD = os.getenv("ENABLE_SUPABASE_STORAGE_UPLOAD", "false").lower() in ("true", "1", "yes")
+
 # Social Media & Community Handles / Links
 PULSE_PLAY_BASE_URL = os.getenv("PULSE_PLAY_URL", "https://tiwari17aditya.github.io/pulsevector/play/")
 PULSE_TELEGRAM_URL = os.getenv("PULSE_TELEGRAM_URL", "https://t.me/pulsevector_daily")
@@ -43,4 +49,5 @@ PULSE_YOUTUBE_URL = os.getenv("PULSE_YOUTUBE_URL", "https://www.youtube.com/@Pul
 PULSE_DISCORD_URL = os.getenv("PULSE_DISCORD_URL", "")
 PULSE_INSTAGRAM_URL = os.getenv("PULSE_INSTAGRAM_URL", "")
 PULSE_X_URL = os.getenv("PULSE_X_URL", "")
+
 
