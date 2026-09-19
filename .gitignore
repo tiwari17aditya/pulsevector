@@ -30,3 +30,4 @@ pulse_archive/**/*.mp4
 pulse_archive/**/*.mp3
 pulse_archive/**/*.wav
 pulse_archive/temp_end_frames/
+reports/

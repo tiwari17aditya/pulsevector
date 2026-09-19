@@ -1,0 +1,144 @@
+name: Pulse Vector Executive Reports
+
+on:
+  schedule:
+    # Weekly Report: Trigger every Sunday at 02:00 UTC (7:30 AM IST)
+    - cron: '0 2 * * 0'
+    # Monthly Report check: Trigger near month-end dates at 02:00 UTC (7:30 AM IST)
+    - cron: '0 2 28-31 * *'
+  workflow_dispatch:
+    inputs:
+      period:
+        description: 'Report Type (weekly or monthly)'
+        required: true
+        default: 'weekly'
+        type: choice
+        options:
+          - weekly
+          - monthly
+      date:
+        description: 'Target reference date (YYYY-MM-DD, optional)'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Run without sending email (saves report artifact only)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  TZ: Asia/Kolkata
+
+jobs:
+  determine-execution:
+    runs-on: ubuntu-latest
+    outputs:
+      run_weekly: ${{ steps.check.outputs.run_weekly }}
+      run_monthly: ${{ steps.check.outputs.run_monthly }}
+      period: ${{ steps.check.outputs.period }}
+    steps:
+      - name: Evaluate Schedule Trigger
+        id: check
+        run: |
+          DAY_OF_WEEK=$(TZ='Asia/Kolkata' date +%u) # 1=Mon .. 7=Sun
+          TOMORROW_DAY=$(TZ='Asia/Kolkata' date -d "tomorrow" +%d)
+          
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual workflow dispatch triggered for period: ${{ github.event.inputs.period }}"
+            if [ "${{ github.event.inputs.period }}" = "weekly" ]; then
+              echo "run_weekly=true" >> "$GITHUB_OUTPUT"
+              echo "run_monthly=false" >> "$GITHUB_OUTPUT"
+              echo "period=weekly" >> "$GITHUB_OUTPUT"
+            else
+              echo "run_weekly=false" >> "$GITHUB_OUTPUT"
+              echo "run_monthly=true" >> "$GITHUB_OUTPUT"
+              echo "period=monthly" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            # Scheduled run
+            if [ "$DAY_OF_WEEK" = "7" ]; then
+              echo "Sunday detected! Running weekly report."
+              echo "run_weekly=true" >> "$GITHUB_OUTPUT"
+              echo "period=weekly" >> "$GITHUB_OUTPUT"
+            else
+              echo "run_weekly=false" >> "$GITHUB_OUTPUT"
+            fi
+            
+            if [ "$TOMORROW_DAY" = "01" ]; then
+              echo "Month-end detected (tomorrow is 1st of month)! Running monthly report."
+              echo "run_monthly=true" >> "$GITHUB_OUTPUT"
+              echo "period=monthly" >> "$GITHUB_OUTPUT"
+            else
+              echo "run_monthly=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+  generate-and-send-report:
+    needs: determine-execution
+    if: needs.determine-execution.outputs.run_weekly == 'true' || needs.determine-execution.outputs.run_monthly == 'true'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Executive Weekly Report
+        if: needs.determine-execution.outputs.run_weekly == 'true'
+        env:
+          REPORT_RECIPIENT_EMAIL: ${{ secrets.REPORT_RECIPIENT_EMAIL || 'addytiwari3@gmail.com' }}
+          SMTP_USER: ${{ secrets.SMTP_USER || 'addytiwari3@gmail.com' }}
+          SMTP_APP_PASSWORD: ${{ secrets.SMTP_APP_PASSWORD }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST || 'smtp.gmail.com' }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT || '465' }}
+        run: |
+          ARGS="--period weekly"
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            ARGS="$ARGS --date ${{ github.event.inputs.date }}"
+          fi
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          python scripts/send_pulse_report.py $ARGS
+
+      - name: Run Executive Monthly Report
+        if: needs.determine-execution.outputs.run_monthly == 'true'
+        env:
+          REPORT_RECIPIENT_EMAIL: ${{ secrets.REPORT_RECIPIENT_EMAIL || 'addytiwari3@gmail.com' }}
+          SMTP_USER: ${{ secrets.SMTP_USER || 'addytiwari3@gmail.com' }}
+          SMTP_APP_PASSWORD: ${{ secrets.SMTP_APP_PASSWORD }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST || 'smtp.gmail.com' }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT || '465' }}
+        run: |
+          ARGS="--period monthly"
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            ARGS="$ARGS --date ${{ github.event.inputs.date }}"
+          fi
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          python scripts/send_pulse_report.py $ARGS
+
+      - name: Upload HTML Reports Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pulse-executive-reports
+          path: reports/
+          retention-days: 14
+          if-no-files-found: ignore

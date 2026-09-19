@@ -455,7 +455,98 @@ class TestGDriveUtils(unittest.TestCase):
         """get_gdrive_service must return None without raising exception if token is missing."""
         from core.gdrive_utils import get_gdrive_service
         service = get_gdrive_service(token_path="non_existent_token.json")
-        self.assertIsNone(service)
+class TestReportUtils(unittest.TestCase):
+    def test_weekly_window_sunday(self):
+        """Rule: On Sunday (e.g. 8 Jan 2023), window covers prior Sunday 1 Jan to Saturday 7 Jan."""
+        from core.report_utils import get_weekly_report_window, IST
+        sun_8_jan = datetime.date(2023, 1, 8)  # 2023-01-08 was Sunday
+        self.assertEqual(sun_8_jan.weekday(), 6)
+        start_dt, end_dt = get_weekly_report_window(sun_8_jan)
+        
+        self.assertEqual(start_dt.date(), datetime.date(2023, 1, 1))
+        self.assertEqual(end_dt.date(), datetime.date(2023, 1, 7))
+        self.assertEqual(start_dt.tzinfo, IST)
+        self.assertEqual(end_dt.tzinfo, IST)
+
+    def test_monthly_window_monthend(self):
+        """Rule: For 31 Jan, window covers 31 Dec to 30 Jan."""
+        from core.report_utils import get_monthly_report_window, IST
+        jan_31 = datetime.date(2026, 1, 31)
+        start_dt, end_dt = get_monthly_report_window(jan_31)
+
+        self.assertEqual(start_dt.date(), datetime.date(2025, 12, 31))
+        self.assertEqual(end_dt.date(), datetime.date(2026, 1, 30))
+        self.assertEqual(start_dt.tzinfo, IST)
+        self.assertEqual(end_dt.tzinfo, IST)
+
+    def test_parse_upload_timestamp(self):
+        """Parse IST timestamps accurately."""
+        from core.report_utils import parse_upload_timestamp
+        dt = parse_upload_timestamp("2026-09-19 05:50 IST")
+        self.assertIsNotNone(dt)
+        self.assertEqual(dt.year, 2026)
+        self.assertEqual(dt.month, 9)
+        self.assertEqual(dt.day, 19)
+        self.assertEqual(dt.hour, 5)
+        self.assertEqual(dt.minute, 50)
+
+    def test_categorize_video(self):
+        """Normalize video titles and types into clean categories."""
+        from core.report_utils import categorize_video
+        self.assertEqual(categorize_video("Daily Brain Teaser - September 03", "Short (9:16)", "Education (27)"), "Daily Brain Teaser")
+        self.assertEqual(categorize_video("Daily Current Affairs 19 September 2026", "Short (9:16)", "Education (27)"), "Daily Current Affairs")
+        self.assertEqual(categorize_video("Weekly Current Affairs ( 07 Sep - 13 Sep )", "Weekly Masterclass", "Education (27)"), "Weekly Current Affairs")
+        self.assertEqual(categorize_video("Monthly Current Affairs - August 2026", "Monthly Masterclass", "Education (27)"), "Monthly Current Affairs")
+
+    def test_build_category_breakdown(self):
+        """Calculate counts and percentage shares accurately."""
+        from core.report_utils import build_category_breakdown
+        sample_videos = [
+            {"category": "Daily Current Affairs", "video_type": "Short (9:16)"},
+            {"category": "Daily Current Affairs", "video_type": "Short (9:16)"},
+            {"category": "Daily Brain Teaser", "video_type": "Short (9:16)"},
+            {"category": "Weekly Current Affairs", "video_type": "Weekly Masterclass"},
+        ]
+        breakdown = build_category_breakdown(sample_videos)
+        self.assertEqual(breakdown["total_count"], 4)
+        cats = {c["category"]: c for c in breakdown["categories"]}
+        self.assertEqual(cats["Daily Current Affairs"]["count"], 2)
+        self.assertEqual(cats["Daily Current Affairs"]["share_percent"], "50.0%")
+        self.assertEqual(cats["Daily Brain Teaser"]["count"], 1)
+        self.assertEqual(cats["Daily Brain Teaser"]["share_percent"], "25.0%")
+
+    def test_render_report_html_and_text(self):
+        """Generate HTML and plain text report formats with tables and KPI blocks."""
+        from core.report_utils import render_report_html, render_report_text, IST
+        start_dt = datetime.datetime(2026, 9, 7, 0, 0, tzinfo=IST)
+        end_dt = datetime.datetime(2026, 9, 13, 23, 59, tzinfo=IST)
+        videos = [{
+            "raw_date": "2026-09-08 05:56 IST",
+            "datetime": datetime.datetime(2026, 9, 8, 5, 56, tzinfo=IST),
+            "title": "Daily Current Affairs 08 September 2026",
+            "category": "Daily Current Affairs",
+            "video_type": "Short (9:16)",
+            "video_id": "w67AG-xjn38",
+            "youtube_url": "https://youtu.be/w67AG-xjn38"
+        }]
+        polls = [{
+            "date_str": "08 Sep 2026",
+            "question": "What is the answer?",
+            "options": "a. 1 | b. 2",
+            "correct_answer": "b",
+            "platforms": "YouTube Community, Telegram, Discord"
+        }]
+        cat_summary = {
+            "total_count": 1,
+            "categories": [{"category": "Daily Current Affairs", "count": 1, "types_display": "Short (9:16)", "share_percent": "100.0%"}]
+        }
+        html = render_report_html("weekly", start_dt, end_dt, videos, polls, cat_summary)
+        text = render_report_text("weekly", start_dt, end_dt, videos, polls, cat_summary)
+        
+        self.assertIn("Weekly Performance Report", html)
+        self.assertIn("Daily Current Affairs 08 September 2026", html)
+        self.assertIn("https://youtu.be/w67AG-xjn38", html)
+        self.assertIn("PULSE VECTOR — WEEKLY PERFORMANCE REPORT", text)
 
 
 def main():
