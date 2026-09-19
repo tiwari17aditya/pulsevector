@@ -1,7 +1,7 @@
 """
 Pulse Vector - Automated Reporting Engine
 Generates executive Weekly and Monthly email reports with categorized tabular breakdowns,
-publication timestamps, YouTube links, community poll details, and cloud backup summaries.
+publication timestamps, YouTube links, and attached PDF dossiers of Community Polls.
 """
 
 import os
@@ -12,7 +12,17 @@ import pathlib
 import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
 from typing import Dict, List, Tuple, Any, Optional
+
+# ReportLab imports for professional PDF generation
+from reportlab.lib.pagesizes import A4, letter
+from reportlab.lib import colors
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether, HRFlowable
+)
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
 
 # Standard IST timezone (+05:30)
 IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
@@ -37,15 +47,11 @@ def get_weekly_report_window(target_date: Optional[datetime.date] = None) -> Tup
     if target_date is None:
         target_date = get_ist_now().date()
         
-    # If today is Sunday (weekday == 6), previous week starts 7 days ago and ends 1 day ago.
-    # If called on any other day, aligns with the most recent completed Sunday-to-Saturday cycle.
     days_since_sunday = (target_date.weekday() + 1) % 7  # 0 if Sunday, 1 if Mon, ..., 6 if Sat
     if days_since_sunday == 0:
-        # Running on Sunday: Previous week is from target_date - 7 days to target_date - 1 day
         start_date = target_date - datetime.timedelta(days=7)
         end_date = target_date - datetime.timedelta(days=1)
     else:
-        # Running on non-Sunday: take the most recent completed week (ending on the Saturday just passed)
         end_date = target_date - datetime.timedelta(days=days_since_sunday)
         start_date = end_date - datetime.timedelta(days=6)
 
@@ -62,11 +68,7 @@ def get_monthly_report_window(target_date: Optional[datetime.date] = None) -> Tu
     if target_date is None:
         target_date = get_ist_now().date()
 
-    # End date is target_date - 1 day (e.g. 30 Jan for 31 Jan run)
     end_date = target_date - datetime.timedelta(days=1)
-
-    # Start date is end of previous month or 1 month prior (e.g. 31 Dec for 31 Jan run)
-    # Day 1 of target month minus 1 day gives the last day of the prior month
     first_of_month = target_date.replace(day=1)
     start_date = first_of_month - datetime.timedelta(days=1)
 
@@ -137,7 +139,6 @@ def parse_youtube_upload_records(
         if not table_header_found:
             continue
 
-        # Skip separator line like | :--- | :--- | ...
         if parts[0].startswith(":") or parts[0].startswith("---") or "*Template*" in parts[0]:
             continue
 
@@ -148,11 +149,8 @@ def parse_youtube_upload_records(
             continue
 
         if start_dt <= dt <= end_dt:
-            # Clean video_id
             clean_vid = video_id.strip("` \t\r\n[]")
             yt_link = f"https://youtu.be/{clean_vid}" if clean_vid and clean_vid != "N/A" else "N/A"
-
-            # Determine normalized content category
             normalized_cat = categorize_video(title, video_type, category)
 
             records.append({
@@ -168,7 +166,6 @@ def parse_youtube_upload_records(
                 "youtube_url": yt_link
             })
 
-    # Sort chronologically
     records.sort(key=lambda x: x["datetime"])
     return records
 
@@ -187,7 +184,6 @@ def categorize_video(title: str, video_type: str, raw_category: str) -> str:
     elif "daily current affairs" in t_lower:
         return "Daily Current Affairs"
     else:
-        # Fallback to category name if specific, or General
         if "(" in raw_category:
             return raw_category.split("(")[0].strip()
         return "Special Feature"
@@ -215,7 +211,6 @@ def parse_community_poll_records(
     for p_path in poll_files:
         try:
             fname = os.path.basename(p_path)
-            # Try to extract date from filename e.g. poll-19sep26.txt or brainteaser-19sep26.txt
             m = re.search(r"(\d{1,2})([a-z]{3})(\d{2})", fname.lower())
             if not m:
                 continue
@@ -234,13 +229,11 @@ def parse_community_poll_records(
 
             date_key = poll_date.strftime("%Y-%m-%d")
             if date_key in seen_dates and fname.startswith("brainteaser"):
-                # Prefer poll-*.txt if both exist for same date
                 continue
 
             with open(p_path, "r", encoding="utf-8") as f:
                 content = f.read()
 
-            # Parse question and options
             question = ""
             options = []
             correct_ans = "Revealed in Discussion"
@@ -263,6 +256,7 @@ def parse_community_poll_records(
                 "datetime": poll_dt,
                 "question": question,
                 "options": " | ".join(options) if options else "Multiple Choice (4 Options)",
+                "options_list": options,
                 "correct_answer": correct_ans,
                 "platforms": "YouTube Community, Telegram, Discord",
                 "file_name": fname
@@ -295,7 +289,6 @@ def build_category_breakdown(videos: List[Dict[str, Any]]) -> Dict[str, Any]:
         breakdown[cat]["types"].add(vtype)
         breakdown[cat]["videos"].append(v)
 
-    # Calculate percentages and format types
     result = []
     for cat, data in sorted(breakdown.items(), key=lambda x: x[1]["count"], reverse=True):
         count = data["count"]
@@ -313,6 +306,162 @@ def build_category_breakdown(videos: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
+def generate_community_polls_pdf(
+    period_name: str,
+    start_dt: datetime.datetime,
+    end_dt: datetime.datetime,
+    polls: List[Dict[str, Any]],
+    output_pdf_path: str
+) -> str:
+    """
+    Generates a properly formatted, executive PDF dossier of all Community Polls & Challenges.
+    Returns the absolute path to the generated PDF.
+    """
+    os.makedirs(os.path.dirname(os.path.abspath(output_pdf_path)), exist_ok=True)
+    doc = SimpleDocTemplate(
+        output_pdf_path,
+        pagesize=A4,
+        leftMargin=36,
+        rightMargin=36,
+        topMargin=36,
+        bottomMargin=36
+    )
+
+    styles = getSampleStyleSheet()
+
+    # Custom styles
+    title_style = ParagraphStyle(
+        'DocTitle',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=18,
+        leading=22,
+        textColor=colors.HexColor('#0f172a'),
+        spaceAfter=4
+    )
+
+    subtitle_style = ParagraphStyle(
+        'DocSubtitle',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=11,
+        leading=14,
+        textColor=colors.HexColor('#475569'),
+        spaceAfter=12
+    )
+
+    badge_style = ParagraphStyle(
+        'Badge',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=9,
+        leading=12,
+        textColor=colors.HexColor('#4338ca')
+    )
+
+    card_header_style = ParagraphStyle(
+        'CardHeader',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=12,
+        leading=15,
+        textColor=colors.HexColor('#1e293b')
+    )
+
+    question_style = ParagraphStyle(
+        'Question',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=10,
+        leading=14,
+        textColor=colors.HexColor('#0f172a'),
+        spaceAfter=6
+    )
+
+    option_style = ParagraphStyle(
+        'Option',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9.5,
+        leading=13,
+        textColor=colors.HexColor('#334155')
+    )
+
+    answer_style = ParagraphStyle(
+        'Answer',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=9.5,
+        leading=13,
+        textColor=colors.HexColor('#059669')
+    )
+
+    meta_style = ParagraphStyle(
+        'Meta',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8.5,
+        leading=11,
+        textColor=colors.HexColor('#64748b')
+    )
+
+    story = []
+
+    # Title & Banner
+    story.append(Paragraph("<b>PULSE VECTOR</b> &bull; COMMUNITY ENGAGEMENT DOSSIER", badge_style))
+    story.append(Paragraph(f"{period_name.title()} Community Polls & Brain Teasers", title_style))
+    story.append(Paragraph(
+        f"Coverage Period: <b>{start_dt.strftime('%d %b %Y')} to {end_dt.strftime('%d %b %Y')}</b> | Total Challenges: <b>{len(polls)}</b>",
+        subtitle_style
+    ))
+    story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor('#6366f1'), spaceAfter=14))
+
+    if not polls:
+        story.append(Paragraph("No community poll challenges recorded for this period.", subtitle_style))
+    else:
+        for idx, p in enumerate(polls, 1):
+            # Format options list
+            options_text = ""
+            if p.get("options_list"):
+                for opt in p["options_list"]:
+                    options_text += f"&bull; {opt}<br/>"
+            else:
+                options_text = p.get("options", "Multiple Choice Options")
+
+            card_content = [
+                [
+                    Paragraph(f"<b>CHALLENGE #{idx} &mdash; {p['date_str']}</b>", card_header_style),
+                    Paragraph(f"<b>Platforms:</b> {p['platforms']}", meta_style)
+                ],
+                [
+                    Paragraph(p['question'], question_style),
+                    Paragraph(f"<b>Answer:</b> {p['correct_answer']}", answer_style)
+                ],
+                [
+                    Paragraph(f"<b>Options:</b><br/>{options_text}", option_style),
+                    Paragraph(f"<b>Asset:</b> {p['file_name']}", meta_style)
+                ]
+            ]
+
+            card_table = Table(card_content, colWidths=[360, 160])
+            card_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8fafc')),
+                ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#e2e8f0')),
+                ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#f1f5f9')),
+                ('TOPPADDING', (0, 0), (-1, -1), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                ('LEFTPADDING', (0, 0), (-1, -1), 10),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ]))
+
+            story.append(KeepTogether([card_table, Spacer(1, 10)]))
+
+    # Build PDF
+    doc.build(story)
+    return os.path.abspath(output_pdf_path)
+
+
 def render_report_html(
     period_name: str,
     start_dt: datetime.datetime,
@@ -320,10 +469,11 @@ def render_report_html(
     videos: List[Dict[str, Any]],
     polls: List[Dict[str, Any]],
     cat_summary: Dict[str, Any],
-    extra_meta: Optional[Dict[str, Any]] = None
+    pdf_attachment_name: Optional[str] = None
 ) -> str:
     """
     Renders an executive, responsive, modern dark-gradient HTML email report.
+    (Omits cloud storage section as requested, highlights attached PDF dossier for community polls).
     """
     period_title = period_name.title()
     date_range_display = f"{start_dt.strftime('%d %b %Y')} to {end_dt.strftime('%d %b %Y')}"
@@ -333,7 +483,6 @@ def render_report_html(
     total_polls = len(polls)
     category_rows = cat_summary["categories"]
 
-    # Category counts lookup
     cat_counts = {c["category"]: c["count"] for c in category_rows}
     ca_count = cat_counts.get("Daily Current Affairs", 0)
     bt_count = cat_counts.get("Daily Brain Teaser", 0)
@@ -405,28 +554,8 @@ def render_report_html(
     if not video_table_rows_html:
         video_table_rows_html = """<tr><td colspan="6" style="padding: 20px; text-align: center; color: #64748b;">No video uploads found for the specified timeframe.</td></tr>"""
 
-    # Build community polls table rows HTML
-    poll_table_rows_html = ""
-    for idx, p in enumerate(polls, 1):
-        poll_table_rows_html += f"""
-        <tr style="background-color: {'#f8fafc' if idx % 2 == 0 else '#ffffff'};">
-            <td style="padding: 10px 10px; border-bottom: 1px solid #e2e8f0; text-align: center; font-weight: 600; color: #64748b; font-size: 12px;">{idx}</td>
-            <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px; font-weight: 600; color: #0f172a; white-space: nowrap;">{p['date_str']}</td>
-            <td style="padding: 10px 14px; border-bottom: 1px solid #e2e8f0; font-size: 13px; color: #334155; line-height: 1.4;">
-                <strong>{p['question']}</strong><br>
-                <span style="font-size: 11px; color: #64748b;">Options: {p['options']}</span>
-            </td>
-            <td style="padding: 10px 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; text-align: center; font-weight: 600; color: #059669;">
-                <span style="background-color: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 6px;">{p['correct_answer']}</span>
-            </td>
-            <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #475569; text-align: center;">
-                YouTube Community, Telegram, Discord
-            </td>
-        </tr>
-        """
-
-    if not poll_table_rows_html:
-        poll_table_rows_html = """<tr><td colspan="5" style="padding: 16px; text-align: center; color: #64748b;">No community poll challenges generated in this window.</td></tr>"""
+    # Attached PDF Callout Card
+    pdf_display_name = pdf_attachment_name or f"Pulse_Vector_{period_title}_Community_Polls.pdf"
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -500,7 +629,7 @@ def render_report_html(
                                     <td width="23%" style="background-color: #ffffff; border-radius: 10px; padding: 14px 12px; text-align: center; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                                         <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Community Polls</div>
                                         <div style="font-size: 28px; font-weight: 800; color: #059669; margin: 4px 0 2px 0;">{total_polls}</div>
-                                        <div style="font-size: 10px; color: #059669; font-weight: 600;">Broadcast & Polls</div>
+                                        <div style="font-size: 10px; color: #059669; font-weight: 600;">Attached PDF Dossier</div>
                                     </td>
                                 </tr>
                             </table>
@@ -565,49 +694,25 @@ def render_report_html(
                         </td>
                     </tr>
 
-                    <!-- SECTION 3: COMMUNITY POSTS & POLLS TABLE -->
+                    <!-- SECTION 3: COMMUNITY POSTS & POLLS (ATTACHED PDF DOSSIER) -->
                     <tr>
-                        <td style="padding: 20px 30px 20px 30px;">
-                            <div style="border-bottom: 2px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 14px;">
-                                <h2 style="font-size: 17px; margin: 0; color: #0f172a; font-weight: 700;">
-                                    💬 Community Posts, Polls & Engagement
-                                </h2>
-                                <p style="font-size: 12px; color: #64748b; margin: 3px 0 0 0;">
-                                    1-Click Daily Brain Teaser community polls, MCQ options, answers, and broadcast channels.
-                                </p>
-                            </div>
-                            <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-                                <thead>
-                                    <tr style="background-color: #f1f5f9;">
-                                        <th style="padding: 10px 8px; text-align: center; font-size: 11px; color: #475569; font-weight: 700; text-transform: uppercase; width: 40px;">#</th>
-                                        <th style="padding: 10px 12px; text-align: left; font-size: 11px; color: #475569; font-weight: 700; text-transform: uppercase; width: 90px;">Date</th>
-                                        <th style="padding: 10px 14px; text-align: left; font-size: 11px; color: #475569; font-weight: 700; text-transform: uppercase;">Poll Challenge & Options</th>
-                                        <th style="padding: 10px 10px; text-align: center; font-size: 11px; color: #475569; font-weight: 700; text-transform: uppercase; width: 90px;">Answer</th>
-                                        <th style="padding: 10px 12px; text-align: center; font-size: 11px; color: #475569; font-weight: 700; text-transform: uppercase; width: 140px;">Broadcast Channels</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {poll_table_rows_html}
-                                </tbody>
-                            </table>
-                        </td>
-                    </tr>
-
-                    <!-- SECTION 4: CLOUD STORAGE & BACKUP STATUS -->
-                    <tr>
-                        <td style="padding: 10px 30px 24px 30px;">
-                            <div style="background-color: #f8fafc; border-radius: 10px; padding: 16px 20px; border: 1px solid #e2e8f0;">
+                        <td style="padding: 15px 30px 25px 30px;">
+                            <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #86efac; border-radius: 12px; padding: 22px 24px;">
                                 <table width="100%" cellspacing="0" cellpadding="0">
                                     <tr>
                                         <td>
-                                            <h3 style="font-size: 14px; margin: 0 0 4px 0; color: #1e293b; font-weight: 700;">
-                                                ☁️ Cloud Storage & Archive Infrastructure
+                                            <div style="display: inline-block; background-color: #22c55e; color: #ffffff; border-radius: 12px; padding: 3px 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+                                                📎 Attached PDF Dossier Included
+                                            </div>
+                                            <h3 style="font-size: 16px; margin: 0 0 6px 0; color: #14532d; font-weight: 800;">
+                                                Community Polls & Challenges Document ({total_polls} Polls)
                                             </h3>
-                                            <p style="font-size: 12px; color: #64748b; margin: 0; line-height: 1.4;">
-                                                &bull; <strong>Google Drive Cloud</strong>: Active (5 TB Quota) &mdash; <code>MyDrive/antigravity-projects-storage/pulse-vector/</code><br>
-                                                &bull; <strong>Supabase Free Tier Database</strong>: Metadata runs and logs synchronized.<br>
-                                                &bull; <strong>YouTube Distribution Quota</strong>: Active &bull; Channel: <code>@PulseVector</code>
+                                            <p style="font-size: 13px; color: #166534; margin: 0 0 10px 0; line-height: 1.5;">
+                                                All Daily Brain Teaser community polls, multiple-choice options (A/B/C/D), verified solutions, and multi-platform broadcast records (YouTube Community, Telegram, Discord) are compiled into the attached PDF:
                                             </p>
+                                            <div style="display: inline-block; background-color: #ffffff; border: 1px solid #bbf7d0; border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 700; color: #047857;">
+                                                📄 {pdf_display_name}
+                                            </div>
                                         </td>
                                     </tr>
                                 </table>
@@ -643,7 +748,8 @@ def render_report_text(
     end_dt: datetime.datetime,
     videos: List[Dict[str, Any]],
     polls: List[Dict[str, Any]],
-    cat_summary: Dict[str, Any]
+    cat_summary: Dict[str, Any],
+    pdf_attachment_name: Optional[str] = None
 ) -> str:
     """Renders plain text fallback for email clients without HTML support."""
     lines = [
@@ -669,14 +775,13 @@ def render_report_text(
 
     if polls:
         lines.append("")
-        lines.append("--- 3. COMMUNITY POLLS & CHALLENGES ---")
-        for idx, p in enumerate(polls, 1):
-            lines.append(f"{idx}. [{p['date_str']}] {p['question']}")
-            lines.append(f"   Options: {p['options']} | Answer: {p['correct_answer']}")
+        pdf_name = pdf_attachment_name or f"Pulse_Vector_{period_name.title()}_Community_Polls.pdf"
+        lines.append(f"--- 3. COMMUNITY POLLS & CHALLENGES (ATTACHED PDF: {pdf_name}) ---")
+        lines.append(f"{len(polls)} community challenge polls compiled into the attached PDF dossier.")
 
     lines.append("")
     lines.append("==================================================================")
-    lines.append("Cloud Storage: Google Drive 5 TB (Synced) | Channel: @PulseVector")
+    lines.append(f"Pulse Vector Automation • Channel: @PulseVector")
     return "\n".join(lines)
 
 
@@ -688,10 +793,11 @@ def send_report_email(
     sender: str = DEFAULT_SENDER,
     smtp_host: str = SMTP_HOST,
     smtp_port: int = SMTP_PORT,
-    smtp_password: Optional[str] = None
+    smtp_password: Optional[str] = None,
+    pdf_attachment_path: Optional[str] = None
 ) -> Tuple[bool, str]:
     """
-    Sends the multi-part HTML/Plain-text report email via SMTP (SSL/TLS).
+    Sends the multi-part HTML/Plain-text report email with optional PDF attachment via SMTP (SSL/TLS).
     Returns (success: bool, status_message: str).
     """
     if smtp_password is None:
@@ -703,16 +809,32 @@ def send_report_email(
             "Please configure SMTP_APP_PASSWORD in environment or GitHub Secrets to enable automatic inbox delivery."
         )
 
-    msg = MIMEMultipart("alternative")
+    # Outer multipart container for mixed content (body + attachment)
+    msg = MIMEMultipart("mixed")
     msg["Subject"] = subject
     msg["From"] = f"Pulse Vector Automation <{sender}>"
     msg["To"] = recipient
     msg["Date"] = datetime.datetime.now(datetime.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
 
+    # Alternative container for text and HTML bodies
+    msg_body = MIMEMultipart("alternative")
     part1 = MIMEText(text_content, "plain", "utf-8")
     part2 = MIMEText(html_content, "html", "utf-8")
-    msg.attach(part1)
-    msg.attach(part2)
+    msg_body.attach(part1)
+    msg_body.attach(part2)
+    msg.attach(msg_body)
+
+    # Attach PDF if provided and exists
+    if pdf_attachment_path and os.path.exists(pdf_attachment_path):
+        try:
+            with open(pdf_attachment_path, "rb") as f:
+                pdf_data = f.read()
+            pdf_part = MIMEApplication(pdf_data, _subtype="pdf")
+            pdf_filename = os.path.basename(pdf_attachment_path)
+            pdf_part.add_header('Content-Disposition', 'attachment', filename=pdf_filename)
+            msg.attach(pdf_part)
+        except Exception as e:
+            return False, f"Could not attach PDF {pdf_attachment_path}: {e}"
 
     try:
         if smtp_port == 465:

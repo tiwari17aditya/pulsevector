@@ -39,6 +39,7 @@ from core.report_utils import (
     parse_youtube_upload_records,
     parse_community_poll_records,
     build_category_breakdown,
+    generate_community_polls_pdf,
     render_report_html,
     render_report_text,
     send_report_email,
@@ -129,14 +130,32 @@ def main():
 
     print(f"   Found {len(uploads)} video uploads and {len(polls)} community challenge posts in period.")
 
-    # Render formats
+    # Save directory
+    save_dir = BASE_DIR / args.save_dir
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    # 1. Generate Community Polls & Challenges PDF Attachment
+    pdf_filename = f"pulse_{args.period}_community_polls_{start_dt.strftime('%Y%m%d')}_to_{end_dt.strftime('%Y%m%d')}.pdf"
+    pdf_file_path = save_dir / pdf_filename
+
+    generate_community_polls_pdf(
+        period_name=args.period,
+        start_dt=start_dt,
+        end_dt=end_dt,
+        polls=polls,
+        output_pdf_path=str(pdf_file_path)
+    )
+    print(f"✅ Generated Community Polls PDF: {pdf_file_path.relative_to(BASE_DIR)}")
+
+    # 2. Render HTML and Text Formats (with PDF badge and cloud storage section omitted)
     html_content = render_report_html(
         period_name=args.period,
         start_dt=start_dt,
         end_dt=end_dt,
         videos=uploads,
         polls=polls,
-        cat_summary=cat_summary
+        cat_summary=cat_summary,
+        pdf_attachment_name=pdf_filename
     )
     text_content = render_report_text(
         period_name=args.period,
@@ -144,12 +163,11 @@ def main():
         end_dt=end_dt,
         videos=uploads,
         polls=polls,
-        cat_summary=cat_summary
+        cat_summary=cat_summary,
+        pdf_attachment_name=pdf_filename
     )
 
-    # Save HTML artifact
-    save_dir = BASE_DIR / args.save_dir
-    save_dir.mkdir(parents=True, exist_ok=True)
+    # 3. Save HTML artifact
     report_filename = f"pulse_{args.period}_report_{start_dt.strftime('%Y%m%d')}_to_{end_dt.strftime('%Y%m%d')}.html"
     report_file_path = save_dir / report_filename
 
@@ -161,18 +179,19 @@ def main():
     # Print summary text preview to console
     print("\n" + text_content + "\n")
 
-    # Email Dispatch
+    # 4. Email Dispatch (with attached PDF)
     subject = f"Pulse Vector {args.period.title()} Report — {start_dt.strftime('%d %b')} to {end_dt.strftime('%d %b %Y')}"
     if args.dry_run:
         print(f"🔍 Dry-run complete. Email delivery skipped.")
         return
 
-    print(f"📧 Sending report to {args.to}...")
+    print(f"📧 Sending report with PDF attachment to {args.to}...")
     success, msg = send_report_email(
         subject=subject,
         html_content=html_content,
         text_content=text_content,
-        recipient=args.to
+        recipient=args.to,
+        pdf_attachment_path=str(pdf_file_path)
     )
 
     if success:
