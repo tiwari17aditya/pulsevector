@@ -810,11 +810,16 @@ def send_report_email(
         )
 
     # Outer multipart container for mixed content (body + attachment)
+    import email.utils
     msg = MIMEMultipart("mixed")
     msg["Subject"] = subject
     msg["From"] = f"Pulse Vector Automation <{sender}>"
     msg["To"] = recipient
-    msg["Date"] = datetime.datetime.now(datetime.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
+    msg["Reply-To"] = recipient
+    msg["Message-ID"] = email.utils.make_msgid(domain="pulsevector.automation")
+    msg["Date"] = email.utils.formatdate(localtime=True)
+    msg["X-Auto-Response-Suppress"] = "All"
+    msg["Auto-Submitted"] = "auto-generated"
 
     # Alternative container for text and HTML bodies
     msg_body = MIMEMultipart("alternative")
@@ -846,6 +851,19 @@ def send_report_email(
                 server.starttls()
                 server.login(sender, smtp_password)
                 server.send_message(msg)
+
+        # Gmail skips Primary Inbox for self-sent emails (From == To) by default and puts them in Sent/All Mail.
+        # When recipient is sender, also append directly to INBOX so it appears right at the top of the user's Inbox!
+        if recipient.strip().lower() == sender.strip().lower():
+            try:
+                import imaplib
+                imap_host = smtp_host.replace("smtp", "imap")
+                with imaplib.IMAP4_SSL(imap_host, 993) as imap_client:
+                    imap_client.login(sender, smtp_password)
+                    imap_client.append('INBOX', '', None, msg.as_bytes())
+            except Exception:
+                pass
+
         return True, f"Successfully delivered email report to {recipient}"
     except Exception as e:
         return False, f"Failed to send email via SMTP ({smtp_host}:{smtp_port}): {e}"

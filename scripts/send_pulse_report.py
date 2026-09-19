@@ -180,7 +180,7 @@ def main():
     print("\n" + text_content + "\n")
 
     # 4. Email Dispatch (with attached PDF)
-    subject = f"Pulse Vector {args.period.title()} Report — {start_dt.strftime('%d %b')} to {end_dt.strftime('%d %b %Y')}"
+    subject = f"[Pulse Vector] {args.period.title()} Executive Report — {start_dt.strftime('%d %b')} to {end_dt.strftime('%d %b %Y')} [{now_ist.strftime('%I:%M %p')}]"
     if args.dry_run:
         print(f"🔍 Dry-run complete. Email delivery skipped.")
         return
