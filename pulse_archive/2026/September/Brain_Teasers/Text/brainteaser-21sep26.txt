@@ -1,0 +1,22 @@
+Daily Brain Teaser - 21 September 2026 🧠
+Q. You have two opaque bags. Bag A contains 2 red marbles and 1 blue marble. Bag B contains 1 red marble and 2 blue marbles. You randomly choose a bag and then randomly draw one marble. If the marble drawn is red, what is the probability you chose Bag A?
+Series:
+Bag A: 2 Red, 1 Blue
+Bag B: 1 Red, 2 Blue
+Randomly choose bag, draw 1 marble.
+Marble is RED.
+P(Chose Bag A | Marble is Red) = ?
+
+a. 1/2
+b. 1/3
+c. 2/3
+d. 3/4
+
+Correct Answer: c
+
+#BrainTeaser #Puzzle #LogicPuzzle #ProbabilityPuzzle #DailyPuzzle #MindBender #IQTest #Challenge #BrainGames #MathPuzzle #QuickHit #LogicParadox #Probability #BayesTheorem #ConditionalProbability #MarblePuzzle #DailyChallenge #ViralPuzzle #ReelsPuzzle #ShortsPuzzle #PulseVector #BrainWorkout #SolveIt #ThinkFast #MentalChallenge #PuzzleOfTheDay #ProbabilityChallenge #LogicAndMath #BrainTraining #CognitiveChallenge #SmartThinking #QuickSolve #TestYourBrain #PuzzleMaster #DailyDoseOfLogic #MindGamesDaily #BrainTeasersForYou #LogicBoost #ProbabilityBoost #ProblemSolving #MathChallenge #Reasoning #Deduction #ThinkOutsideTheBox #BrainFlex #PuzzleCommunity #LogicGates #ProbabilityTheory #MentalAgility #QuizTime
+
+---
+
+**Image Generation Prompt:**
+4k clean minimalist dark mode background, with two glowing, translucent bags (one red-themed, one blue-themed) containing stylized red and blue marbles. A single glowing red marble is prominent in the foreground. Neon accents highlight the puzzle text, crisp typography for the question and options. 'Pulse Vector' watermark subtly integrated in the bottom right corner. Emphasize a mysterious and intellectual vibe.
