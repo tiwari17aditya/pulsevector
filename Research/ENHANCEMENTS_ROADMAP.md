@@ -82,26 +82,41 @@ This document outlines the versioned progression of the automated content creati
 * **Smart Classifier**: `classify_news_category()` assigns headlines to `DEFENCE` 🛡️, `ECONOMY` 📈, `TECH & AI` 🚀, `GEOPOLITICS` 🌐, `ENVIRONMENT` 🌱, `NATIONAL` 🏛️, or `GLOBAL` 🌍.
 * **Editorial Slide Pills**: Renders glowing category micro-pills with domain-specific accent palettes on news slides.
 
-### 🟢 v2.4.0 - Automated Brain Teaser Solution Reveal & Comment Ledger (Completed — 4 September 2026)
-* **Challenge Comments**: Generates 24-hour challenge comments upon upload to stimulate viewer answers in the comments section.
-* **Automatic Solution Reveal**: Reads yesterday's archive text, extracts verified answers, and formats official solution reveals.
+### 🟢 v2.4.1 - Google Drive Storage Consolidation & Thread-Safe Cloud Sync (Completed — September 2026)
+* **Single Cloud Directory**: Unified Google Drive storage under canonical folder (`antigravity-projects-storage/pulse-vector`), eliminating duplicate cloud folder collisions (`(1)`).
+* **Concurrency Lock**: Added `threading.Lock()` to `find_or_create_folder()` in `gdrive_utils.py` to prevent multi-threaded race conditions during batch uploads.
+* **Dual-Sync Prevention**: Serialized cloud sync to prioritize API uploads and eliminate simultaneous disk copy races.
+
+### 🟡 v2.4.2 - Native Video Broadcasting & Universal Social Media Footers (Active Enhancement — September 2026)
+* **Native Video Uploads to Telegram**: Upgrades `broadcast_telegram()` to stream actual `.mp4` video files via Telegram Bot API `sendVideo` (`supports_streaming=True`) instead of static images.
+* **Native Video Attachments to Discord**: Upgrades `broadcast_discord()` to upload `.mp4` video files directly as webhook attachments alongside rich embeds.
+* **Universal Social Media Block**: Integrates standardized, clean social media footers across YouTube descriptions, Telegram captions, and Discord embeds (YouTube, Telegram Channel, Discord).
 
 ---
 
 ## 🚀 Future Roadmap & Proposals
 
-### 🕒 v2.5.0 - Generative AI Visual Assets per Headline
+### 🕒 v2.5.0 - Pulse Vector Operational MCP Server (Direct Next Enhancement)
+* **Goal**: Provide an interactive operational control plane for the AI agent in Antigravity IDE using the Model Context Protocol (MCP).
+* **Architecture**: Standalone stdio/JSON-RPC MCP server (`pulse-ops-mcp`) exposing dedicated operational tools for the AI assistant:
+  * `check_api_quotas`: Live tracking of YouTube Data API quota units consumed (against daily 10,000 limit), Gemini API tokens, and Supabase storage.
+  * `query_content_deduplication`: Query Supabase/DuckDB archive to ensure news topics or brain teaser formulas have not been used in the past 90 days.
+  * `inspect_render_diagnostics`: Inspect audio-video alignment, karaoke syllable timing ledgers, and FFmpeg output health for any historical date.
+  * `trigger_social_broadcast`: On-demand manual broadcast dispatch to Telegram and Discord channels directly from chat.
+* **Scope Isolation**: Keeps headless production pipelines (`pipeline.py`, GitHub Actions CI) purely native Python, while empowering the IDE agent with deep tool execution.
+
+### 🕒 v2.6.0 - Generative AI Visual Assets per Headline
 * **Goal**: Replace generic background slides with topic-specific AI illustrations.
 * **Implementation Plan**:
   * Query Google Imagen or DALL-E 3 API with condensed headline keywords to produce unique per-point backgrounds.
 
-### 🕒 v2.6.0 - Dynamic Analytics Feedback Loop
+### 🕒 v2.7.0 - Dynamic Analytics Feedback Loop
 * **Goal**: Optimize content topics based on historical view/engagement metrics.
 * **Implementation Plan**:
   * Fetch analytics (views, watch retention) daily via YouTube Reporting API.
   * Feed historical engagement data back into the Gemini prompt context to prioritize high-performing categories.
 
-### 🕒 v2.7.0 - Interactive Channel Membership Dashboard
+### 🕒 v2.8.0 - Interactive Channel Membership Dashboard
 * **Goal**: Web portal providing exclusive PDF downloads of current affairs for channel members.
 * **Implementation Plan**:
   * Build a React/Next.js frontend authenticated via YouTube Memberships API.
