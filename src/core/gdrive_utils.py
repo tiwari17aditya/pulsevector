@@ -12,8 +12,11 @@ from .config import GOOGLE_DRIVE_FOLDER_PATH, GOOGLE_DRIVE_FOLDER_NAME, GOOGLE_D
 
 GDRIVE_SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
+import threading
+
 # Cache for folder IDs to prevent redundant API queries
 _FOLDER_CACHE: Dict[str, str] = {}
+_FOLDER_LOCK = threading.Lock()
 
 
 def get_gdrive_service(
@@ -67,58 +70,61 @@ def get_gdrive_service(
 def find_or_create_folder(service, folder_name: str, parent_id: Optional[str] = None) -> Optional[str]:
     """
     Searches for an existing active folder by name within a parent folder,
-    or creates it if it doesn't exist.
+    or creates it if it doesn't exist. Thread-safe with _FOLDER_LOCK.
     """
     cache_key = f"{parent_id or 'root'}::{folder_name}"
-    if cache_key in _FOLDER_CACHE:
-        return _FOLDER_CACHE[cache_key]
+    with _FOLDER_LOCK:
+        if cache_key in _FOLDER_CACHE:
+            return _FOLDER_CACHE[cache_key]
 
-    query_parts = [
-        f"name = '{folder_name}'",
-        "mimeType = 'application/vnd.google-apps.folder'",
-        "trashed = false"
-    ]
-    if parent_id:
-        query_parts.append(f"'{parent_id}' in parents")
-    else:
-        query_parts.append("'root' in parents")
-
-    query = " and ".join(query_parts)
-
-    try:
-        response = service.files().list(
-            q=query,
-            spaces='drive',
-            fields='files(id, name)',
-            pageSize=10
-        ).execute()
-
-        files = response.get('files', [])
-        if files:
-            folder_id = files[0]['id']
-            _FOLDER_CACHE[cache_key] = folder_id
-            return folder_id
-
-        # Folder does not exist, create it
-        folder_metadata = {
-            'name': folder_name,
-            'mimeType': 'application/vnd.google-apps.folder'
-        }
+        query_parts = [
+            f"name = '{folder_name}'",
+            "mimeType = 'application/vnd.google-apps.folder'",
+            "trashed = false"
+        ]
         if parent_id:
-            folder_metadata['parents'] = [parent_id]
+            query_parts.append(f"'{parent_id}' in parents")
+        else:
+            query_parts.append("'root' in parents")
 
-        created_folder = service.files().create(
-            body=folder_metadata,
-            fields='id, name'
-        ).execute()
+        query = " and ".join(query_parts)
 
-        folder_id = created_folder.get('id')
-        _FOLDER_CACHE[cache_key] = folder_id
-        logging.info(f"Created Google Drive folder: '{folder_name}' (ID: {folder_id})")
-        return folder_id
-    except Exception as e:
-        logging.error(f"Error finding/creating Google Drive folder '{folder_name}': {e}")
-        return None
+        try:
+            response = service.files().list(
+                q=query,
+                spaces='drive',
+                fields='files(id, name, createdTime)',
+                pageSize=10
+            ).execute()
+
+            files = response.get('files', [])
+            if files:
+                # If multiple exist, pick the oldest (first created) to ensure stability
+                sorted_files = sorted(files, key=lambda x: x.get('createdTime', ''))
+                folder_id = sorted_files[0]['id']
+                _FOLDER_CACHE[cache_key] = folder_id
+                return folder_id
+
+            # Folder does not exist, create it
+            folder_metadata = {
+                'name': folder_name,
+                'mimeType': 'application/vnd.google-apps.folder'
+            }
+            if parent_id:
+                folder_metadata['parents'] = [parent_id]
+
+            created_folder = service.files().create(
+                body=folder_metadata,
+                fields='id, name'
+            ).execute()
+
+            folder_id = created_folder.get('id')
+            _FOLDER_CACHE[cache_key] = folder_id
+            logging.info(f"Created Google Drive folder: '{folder_name}' (ID: {folder_id})")
+            return folder_id
+        except Exception as e:
+            logging.error(f"Error finding/creating Google Drive folder '{folder_name}': {e}")
+            return None
 
 
 def ensure_folder_path(service, path_parts: List[str], root_folder_id: Optional[str] = None) -> Optional[str]:
@@ -209,7 +215,7 @@ def sync_archive_file_to_gdrive(
     """
     Syncs a single file from the local pulse_archive directory into Google Drive,
     mirroring the folder hierarchy inside root_folder_path (e.g. antigravity-projects-storage/pulse-vector/2026/September/Daily_Videos/...).
-    Supports direct local Google Drive for Desktop sync as well as Google Drive API v3 cloud upload.
+    Prefers Google Drive API v3 cloud upload; falls back to direct local Google Drive for Desktop sync.
     """
     import shutil
     rel_path = ""
@@ -218,8 +224,29 @@ def sync_archive_file_to_gdrive(
     except Exception:
         rel_path = os.path.basename(file_path)
 
-    local_synced = False
-    # 1. Direct local sync if Google Drive for Desktop is mounted
+    # 1. Preferred: Authenticated Google Drive API v3 Upload
+    service = get_gdrive_service()
+    if service:
+        try:
+            if not root_folder_id:
+                folder_segments = [seg.strip() for seg in root_folder_path.replace("->", "/").split("/") if seg.strip()]
+                root_folder_id = ensure_folder_path(service, folder_segments, root_folder_id=None)
+
+            if root_folder_id:
+                parent_dir = os.path.dirname(rel_path)
+                path_segments = [p for p in parent_dir.replace("\\", "/").split("/") if p]
+
+                target_folder_id = ensure_folder_path(service, path_segments, root_folder_id=root_folder_id)
+                if not target_folder_id:
+                    target_folder_id = root_folder_id
+
+                api_res = upload_file_to_gdrive(service, file_path, target_folder_id)
+                if api_res:
+                    return api_res
+        except Exception as e:
+            logging.warning(f"Google Drive API sync error: {e}")
+
+    # 2. Fallback: Direct local sync if Google Drive for Desktop is mounted and API was not used/failed
     try:
         clean_path = root_folder_path.replace("->", "/").strip("/")
         local_drive_root = pathlib.Path("G:/My Drive") / clean_path
@@ -228,53 +255,14 @@ def sync_archive_file_to_gdrive(
             dest_file.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(file_path, dest_file)
             logging.info(f"Directly synced file to Google Drive for Desktop: {dest_file}")
-            local_synced = True
-    except Exception as e:
-        logging.warning(f"Local Google Drive sync note: {e}")
-
-    service = get_gdrive_service()
-    if not service:
-        if local_synced:
             return {
                 "id": "local_gdrive_sync",
                 "name": os.path.basename(file_path),
                 "webViewLink": f"gdrive://My Drive/{root_folder_path}/{rel_path}".replace("\\", "/")
             }
-        return None
-
-    # Resolve base folder hierarchy via API (e.g. antigravity-projects-storage -> pulse-vector)
-    try:
-        if not root_folder_id:
-            folder_segments = [seg.strip() for seg in root_folder_path.replace("->", "/").split("/") if seg.strip()]
-            root_folder_id = ensure_folder_path(service, folder_segments, root_folder_id=None)
-            if not root_folder_id:
-                if local_synced:
-                    return {
-                        "id": "local_gdrive_sync",
-                        "name": os.path.basename(file_path),
-                        "webViewLink": f"gdrive://My Drive/{root_folder_path}/{rel_path}".replace("\\", "/")
-                    }
-                return None
-
-        parent_dir = os.path.dirname(rel_path)
-        path_segments = [p for p in parent_dir.replace("\\", "/").split("/") if p]
-
-        target_folder_id = ensure_folder_path(service, path_segments, root_folder_id=root_folder_id)
-        if not target_folder_id:
-            target_folder_id = root_folder_id
-
-        api_res = upload_file_to_gdrive(service, file_path, target_folder_id)
-        if api_res:
-            return api_res
     except Exception as e:
-        logging.warning(f"Google Drive API sync error: {e}")
+        logging.warning(f"Local Google Drive sync note: {e}")
 
-    if local_synced:
-        return {
-            "id": "local_gdrive_sync",
-            "name": os.path.basename(file_path),
-            "webViewLink": f"gdrive://My Drive/{root_folder_path}/{rel_path}".replace("\\", "/")
-        }
     return None
 
 

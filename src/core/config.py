@@ -38,7 +38,7 @@ BT_DATE_FMT = "%d%b%y"
 # Cloud Storage & Google Drive Configuration
 GOOGLE_DRIVE_FOLDER_PATH = os.getenv("GOOGLE_DRIVE_FOLDER_PATH", "antigravity-projects-storage/pulse-vector")
 GOOGLE_DRIVE_FOLDER_NAME = os.getenv("GOOGLE_DRIVE_FOLDER_NAME", "pulse-vector")
-GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", None)
+GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "1j8pokFycYk6YSu1drLZBrpRRn4pu7KfV")
 ENABLE_GDRIVE_UPLOAD = os.getenv("ENABLE_GDRIVE_UPLOAD", "true").lower() in ("true", "1", "yes")
 ENABLE_SUPABASE_STORAGE_UPLOAD = os.getenv("ENABLE_SUPABASE_STORAGE_UPLOAD", "false").lower() in ("true", "1", "yes")
 

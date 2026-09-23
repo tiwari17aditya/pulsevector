@@ -75,14 +75,6 @@ def process_record(record, root_folder_id, local_gdrive_root, purge_supabase=Fal
             logging.error(f"Error downloading {sp_url}: {e}")
             return False, str(e)
 
-    # Ensure local file exists on G: Drive Desktop
-    if source_file and source_file != dest_local_file:
-        try:
-            import shutil
-            shutil.copy2(source_file, dest_local_file)
-        except Exception as e:
-            logging.warning(f"Error copying to local Google Drive: {e}")
-
     # 2. Upload to Google Drive via API if service is available
     gdrive_link = None
     service = get_thread_gdrive_service()
@@ -97,7 +89,14 @@ def process_record(record, root_folder_id, local_gdrive_root, purge_supabase=Fal
         except Exception as e:
             logging.warning(f"Drive API upload warning for {file_path_rel}: {e}")
 
+    # Fallback: Copy to local G: Drive Desktop folder if API is not available
     if not gdrive_link:
+        if source_file and source_file != dest_local_file:
+            try:
+                import shutil
+                shutil.copy2(source_file, dest_local_file)
+            except Exception as e:
+                logging.warning(f"Error copying to local Google Drive: {e}")
         gdrive_link = f"gdrive://My Drive/{GOOGLE_DRIVE_FOLDER_PATH}/{file_path_rel}"
 
     # 3. Update Supabase pipeline_runs record with new Google Drive URL
