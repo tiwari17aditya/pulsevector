@@ -5,6 +5,7 @@ Standalone stdio JSON-RPC server providing agent-callable operational tools:
 - check_content_deduplication: 90-day archive similarity & deduplication engine
 - get_render_diagnostics: Media, slide, and Shorts compliance inspector
 - dispatch_social_broadcast: On-demand Telegram/Discord broadcast dispatcher
+- sanitize_and_redact_sensitive_data: DLP engine guaranteeing zero external secret leakage
 """
 
 import sys
@@ -34,16 +35,23 @@ from mcp_server.tools.quotas import check_api_quotas
 from mcp_server.tools.deduplication import query_content_deduplication
 from mcp_server.tools.diagnostics import inspect_render_diagnostics
 from mcp_server.tools.broadcast import trigger_social_broadcast
+from mcp_server.tools.security import (
+    protect_sensitive_data,
+    audit_and_sanitize_payload,
+)
 
 @app.tool()
+@protect_sensitive_data
 def check_quotas_and_health() -> Dict[str, Any]:
     """
     Checks operational quotas and service health across YouTube Data API,
     Gemini API, Supabase cloud database, Google Drive, and local archive storage.
+    All credentials and sensitive tokens are strictly redacted.
     """
     return check_api_quotas()
 
 @app.tool()
+@protect_sensitive_data
 def check_content_deduplication(
     query: str,
     lookback_days: int = 90,
@@ -56,6 +64,7 @@ def check_content_deduplication(
     return query_content_deduplication(query, lookback_days=lookback_days, content_type=content_type)
 
 @app.tool()
+@protect_sensitive_data
 def get_render_diagnostics(
     target_date: Optional[str] = None,
     content_type: str = "daily"
@@ -67,6 +76,7 @@ def get_render_diagnostics(
     return inspect_render_diagnostics(target_date=target_date, content_type=content_type)
 
 @app.tool()
+@protect_sensitive_data
 def dispatch_social_broadcast(
     target_date: Optional[str] = None,
     content_type: str = "daily",
@@ -74,9 +84,19 @@ def dispatch_social_broadcast(
 ) -> Dict[str, Any]:
     """
     Triggers or previews a multi-platform broadcast (Telegram & Discord) for a given date
-    with native .mp4 video attachments.
+    with native .mp4 video attachments. Webhook URLs and bot tokens are strictly protected.
     """
     return trigger_social_broadcast(target_date=target_date, content_type=content_type, dry_run=dry_run)
+
+@app.tool()
+def sanitize_and_redact_sensitive_data(payload: Any) -> Dict[str, Any]:
+    """
+    DLP & Security Inspection Engine:
+    Inspects, redacts, and purges ANY sensitive credentials (API keys, client secrets,
+    database passwords, OAuth tokens, personal emails, webhook URLs) from strings,
+    dictionaries, or nested diagnostic payloads before external exposure.
+    """
+    return audit_and_sanitize_payload(payload)
 
 if __name__ == "__main__":
     app.run(transport="stdio")

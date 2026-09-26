@@ -782,6 +782,65 @@ class TestSecretSync(unittest.TestCase):
         self.assertEqual(decrypted, raw_secret)
 
 
+class TestMCPSecurityDLP(unittest.TestCase):
+    """Verifies that NO sensitive data can leak externally via MCP tools."""
+
+    def test_gemini_key_redacted(self):
+        from mcp_server.tools.security import sanitize_sensitive_data
+        sample = "Error calling Gemini with key AIzaSyD12345678901234567890123456789012"
+        cleaned = sanitize_sensitive_data(sample)
+        self.assertNotIn("AIzaSyD", cleaned)
+        self.assertIn("[REDACTED_GEMINI_KEY]", cleaned)
+
+    def test_telegram_and_discord_redacted(self):
+        from mcp_server.tools.security import sanitize_sensitive_data
+        sample_tg = "Bot token is 1234567890:ABCdefGHIjklmnopqrstuvwxyz123456789"
+        cleaned_tg = sanitize_sensitive_data(sample_tg)
+        self.assertNotIn("1234567890:ABCdef", cleaned_tg)
+        self.assertIn("[REDACTED_TELEGRAM_BOT_TOKEN]", cleaned_tg)
+
+        sample_dc = "Webhook: https://discord.com/api/webhooks/1234567890/tokenABCdef123"
+        cleaned_dc = sanitize_sensitive_data(sample_dc)
+        self.assertNotIn("tokenABCdef123", cleaned_dc)
+        self.assertIn("[REDACTED_DISCORD_WEBHOOK]", cleaned_dc)
+
+    def test_database_password_redacted(self):
+        from mcp_server.tools.security import sanitize_sensitive_data
+        sample_db = "postgresql://postgres:super_secret_db_pass_99@aws-0-ap-south-1.pooler.supabase.com:6543/postgres"
+        cleaned_db = sanitize_sensitive_data(sample_db)
+        self.assertNotIn("super_secret_db_pass_99", cleaned_db)
+        self.assertIn("[REDACTED_DB_PASSWORD]", cleaned_db)
+
+    def test_recursive_nested_payload_redaction(self):
+        from mcp_server.tools.security import sanitize_sensitive_data
+        nested_payload = {
+            "service": "youtube",
+            "api_key": "my_raw_unmasked_secret_key_123",
+            "diagnostics": {
+                "url": "https://discord.com/api/webhooks/999/secret_token",
+                "tokens": ["AIzaSyD12345678901234567890123456789012"]
+            },
+            "safe_counter": 42
+        }
+        sanitized = sanitize_sensitive_data(nested_payload)
+        self.assertNotIn("my_raw_unmasked_secret_key_123", str(sanitized))
+        self.assertNotIn("secret_token", str(sanitized))
+        self.assertNotIn("AIzaSyD12345678901234567890123456789012", str(sanitized))
+        self.assertEqual(sanitized["safe_counter"], 42)
+
+    def test_audit_and_sanitize_payload_tool(self):
+        from mcp_server.tools.security import audit_and_sanitize_payload
+        result = audit_and_sanitize_payload({
+            "key": "AIzaSyD12345678901234567890123456789012",
+            "status": "active"
+        })
+        self.assertEqual(result["status"], "PROTECTED")
+        self.assertTrue(result["is_safe_for_external_exposure"])
+        self.assertTrue(result["had_sensitive_data"])
+        self.assertNotIn("AIzaSyD", str(result["sanitized_payload"]))
+
+
+
 
 def main():
     print("==========================================================")
