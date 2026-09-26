@@ -955,7 +955,7 @@ def render_report_text(
 
         lines.append("")
         lines.append("==================================================================")
-        lines.append(f"Pulse Vector Automation • Channel: @PulseVector")
+        lines.append(f"Pulse Vector Automation • Channel: @Pulse_vector")
         return "\n".join(lines)
     except Exception as e:
         logging.error(f"Error rendering report text: {e}")

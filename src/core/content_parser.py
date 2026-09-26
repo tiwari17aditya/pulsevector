@@ -480,7 +480,7 @@ def get_social_links_block(
         PULSE_INSTAGRAM_URL, PULSE_X_URL
     )
     
-    yt = youtube_url or PULSE_YOUTUBE_URL or "https://www.youtube.com/@PulseVector"
+    yt = youtube_url or PULSE_YOUTUBE_URL or "https://www.youtube.com/@Pulse_vector"
     tg = telegram_url or PULSE_TELEGRAM_URL or "https://t.me/pulsevector_daily"
     dc = discord_url if discord_url is not None else (PULSE_DISCORD_URL or "https://discord.gg/pulsevector")
     insta = instagram_url or PULSE_INSTAGRAM_URL

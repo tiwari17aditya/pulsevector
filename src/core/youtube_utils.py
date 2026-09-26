@@ -221,11 +221,11 @@ STANDARD_PINNED_COMMENT_TEMPLATE = (
     "Which question should we feature in tomorrow's quiz? Drop it below! 👇"
 )
 
-def get_pinned_comment(masterclass_link="https://www.youtube.com/@PulseVector"):
+def get_pinned_comment(masterclass_link="https://www.youtube.com/@Pulse_vector"):
     """Returns the formatted pinned comment text with the real link substituted."""
     return STANDARD_PINNED_COMMENT_TEMPLATE.format(masterclass_link=masterclass_link)
 
-def format_daily_interactive_comment(headline_preview: str, date_str: str, masterclass_link: str = "https://www.youtube.com/@PulseVector") -> str:
+def format_daily_interactive_comment(headline_preview: str, date_str: str, masterclass_link: str = "https://www.youtube.com/@Pulse_vector") -> str:
     """Formats a high-engagement discussion comment for Daily Current Affairs Shorts."""
     # Clean headline preview
     clean_hl = re.sub(r'[\.\:\;\-\"\'\`]', '', headline_preview).strip()

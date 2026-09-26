@@ -35,7 +35,7 @@ Immediately after uploading any Current Affairs Short/Video, post and pin the fo
 Which question should we feature in tomorrow's quiz? Drop it below! 👇
 ```
 
-*(Note: `[Link]` is dynamically substituted at upload time with the actual YouTube link of the latest Weekly Masterclass, e.g. `https://youtu.be/<video_id>`, or the official channel playlist URL `https://www.youtube.com/@PulseVector`.)*
+*(Note: `[Link]` is dynamically substituted at upload time with the actual YouTube link of the latest Weekly Masterclass, e.g. `https://youtu.be/<video_id>`, or the official channel playlist URL `https://www.youtube.com/@Pulse_vector`.)*
 
 ---
 
