@@ -31,9 +31,3 @@ pulse_archive/**/*.mp3
 pulse_archive/**/*.wav
 pulse_archive/temp_end_frames/
 reports/
-
-# Voice Assistant temporary artifacts
-.agent/voice_assistant/*.log
-.agent/voice_assistant/.*hash
-.agent/voice_assistant/temp_response.mp3
-
