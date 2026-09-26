@@ -78,10 +78,10 @@ def run_daily_youtube(target_date=None, enable_tts=True):
     engine.stage_compile_video("daily", now, enable_tts=enable_tts)
     engine.stage_youtube_publish("daily", now)
 
-def run_all(target_date=None, enable_tts=True, stages=None, dry_run=False):
+def run_all(target_date=None, enable_tts=True, stages=None, dry_run=False, force=False):
     now = target_date or datetime.datetime.now()
     if stages or dry_run:
-        engine.run_pipeline("daily", target_date=now, stages=stages, enable_tts=enable_tts, dry_run=dry_run)
+        engine.run_pipeline("daily", target_date=now, stages=stages, enable_tts=enable_tts, dry_run=dry_run, force=force)
     else:
         run_daily_generation(now)
         generate_daily_slides()
@@ -97,9 +97,10 @@ if __name__ == "__main__":
     parser.add_argument("--stages", type=str, help="Comma-separated stages (text,slides,video,youtube,sync)")
     parser.add_argument("--no-tts", action="store_true", help="Disable AI voiceover")
     parser.add_argument("--dry-run", action="store_true", help="Perform a dry run without modifying files")
+    parser.add_argument("--force", action="store_true", help="Force regenerate existing slides and videos")
     
     args = parser.parse_args()
     target_dt = datetime.datetime.strptime(args.date, "%Y-%m-%d") if args.date else None
     stage_list = [s.strip() for s in args.stages.split(",")] if args.stages else None
     
-    run_all(target_date=target_dt, enable_tts=not args.no_tts, stages=stage_list, dry_run=args.dry_run)
+    run_all(target_date=target_dt, enable_tts=not args.no_tts, stages=stage_list, dry_run=args.dry_run, force=args.force)

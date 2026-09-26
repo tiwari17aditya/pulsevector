@@ -29,10 +29,10 @@ def run_weekly_youtube(target_date=None, enable_tts=True):
     engine.stage_compile_video("weekly", now, enable_tts=enable_tts)
     engine.stage_youtube_publish("weekly", now)
 
-def run_all(target_date=None, enable_tts=True, stages=None, dry_run=False):
+def run_all(target_date=None, enable_tts=True, stages=None, dry_run=False, force=False):
     now = target_date or datetime.datetime.now()
     if stages or dry_run:
-        engine.run_pipeline("weekly", target_date=now, stages=stages, enable_tts=enable_tts, dry_run=dry_run)
+        engine.run_pipeline("weekly", target_date=now, stages=stages, enable_tts=enable_tts, dry_run=dry_run, force=force)
     else:
         client = configure_genai()
         generate_weekly_content(client, now)

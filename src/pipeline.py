@@ -61,28 +61,28 @@ def main():
     now = target_dt or datetime.datetime.now()
     
     if args.daily:
-        daily_pipeline.run_all(target_date=now, enable_tts=enable_tts, stages=stage_list, dry_run=args.dry_run)
+        daily_pipeline.run_all(target_date=now, enable_tts=enable_tts, stages=stage_list, dry_run=args.dry_run, force=args.force)
         return
 
     if args.weekly:
-        weekly_pipeline.run_all(target_date=now, enable_tts=enable_tts, stages=stage_list, dry_run=args.dry_run)
+        weekly_pipeline.run_all(target_date=now, enable_tts=enable_tts, stages=stage_list, dry_run=args.dry_run, force=args.force)
         return
         
     if args.monthly:
-        monthly_pipeline.run_all(target_date=now, enable_tts=enable_tts, stages=stage_list, dry_run=args.dry_run)
+        monthly_pipeline.run_all(target_date=now, enable_tts=enable_tts, stages=stage_list, dry_run=args.dry_run, force=args.force)
         return
 
     print("Running dynamic orchestration based on date...")
-    daily_pipeline.run_all(target_date=now, enable_tts=enable_tts, stages=stage_list, dry_run=args.dry_run)
+    daily_pipeline.run_all(target_date=now, enable_tts=enable_tts, stages=stage_list, dry_run=args.dry_run, force=args.force)
     
     if now.weekday() == 6 or args.all:
         print("\n[Auto-Trigger] Sunday detected. Running Weekly Pipeline...")
-        weekly_pipeline.run_all(target_date=now, enable_tts=enable_tts, stages=stage_list, dry_run=args.dry_run)
+        weekly_pipeline.run_all(target_date=now, enable_tts=enable_tts, stages=stage_list, dry_run=args.dry_run, force=args.force)
         
     is_month_end = (now + datetime.timedelta(days=1)).month != now.month
     if is_month_end or args.all:
         print("\n[Auto-Trigger] Month-End detected. Running Monthly Pipeline...")
-        monthly_pipeline.run_all(target_date=now, enable_tts=enable_tts, stages=stage_list, dry_run=args.dry_run)
+        monthly_pipeline.run_all(target_date=now, enable_tts=enable_tts, stages=stage_list, dry_run=args.dry_run, force=args.force)
         
     print("\n✅ All automated pipelines completed.")
 

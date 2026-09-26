@@ -165,12 +165,12 @@ def generate_voiceover(points, date_str: str, output_dir: pathlib.Path, category
         if full_voice.exists():
             full_voice.unlink()
             
-        cmd = [ffmpeg_exe, "-y", "-f", "concat", "-safe", "0", "-i", str(concat_list), "-c", "copy", str(full_voice)]
+        cmd = [ffmpeg_exe, "-y", "-f", "concat", "-safe", "0", "-i", str(concat_list.resolve()), "-c", "copy", str(full_voice.resolve())]
         res = subprocess.run(cmd, cwd=str(temp_tts_dir), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         if res.returncode != 0:
             logging.warning(f"FFmpeg copy concat returned non-zero ({res.stderr}). Re-encoding...")
             # Fallback to re-encode if stream copy fails
-            cmd_reencode = [ffmpeg_exe, "-y", "-f", "concat", "-safe", "0", "-i", str(concat_list), "-c:a", "libmp3lame", "-b:a", "192k", str(full_voice)]
+            cmd_reencode = [ffmpeg_exe, "-y", "-f", "concat", "-safe", "0", "-i", str(concat_list.resolve()), "-c:a", "libmp3lame", "-b:a", "192k", str(full_voice.resolve())]
             subprocess.run(cmd_reencode, cwd=str(temp_tts_dir), check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             
         all_durations = [intro_dur] + page_durations + [outro_dur]

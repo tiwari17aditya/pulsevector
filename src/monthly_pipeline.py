@@ -42,10 +42,10 @@ def run_monthly_youtube(target_date=None, enable_tts=True):
     engine.stage_compile_video("monthly", t_date, enable_tts=enable_tts)
     engine.stage_youtube_publish("monthly", t_date)
 
-def run_all(target_date=None, enable_tts=True, stages=None, dry_run=False):
+def run_all(target_date=None, enable_tts=True, stages=None, dry_run=False, force=False):
     t_date = resolve_target_month(target_date)
     if stages or dry_run:
-        engine.run_pipeline("monthly", target_date=t_date, stages=stages, enable_tts=enable_tts, dry_run=dry_run)
+        engine.run_pipeline("monthly", target_date=t_date, stages=stages, enable_tts=enable_tts, dry_run=dry_run, force=force)
     else:
         client = configure_genai()
         generate_monthly_content(client, t_date)
