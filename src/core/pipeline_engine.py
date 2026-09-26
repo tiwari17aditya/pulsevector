@@ -172,7 +172,7 @@ class PipelineEngine:
     # -------------------------------------------------------------
     # STAGE 2: Slide & Image Generation
     # -------------------------------------------------------------
-    def stage_generate_slides(self, content_type: str, target_date: datetime.datetime, payload: Optional[ContentPayload] = None) -> SlidePayload:
+    def stage_generate_slides(self, content_type: str, target_date: datetime.datetime, payload: Optional[ContentPayload] = None, aspect_ratio: Optional[str] = None) -> SlidePayload:
         print(f"\n🎨 [Stage: Slide Gen] Rendering slides for {content_type.title()} ({target_date.strftime('%d %B %Y')})...")
         paths = self.get_paths(content_type, target_date)
         text_file = paths["text_file"]
@@ -196,6 +196,7 @@ class PipelineEngine:
         if content_type == "monthly":
             cat_title = "MONTHLY CURRENT AFFAIRS"
             
+        ar = aspect_ratio or ("9:16" if content_type == "daily" else "16:9")
         points_per_page = 5
         total_pages = (len(points) + points_per_page - 1) // points_per_page
         
@@ -206,7 +207,8 @@ class PipelineEngine:
             out_path = images_dir / f"{paths['tag']}_page-{page_num}.png"
             create_slide_image_file(
                 date_header, page_points, page_num, total_pages,
-                font_regular, font_bold, out_path, cat_title
+                font_regular, font_bold, out_path, cat_title,
+                aspect_ratio=ar
             )
             generated_slides.append(out_path)
             
@@ -248,7 +250,7 @@ class PipelineEngine:
     # -------------------------------------------------------------
     # STAGE 3: Video Assembly & Audio/TTS Synthesis
     # -------------------------------------------------------------
-    def stage_compile_video(self, content_type: str, target_date: datetime.datetime, enable_tts: bool = True, force: bool = False) -> VideoPayload:
+    def stage_compile_video(self, content_type: str, target_date: datetime.datetime, enable_tts: bool = True, force: bool = False, aspect_ratio: Optional[str] = None) -> VideoPayload:
         print(f"\n🎬 [Stage: Video Compilation] Building video for {content_type.title()} ({target_date.strftime('%d %B %Y')})...")
         paths = self.get_paths(content_type, target_date)
         text_file = paths["text_file"]
@@ -267,16 +269,17 @@ class PipelineEngine:
         payload = parse_news_content(raw_text, content_type, target_date, text_file)
         
         font_regular, font_bold = ensure_fonts(self.archive_dir)
+        ar = aspect_ratio or ("9:16" if content_type == "daily" else "16:9")
         
-        # 1. Thumbnail Slide (Pillar 1: High-Retention Headline Hook)
+        # 1. Thumbnail Slide (Pillar 1: High-Retention Headline Hook + Pillar 4: Aspect Ratio)
         thumb_path = img_dir / "thumbnail.png"
         cat_short = "MONTHLY" if content_type == "monthly" else ("WEEKLY" if content_type == "weekly" else "DAILY")
         headline_hook = payload.points[0][1] if payload.points and content_type == "daily" else None
-        generate_thumbnail_slide_image(target_date, font_bold, font_regular, thumb_path, cat_short, headline_hook=headline_hook)
+        generate_thumbnail_slide_image(target_date, font_bold, font_regular, thumb_path, cat_short, headline_hook=headline_hook, aspect_ratio=ar)
         
         # 2. Animated Outro Frames
         anim_dir = self.archive_dir / "temp_end_frames"
-        anim_frames = generate_animated_end_slide_frames_pipeline(font_bold, font_regular, anim_dir)
+        anim_frames = generate_animated_end_slide_frames_pipeline(font_bold, font_regular, anim_dir, aspect_ratio=ar)
         
         # 3. Voiceover & Durations
         per_slide_durations = None

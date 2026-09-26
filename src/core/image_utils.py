@@ -43,9 +43,11 @@ def create_slide_image_file(
     font_regular_path: pathlib.Path,
     font_bold_path: pathlib.Path,
     output_path: pathlib.Path,
-    category_title: str = "DAILY CURRENT AFFAIRS"
+    category_title: str = "DAILY CURRENT AFFAIRS",
+    aspect_ratio: str = "9:16"
 ) -> bool:
-    W, H = 1080, 1920
+    is_widescreen = (aspect_ratio == "16:9")
+    W, H = (1920, 1080) if is_widescreen else (1080, 1920)
     
     # Clean category and date strings
     clean_date = re.sub(r"^[\(\:\-\s]+|[\)\:\-\s]+$", "", date_str).strip()
@@ -57,19 +59,24 @@ def create_slide_image_file(
     # Glowing Ambient Orbs
     glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     draw_glow = ImageDraw.Draw(glow)
-    draw_glow.ellipse([(-200, -200), (600, 600)], fill=(6, 182, 212, 90))
-    draw_glow.ellipse([(600, 700), (1400, 1500)], fill=(124, 58, 237, 75))
-    draw_glow.ellipse([(-300, 1400), (500, 2200)], fill=(217, 70, 239, 85))
+    if is_widescreen:
+        draw_glow.ellipse([(-200, -200), (800, 600)], fill=(6, 182, 212, 90))
+        draw_glow.ellipse([(1100, 300), (2100, 1100)], fill=(124, 58, 237, 75))
+        draw_glow.ellipse([(500, -100), (1400, 500)], fill=(217, 70, 239, 70))
+    else:
+        draw_glow.ellipse([(-200, -200), (600, 600)], fill=(6, 182, 212, 90))
+        draw_glow.ellipse([(600, 700), (1400, 1500)], fill=(124, 58, 237, 75))
+        draw_glow.ellipse([(-300, 1400), (500, 2200)], fill=(217, 70, 239, 85))
     blurred_glow = glow.filter(ImageFilter.GaussianBlur(200))
     image.alpha_composite(blurred_glow)
     
     # Glassmorphic Main Card Layer
     card = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     draw_card = ImageDraw.Draw(card)
-    card_box = [(80, 160), (1000, 1760)]
+    card_box = [(60, 50), (1860, 1030)] if is_widescreen else [(80, 160), (1000, 1760)]
     draw_card.rounded_rectangle(
         card_box,
-        radius=40,
+        radius=35 if is_widescreen else 40,
         fill=(15, 23, 42, 165),
         outline=(255, 255, 255, 35),
         width=2
@@ -77,23 +84,26 @@ def create_slide_image_file(
     image.alpha_composite(card)
     
     # Subtle Watermark
-    watermark_canvas = Image.new("RGBA", (2200, 2200), (0, 0, 0, 0))
+    watermark_canvas = Image.new("RGBA", (2400, 2400), (0, 0, 0, 0))
     watermark_draw = ImageDraw.Draw(watermark_canvas)
     try:
         font_watermark = ImageFont.truetype(str(font_bold_path), 150)
     except Exception:
         font_watermark = ImageFont.load_default()
         
-    watermark_draw.text((1100, 1100), "PULSE VECTOR", font=font_watermark, fill=(255, 255, 255, 6), anchor="mm")
+    watermark_draw.text((1200, 1200), "PULSE VECTOR", font=font_watermark, fill=(255, 255, 255, 6), anchor="mm")
     rotated_watermark = watermark_canvas.rotate(40, resample=Image.BICUBIC)
-    image.paste(rotated_watermark, (-560, -140), rotated_watermark)
+    if is_widescreen:
+        image.paste(rotated_watermark, (-240, -660), rotated_watermark)
+    else:
+        image.paste(rotated_watermark, (-560, -140), rotated_watermark)
     
     # Typography Setup
     try:
         font_logo = ImageFont.truetype(str(font_bold_path), 26)
         font_title = ImageFont.truetype(str(font_bold_path), 44)
         font_subtitle = ImageFont.truetype(str(font_regular_path), 30)
-        font_body = ImageFont.truetype(str(font_regular_path), 38)
+        font_body = ImageFont.truetype(str(font_regular_path), 34 if is_widescreen else 38)
         font_badge = ImageFont.truetype(str(font_bold_path), 40)
         font_footer = ImageFont.truetype(str(font_regular_path), 26)
         font_source = ImageFont.truetype(str(font_regular_path), 24)
@@ -104,17 +114,24 @@ def create_slide_image_file(
     draw = ImageDraw.Draw(image)
     
     # Header Branding
-    draw.text((140, 215), "P U L S E   V E C T O R", font=font_logo, fill=(255, 255, 255, 80))
-    date_width = draw.textlength(clean_date, font=font_subtitle)
-    draw.text((940 - date_width, 212), clean_date, font=font_subtitle, fill=(156, 163, 175, 255))
-    draw.text((540, 285), clean_cat, font=font_title, fill=(255, 255, 255, 255), anchor="mm")
-    draw.line([(140, 335), (940, 335)], fill=(255, 255, 255, 25), width=1)
+    if is_widescreen:
+        draw.text((100, 75), "P U L S E   V E C T O R", font=font_logo, fill=(255, 255, 255, 80))
+        date_width = draw.textlength(clean_date, font=font_subtitle)
+        draw.text((1820 - date_width, 72), clean_date, font=font_subtitle, fill=(156, 163, 175, 255))
+        draw.text((960, 90), clean_cat, font=font_title, fill=(255, 255, 255, 255), anchor="mm")
+        draw.line([(100, 130), (1820, 130)], fill=(255, 255, 255, 25), width=1)
+    else:
+        draw.text((140, 215), "P U L S E   V E C T O R", font=font_logo, fill=(255, 255, 255, 80))
+        date_width = draw.textlength(clean_date, font=font_subtitle)
+        draw.text((940 - date_width, 212), clean_date, font=font_subtitle, fill=(156, 163, 175, 255))
+        draw.text((540, 285), clean_cat, font=font_title, fill=(255, 255, 255, 255), anchor="mm")
+        draw.line([(140, 335), (940, 335)], fill=(255, 255, 255, 25), width=1)
     
     # Points Layout (5 per page)
-    start_y = 380
-    max_text_width = 690
-    line_spacing = 50
-    available_height = 1240
+    start_y = 155 if is_widescreen else 380
+    max_text_width = 1620 if is_widescreen else 690
+    line_spacing = 42 if is_widescreen else 50
+    available_height = 820 if is_widescreen else 1240
     
     wrapped_items = []
     total_text_height = 0
@@ -136,21 +153,25 @@ def create_slide_image_file(
     remaining_height = available_height - total_text_height
     if len(page_points) > 1:
         item_gap = remaining_height // (len(page_points) - 1)
-        item_gap = max(35, min(200, item_gap))
+        item_gap = max(20 if is_widescreen else 35, min(140 if is_widescreen else 200, item_gap))
     else:
-        item_gap = 40
+        item_gap = 30 if is_widescreen else 40
         
     current_y = start_y
+    badge_x = 100 if is_widescreen else 140
+    divider_x = 145 if is_widescreen else 185
+    text_x = 170 if is_widescreen else 210
+    
     for idx, (num, lines, source_name, cat_name, cat_palette, item_height) in enumerate(wrapped_items):
         accent_col = cat_palette["text_color"]
         badge_text = f"{num:02d}"
         
         # Accented number badge and divider
-        draw.text((140, current_y + 3), badge_text, font=font_badge, fill=accent_col)
-        draw.line([(185, current_y + 5), (185, current_y + max(35, item_height - 5))], fill=(*accent_col[:3], 120), width=2)
+        draw.text((badge_x, current_y + 3), badge_text, font=font_badge, fill=accent_col)
+        draw.line([(divider_x, current_y + 5), (divider_x, current_y + max(35, item_height - 5))], fill=(*accent_col[:3], 120), width=2)
         
         for l_idx, line in enumerate(lines):
-            draw.text((210, current_y + (l_idx * line_spacing)), line, font=font_body, fill=(243, 244, 246, 255))
+            draw.text((text_x, current_y + (l_idx * line_spacing)), line, font=font_body, fill=(243, 244, 246, 255))
             
         # Category pill badge + Source
         pill_y = current_y + (len(lines) * line_spacing) + 6
@@ -159,22 +180,23 @@ def create_slide_image_file(
         cat_h = 24
         
         draw.rounded_rectangle(
-            [210, pill_y, 210 + cat_w, pill_y + cat_h],
+            [text_x, pill_y, text_x + cat_w, pill_y + cat_h],
             radius=6,
             fill=cat_palette["pill_bg"],
             outline=cat_palette["pill_border"],
             width=1
         )
-        draw.text((210 + 9, pill_y + 2), cat_name, font=font_cat_badge, fill=accent_col)
+        draw.text((text_x + 9, pill_y + 2), cat_name, font=font_cat_badge, fill=accent_col)
         
         if source_name:
-            draw.text((210 + cat_w + 14, pill_y + 2), f"Source: {source_name}", font=font_source, fill=(156, 163, 175, 220))
+            draw.text((text_x + cat_w + 14, pill_y + 2), f"Source: {source_name}", font=font_source, fill=(156, 163, 175, 220))
             
         current_y += item_height + item_gap
             
     # Page Footer
     page_indicator = f"Page {page_num} of {total_pages}"
-    draw.text((540, 1710), page_indicator, font=font_footer, fill=(156, 163, 175, 255), anchor="mm")
+    footer_x, footer_y = (960, 1010) if is_widescreen else (540, 1710)
+    draw.text((footer_x, footer_y), page_indicator, font=font_footer, fill=(156, 163, 175, 255), anchor="mm")
     
     output_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(output_path, "PNG")

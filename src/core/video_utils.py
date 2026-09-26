@@ -312,20 +312,23 @@ def generate_thumbnail_slide_image(
     font_regular_path: pathlib.Path,
     output_path: pathlib.Path,
     category_name: str = "DAILY",
-    headline_hook: Optional[str] = None
+    headline_hook: Optional[str] = None,
+    aspect_ratio: str = "9:16"
 ):
-    logging.info(f"Generating dynamic thumbnail slide for: {date_obj} (Category: {category_name})")
-    W, H = 1080, 1920
+    logging.info(f"Generating dynamic thumbnail slide for: {date_obj} (Category: {category_name}, Aspect: {aspect_ratio})")
+    is_widescreen = (aspect_ratio == "16:9")
+    W, H = (1920, 1080) if is_widescreen else (1080, 1920)
+    cx = 960 if is_widescreen else 540
     
     image = create_base_background_with_glow(W, H, t=0.0)
     draw_watermark_on_image(image, font_bold_path)
     
     card = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     draw_card = ImageDraw.Draw(card)
-    card_box = [(80, 360), (1000, 1560)]
+    card_box = [(80, 60), (1840, 1020)] if is_widescreen else [(80, 360), (1000, 1560)]
     draw_card.rounded_rectangle(
         card_box,
-        radius=40,
+        radius=35 if is_widescreen else 40,
         fill=(15, 23, 42, 175),
         outline=(255, 255, 255, 35),
         width=2
@@ -335,7 +338,7 @@ def generate_thumbnail_slide_image(
     try:
         font_logo = ImageFont.truetype(str(font_bold_path), 26)
         font_sublogo = ImageFont.truetype(str(font_regular_path), 36)
-        font_title = ImageFont.truetype(str(font_bold_path), 68)
+        font_title = ImageFont.truetype(str(font_bold_path), 56 if is_widescreen else 68)
         font_size_date = 42 if category_name == "WEEKLY" else 48
         font_date = ImageFont.truetype(str(font_bold_path), font_size_date)
         font_hook_title = ImageFont.truetype(str(font_bold_path), 48)
@@ -344,9 +347,9 @@ def generate_thumbnail_slide_image(
         font_logo = font_sublogo = font_title = font_date = font_hook_title = font_micro = ImageFont.load_default()
     
     draw = ImageDraw.Draw(image)
-    draw.text((140, 215), "P U L S E   V E C T O R", font=font_logo, fill=(255, 255, 255, 80))
+    logo_x, logo_y = (120, 95) if is_widescreen else (140, 215)
+    draw.text((logo_x, logo_y), "P U L S E   V E C T O R", font=font_logo, fill=(255, 255, 255, 80))
     
-    cx = 540
     cat_label = category_name.upper().strip()
     
     # Format date string
@@ -361,7 +364,24 @@ def generate_thumbnail_slide_image(
     else:
         formatted_date_str = format_date_custom(date_obj)
         
-    if headline_hook and category_name == "DAILY":
+    if is_widescreen:
+        # 16:9 Widescreen Masterclass Layout
+        badge_y = 220
+        draw.rounded_rectangle([(cx - 360, badge_y), (cx + 360, badge_y + 54)], radius=27, fill=(56, 189, 248, 30), outline=(56, 189, 248, 180), width=2)
+        draw_text_with_shadow_helper(draw, f"⚡ {cat_label} CURRENT AFFAIRS MASTERCLASS", cx, badge_y + 27, font_sublogo, text_color=(56, 189, 248, 255))
+        
+        draw_text_with_shadow_helper(draw, "COMPREHENSIVE REVISION", cx, 370, font_title, text_color=(255, 255, 255, 255))
+        draw.line([(cx - 480, 440), (cx + 480, 440)], fill=(255, 255, 255, 35), width=2)
+        draw_text_with_shadow_helper(draw, formatted_date_str, cx, 520, font_date, text_color=(251, 191, 36, 255))
+        
+        # Micro callout card
+        draw.rounded_rectangle([(cx - 420, 620), (cx + 420, 720)], radius=20, fill=(30, 41, 59, 140), outline=(255, 255, 255, 30), width=1)
+        draw_text_with_shadow_helper(draw, "🔥 FULL EXAM SYLLABUS COVERAGE & KEY TAKEAWAYS", cx, 670, font_micro, text_color=(229, 231, 235, 255))
+        
+        # Bottom CTA Pill
+        draw.rounded_rectangle([(cx - 320, 800), (cx + 320, 860)], radius=25, fill=(15, 23, 42, 220), outline=(56, 189, 248, 120), width=1)
+        draw_text_with_shadow_helper(draw, "▶ WATCH COMPLETE MASTERCLASS", cx, 830, font_micro, text_color=(56, 189, 248, 230))
+    elif headline_hook and category_name == "DAILY":
         # --- High-Retention Headline Hook Layout ---
         # 1. Top Urgent Category Badge
         badge_y = 440
@@ -424,9 +444,18 @@ def draw_bell_icon_image(W_bell: int, H_bell: int, angle: float) -> Image.Image:
     rotated_bell = bell_img.rotate(angle, resample=Image.BICUBIC)
     return rotated_bell
 
-def generate_animated_end_slide_frames_pipeline(font_bold_path: pathlib.Path, font_regular_path: pathlib.Path, output_dir: pathlib.Path, fps: int = 10, duration: float = 3.0) -> List[pathlib.Path]:
+def generate_animated_end_slide_frames_pipeline(
+    font_bold_path: pathlib.Path,
+    font_regular_path: pathlib.Path,
+    output_dir: pathlib.Path,
+    fps: int = 10,
+    duration: float = 3.0,
+    aspect_ratio: str = "9:16"
+) -> List[pathlib.Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
-    W, H = 1080, 1920
+    is_widescreen = (aspect_ratio == "16:9")
+    W, H = (1920, 1080) if is_widescreen else (1080, 1920)
+    cx = 960 if is_widescreen else 540
     total_frames = int(fps * duration)
     
     try:
@@ -446,10 +475,10 @@ def generate_animated_end_slide_frames_pipeline(font_bold_path: pathlib.Path, fo
         
         card = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         draw_card = ImageDraw.Draw(card)
-        card_box = [(80, 300), (1000, 1620)]
+        card_box = [(80, 50), (1840, 1030)] if is_widescreen else [(80, 300), (1000, 1620)]
         draw_card.rounded_rectangle(
             card_box,
-            radius=40,
+            radius=35 if is_widescreen else 40,
             fill=(15, 23, 42, 165),
             outline=(255, 255, 255, 35),
             width=2
@@ -458,25 +487,34 @@ def generate_animated_end_slide_frames_pipeline(font_bold_path: pathlib.Path, fo
         
         bell_angle = 18 * math.sin(2 * math.pi * 3.0 * t)
         bell_icon = draw_bell_icon_image(300, 300, bell_angle)
-        image.paste(bell_icon, (390, 400), bell_icon)
+        bell_x = (cx - 150) if is_widescreen else 390
+        bell_y = 120 if is_widescreen else 400
+        image.paste(bell_icon, (bell_x, bell_y), bell_icon)
         
         alpha = min(255, int((i / 12.0) * 255))
         text_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         text_draw = ImageDraw.Draw(text_layer)
         
-        cx = 540
-        draw_text_with_shadow_helper(text_draw, "Like, Share & Subscribe", cx, 800, font_bold_title, shadow_color=(0, 0, 0, int(0.7 * alpha)), text_color=(255, 255, 255, alpha))
-        draw_text_with_shadow_helper(text_draw, "(Press the Bell Icon)", cx, 890, font_regular_sub, shadow_color=(0, 0, 0, int(0.7 * alpha)), text_color=(56, 189, 248, alpha))
-        text_draw.line([(240, 960), (840, 960)], fill=(255, 255, 255, int(0.15 * alpha)), width=2)
+        title_y = 450 if is_widescreen else 800
+        sub_y = 530 if is_widescreen else 890
+        line_y = 590 if is_widescreen else 960
+        desc_start_y = 640 if is_widescreen else 1040
+        
+        draw_text_with_shadow_helper(text_draw, "Like, Share & Subscribe", cx, title_y, font_bold_title, shadow_color=(0, 0, 0, int(0.7 * alpha)), text_color=(255, 255, 255, alpha))
+        draw_text_with_shadow_helper(text_draw, "(Press the Bell Icon)", cx, sub_y, font_regular_sub, shadow_color=(0, 0, 0, int(0.7 * alpha)), text_color=(56, 189, 248, alpha))
+        line_x1 = (cx - 360) if is_widescreen else 240
+        line_x2 = (cx + 360) if is_widescreen else 840
+        text_draw.line([(line_x1, line_y), (line_x2, line_y)], fill=(255, 255, 255, int(0.15 * alpha)), width=2)
         
         desc_lines = [
             "Which story was biggest today?",
             "Drop your perspective below! 👇"
         ]
         for idx, line in enumerate(desc_lines):
-            draw_text_with_shadow_helper(text_draw, line, cx, 1040 + (idx * 55), font_body, shadow_color=(0, 0, 0, int(0.7 * alpha)), text_color=(229, 231, 235, alpha))
+            draw_text_with_shadow_helper(text_draw, line, cx, desc_start_y + (idx * 50), font_body, shadow_color=(0, 0, 0, int(0.7 * alpha)), text_color=(229, 231, 235, alpha))
             
-        draw_text_with_shadow_helper(text_draw, "P U L S E   V E C T O R", 140, 215, font_logo, shadow_color=(0, 0, 0, 50), text_color=(255, 255, 255, 80), anchor="la")
+        logo_x, logo_y = (120, 85) if is_widescreen else (140, 215)
+        draw_text_with_shadow_helper(text_draw, "P U L S E   V E C T O R", logo_x, logo_y, font_logo, shadow_color=(0, 0, 0, 50), text_color=(255, 255, 255, 80), anchor="la")
         
         image.alpha_composite(text_layer)
         

@@ -347,6 +347,25 @@ class TestImageAndVideoUtils(unittest.TestCase):
             # Verify image properties with context manager
             with Image.open(out_img) as img:
                 self.assertEqual(img.size, (1080, 1920))
+
+    def test_slide_rendering_widescreen_16_9(self):
+        """Pillar 4: Verifies that 16:9 widescreen layout generates 1920x1080 masterclass slides."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = pathlib.Path(tmp_dir)
+            out_img = tmp_path / "test_slide_16_9.png"
+            points = [(1, "Test headline one [Source: News]"), (2, "Test headline two")]
+            font_reg, font_bold = ensure_fonts(tmp_path)
+            
+            ok = create_slide_image_file(
+                "21 AUGUST 2026", points, 1, 1,
+                font_reg, font_bold, out_img, "WEEKLY MASTERCLASS",
+                aspect_ratio="16:9"
+            )
+            self.assertTrue(ok)
+            self.assertTrue(out_img.exists())
+            
+            with Image.open(out_img) as img:
+                self.assertEqual(img.size, (1920, 1080))
         
 
             
