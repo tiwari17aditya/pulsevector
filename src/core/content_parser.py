@@ -294,7 +294,12 @@ def format_structured_description(
         
     # 2. Key Stories / Highlights (Clean Bulleted Points)
     if points:
-        heading = "⚡ KEY HEADLINES TODAY:" if content_type == "daily" else "⚡ MAJOR TOPICS COVERED:"
+        if content_type == "monthly":
+            heading = "⚡ COMPLETE MONTHLY BREAKDOWN:"
+        elif content_type == "weekly":
+            heading = "⚡ MAJOR TOPICS COVERED:"
+        else:
+            heading = "⚡ KEY HEADLINES TODAY:"
         stories_lines = [heading]
         for idx, pt in points:
             clean_pt = re.sub(r"\[Source:[^\]]+\]", "", str(pt)).strip()
