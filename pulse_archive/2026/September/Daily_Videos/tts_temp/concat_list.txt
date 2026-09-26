@@ -1,5 +1,0 @@
-file '00_intro.mp3'
-file '01_page_1.mp3'
-file '01_page_2.mp3'
-file '01_page_3.mp3'
-file '02_outro.mp3'
