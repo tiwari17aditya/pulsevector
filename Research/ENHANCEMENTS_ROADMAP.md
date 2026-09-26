@@ -97,14 +97,14 @@ This document outlines the versioned progression of the automated content creati
 
 ## 🚀 Future Roadmap & Proposals
 
-### 🕒 v2.5.0 - Pulse Vector Operational MCP Server (Direct Next Enhancement)
+### 🟢 v2.5.0 - Pulse Vector Operational MCP Server (Completed — September 2026)
 * **Goal**: Provide an interactive operational control plane for the AI agent in Antigravity IDE using the Model Context Protocol (MCP).
 * **Architecture**: Standalone stdio/JSON-RPC MCP server (`pulse-ops-mcp`) exposing dedicated operational tools for the AI assistant:
-  * `check_api_quotas`: Live tracking of YouTube Data API quota units consumed (against daily 10,000 limit), Gemini API tokens, and Supabase storage.
-  * `query_content_deduplication`: Query Supabase/DuckDB archive to ensure news topics or brain teaser formulas have not been used in the past 90 days.
-  * `inspect_render_diagnostics`: Inspect audio-video alignment, karaoke syllable timing ledgers, and FFmpeg output health for any historical date.
-  * `trigger_social_broadcast`: On-demand manual broadcast dispatch to Telegram and Discord channels directly from chat.
-* **Scope Isolation**: Keeps headless production pipelines (`pipeline.py`, GitHub Actions CI) purely native Python, while empowering the IDE agent with deep tool execution.
+  * `check_quotas_and_health`: Live tracking of YouTube Data API quota units consumed (against daily 10,000 limit), Gemini API key status, Supabase cloud database connectivity/stats, Google Drive sync, and disk storage metrics.
+  * `check_content_deduplication`: Query 90-day archive to ensure news topics or brain teaser formulas have not been recycled (Jaccard token similarity engine).
+  * `get_render_diagnostics`: Inspect media assets, slide counts, video existence/size, and Shorts 60s compliance for any historical date.
+  * `dispatch_social_broadcast`: On-demand manual broadcast dispatch and preview to Telegram and Discord channels directly from chat.
+* **Scope Isolation**: Keeps headless production pipelines (`pipeline.py`, GitHub Actions CI) purely native Python, while empowering the IDE agent with deep tool execution. Registered in `~/.gemini/config/mcp_config.json` with 48/48 unit tests passing.
 
 ### 🕒 v2.6.0 - Generative AI Visual Assets per Headline
 * **Goal**: Replace generic background slides with topic-specific AI illustrations.

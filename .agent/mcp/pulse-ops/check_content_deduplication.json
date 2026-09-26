@@ -1,0 +1,30 @@
+{
+  "name": "check_content_deduplication",
+  "description": "Scans past 90 days of Pulse Vector Current Affairs and Brain Teasers to prevent topic repetition, recycling puzzle formulas, or duplicate news generation.",
+  "parameters": {
+    "properties": {
+      "query": {
+        "title": "Query",
+        "type": "string",
+        "description": "Headline, topic, or brain teaser formula to check against historical archive."
+      },
+      "lookback_days": {
+        "default": 90,
+        "title": "Lookback Days",
+        "type": "integer",
+        "description": "Number of days in the past to inspect."
+      },
+      "content_type": {
+        "default": "all",
+        "title": "Content Type",
+        "type": "string",
+        "description": "'news', 'teaser', or 'all'."
+      }
+    },
+    "required": [
+      "query"
+    ],
+    "title": "check_content_deduplicationArguments",
+    "type": "object"
+  }
+}

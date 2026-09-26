@@ -1,0 +1,27 @@
+{
+  "name": "dispatch_social_broadcast",
+  "description": "Triggers or previews a multi-platform broadcast (Telegram & Discord) for a given date with native .mp4 video attachments.",
+  "parameters": {
+    "properties": {
+      "target_date": {
+        "title": "Target Date",
+        "type": "string",
+        "description": "Target date formatted as YYYY-MM-DD. Defaults to today if omitted."
+      },
+      "content_type": {
+        "default": "daily",
+        "title": "Content Type",
+        "type": "string",
+        "description": "'daily', 'weekly', 'monthly', or 'brainteaser'."
+      },
+      "dry_run": {
+        "default": true,
+        "title": "Dry Run",
+        "type": "boolean",
+        "description": "If True, generates captions and previews without sending. Set False to execute live broadcast."
+      }
+    },
+    "title": "dispatch_social_broadcastArguments",
+    "type": "object"
+  }
+}

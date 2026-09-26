@@ -1,0 +1,9 @@
+{
+  "name": "check_quotas_and_health",
+  "description": "Checks operational quotas and service health across YouTube Data API (10k daily limit), Gemini API, Supabase cloud database, Google Drive, and local archive storage capacity.",
+  "parameters": {
+    "properties": {},
+    "title": "check_quotas_and_healthArguments",
+    "type": "object"
+  }
+}

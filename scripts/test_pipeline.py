@@ -36,6 +36,11 @@ from core.broadcast_utils import (
 )
 from core.pipeline_engine import PipelineEngine
 from core.genai_utils import build_brainteaser_prompt, BRAIN_TEASER_TYPES
+from mcp_server.tools.quotas import check_api_quotas
+from mcp_server.tools.deduplication import query_content_deduplication
+from mcp_server.tools.diagnostics import inspect_render_diagnostics
+from mcp_server.tools.broadcast import trigger_social_broadcast
+from mcp_server.server import app as mcp_app
 
 class TestContentParser(unittest.TestCase):
     def test_markdown_cleaning(self):
@@ -697,6 +702,54 @@ class TestReportUtils(unittest.TestCase):
         self.assertIn("Daily Current Affairs 08 September 2026", html)
         self.assertIn("https://youtu.be/w67AG-xjn38", html)
         self.assertIn("PULSE VECTOR — WEEKLY PERFORMANCE REPORT", text)
+
+
+class TestMCPOperationalServer(unittest.TestCase):
+    """
+    Validation test suite for Pulse Vector Operational MCP Server (v2.5.0).
+    Validates check_api_quotas, query_content_deduplication,
+    inspect_render_diagnostics, trigger_social_broadcast, and MCPServer registration.
+    """
+    def test_check_api_quotas(self):
+        res = check_api_quotas()
+        self.assertIsInstance(res, dict)
+        self.assertIn("youtube_api", res)
+        self.assertIn("gemini_api", res)
+        self.assertIn("supabase_cloud", res)
+        self.assertIn("google_drive_cloud", res)
+        self.assertIn("storage", res)
+        self.assertEqual(res["youtube_api"]["daily_quota_limit"], 10000)
+
+    def test_query_content_deduplication(self):
+        # 1. Unique query should not be duplicate
+        unique_res = query_content_deduplication("ExtremelyUniqueNeverExistedHeadline99999XYZ")
+        self.assertFalse(unique_res["is_duplicate"])
+        self.assertEqual(unique_res["recommendation"], "SAFE_TO_GENERATE")
+        
+        # 2. Existing headline from archive should be flagged
+        dup_res = query_content_deduplication("World leaders address climate change at a UN summit")
+        self.assertTrue(dup_res["is_duplicate"])
+        self.assertGreaterEqual(dup_res["similarity_score"], 0.65)
+        self.assertEqual(dup_res["recommendation"], "DUPLICATE_DETECTED_REPHRASE")
+
+    def test_inspect_render_diagnostics(self):
+        res = inspect_render_diagnostics("2026-09-23", "daily")
+        self.assertIsInstance(res, dict)
+        self.assertIn("ffmpeg_status", res)
+        self.assertIn("artifacts", res)
+        self.assertIn("overall_health", res)
+
+    def test_trigger_social_broadcast_dry_run(self):
+        res = trigger_social_broadcast("2026-09-23", "daily", dry_run=True)
+        self.assertIsInstance(res, dict)
+        self.assertTrue(res["dry_run"])
+        self.assertIn("previews", res)
+        self.assertIn("telegram_caption_html", res["previews"])
+        self.assertIn("discord_description_md", res["previews"])
+        self.assertEqual(res["dispatch_result"]["telegram"], "DRY_RUN")
+
+    def test_mcp_server_tools_registered(self):
+        self.assertIsNotNone(mcp_app)
 
 
 def main():

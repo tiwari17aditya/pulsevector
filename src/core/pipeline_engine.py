@@ -379,7 +379,8 @@ class PipelineEngine:
         # Feature 2: Community Auto-Broadcast (Telegram & Discord)
         try:
             summary_points = "\n".join([f"• {p[1]}" for p in payload.points[:5]])
-            thumb_path = paths["image_dir"] / "thumbnail.png"
+            img_directory = paths.get("img_dir") or paths.get("image_dir")
+            thumb_path = img_directory / "thumbnail.png" if img_directory else None
             broadcast_daily_content(
                 content_type=content_type,
                 date_obj=target_date,

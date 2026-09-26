@@ -1,0 +1,21 @@
+{
+  "name": "get_render_diagnostics",
+  "description": "Inspects pipeline render outputs (video files, slide counts, TTS alignment, durations, and Shorts 60s compliance) for any specified target date.",
+  "parameters": {
+    "properties": {
+      "target_date": {
+        "title": "Target Date",
+        "type": "string",
+        "description": "Target date formatted as YYYY-MM-DD. Defaults to today if omitted."
+      },
+      "content_type": {
+        "default": "daily",
+        "title": "Content Type",
+        "type": "string",
+        "description": "'daily', 'weekly', 'monthly', or 'brainteaser'."
+      }
+    },
+    "title": "get_render_diagnosticsArguments",
+    "type": "object"
+  }
+}
