@@ -30,7 +30,8 @@ from .video_utils import (
 from .tts_utils import generate_voiceover, HAS_TTS
 from .youtube_utils import (
     get_authenticated_service, get_quarter_info, upload_video_to_youtube,
-    add_video_to_playlist, log_upload_details
+    add_video_to_playlist, log_upload_details, add_video_comment,
+    format_daily_interactive_comment, get_pinned_comment
 )
 from .git_backup_utils import run_git_operations, run_backup_operations
 from .database_utils import run_database_upload
@@ -369,12 +370,22 @@ class PipelineEngine:
                     video_type = "Video"
                     
                 add_video_to_playlist(youtube, video_id, playlist_title)
+                
+                # Pillar 2: High-Engagement Interactive Discussion Comment
+                try:
+                    h1 = payload.points[0][1] if payload.points else "Global Events"
+                    date_display = target_date.strftime("%d %B %Y")
+                    interactive_comment = format_daily_interactive_comment(h1, date_display) if content_type == "daily" else get_pinned_comment()
+                    add_video_comment(youtube, video_id, interactive_comment)
+                except Exception as c_err:
+                    print(f"  > Note on video comment: {c_err}")
+
                 log_upload_details(
                     title=payload.title,
                     category_name="Education (27)",
                     video_type=video_type,
                     related_video_setting="Linked to Playlist",
-                    pinned_comment_status="Pinned Standard Comment",
+                    pinned_comment_status="Interactive Comment Posted",
                     video_id=video_id
                 )
             except Exception as yt_err:

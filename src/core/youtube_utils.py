@@ -225,6 +225,21 @@ def get_pinned_comment(masterclass_link="https://www.youtube.com/@PulseVector"):
     """Returns the formatted pinned comment text with the real link substituted."""
     return STANDARD_PINNED_COMMENT_TEMPLATE.format(masterclass_link=masterclass_link)
 
+def format_daily_interactive_comment(headline_preview: str, date_str: str, masterclass_link: str = "https://www.youtube.com/@PulseVector") -> str:
+    """Formats a high-engagement discussion comment for Daily Current Affairs Shorts."""
+    # Clean headline preview
+    clean_hl = re.sub(r'[\.\:\;\-\"\'\`]', '', headline_preview).strip()
+    if len(clean_hl) > 60:
+        clean_hl = clean_hl[:60].rsplit(' ', 1)[0] + "..."
+    return (
+        f"🔥 TODAY'S TOPIC DEBATE ({date_str}):\n"
+        f"Regarding: \"{clean_hl}\"\n\n"
+        "💬 Which of today's 5 stories do you believe will shape the coming month most?\n"
+        "Drop your answer or perspective below — best analytical comments get pinned! 📌\n\n"
+        f"📚 Full Weekly Masterclass breakdown: {masterclass_link}\n"
+        "🔔 Subscribe to Pulse Vector for daily rapid updates!"
+    )
+
 STANDARD_PINNED_COMMENT = get_pinned_comment()
 
 def log_upload_details(title, category_name="Education (27)", video_type="Short (9:16)", related_video_setting="Linked to Latest Weekly Masterclass", pinned_comment_status="Pinned", video_id="N/A"):

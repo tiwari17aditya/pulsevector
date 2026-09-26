@@ -470,8 +470,8 @@ def generate_animated_end_slide_frames_pipeline(font_bold_path: pathlib.Path, fo
         text_draw.line([(240, 960), (840, 960)], fill=(255, 255, 255, int(0.15 * alpha)), width=2)
         
         desc_lines = [
-            "to get up to date with all global",
-            "current affairs in no time."
+            "Which story was biggest today?",
+            "Drop your perspective below! 👇"
         ]
         for idx, line in enumerate(desc_lines):
             draw_text_with_shadow_helper(text_draw, line, cx, 1040 + (idx * 55), font_body, shadow_color=(0, 0, 0, int(0.7 * alpha)), text_color=(229, 231, 235, alpha))

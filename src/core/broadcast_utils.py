@@ -254,6 +254,9 @@ def broadcast_daily_content(
     if video_url:
         tg_lines.append(f"\n▶️ <b>Watch on YouTube:</b> <a href=\"{video_url}\">{video_url}</a>")
     
+    discussion_prompt = "💬 <b>Topic of the Day:</b> Which story will impact the future most? Drop your perspective in the comments!"
+    tg_lines.append(f"\n{discussion_prompt}")
+    
     social_html = get_social_links_block("html", include_divider=True)
     tg_lines.append(f"\n{social_html}")
     tg_message = "\n".join(tg_lines)
@@ -264,6 +267,7 @@ def broadcast_daily_content(
     if video_url:
         dc_desc += f"\n\n▶️ **[Watch on YouTube]({video_url})**"
         
+    dc_desc += "\n\n💬 **Topic of the Day:** Which story will impact the future most? Join the discussion!"
     social_md = get_social_links_block("markdown", include_divider=True)
     dc_desc += f"\n\n{social_md}"
     

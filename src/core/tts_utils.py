@@ -114,9 +114,10 @@ def generate_voiceover(points, date_str: str, output_dir: pathlib.Path, category
     cat_clean = category_title.title().replace("Current Affairs", "Current Affairs Summary")
     if "daily" in category_title.lower() or num_points <= 15:
         intro_text = "Top headlines you must know today, starting right now!"
+        outro_text = "Which of today's stories will impact the future most? Drop your perspective below, and subscribe to Pulse Vector!"
     else:
         intro_text = f"Welcome to Pulse Vector. Here is your comprehensive {cat_clean} for {date_str}."
-    outro_text = "Like, share, and subscribe to Pulse Vector, and don't forget to press the bell icon for daily updates."
+        outro_text = "Like, share, and subscribe to Pulse Vector, and don't forget to press the bell icon for daily updates."
     
     points_per_page = 5
     pages_text = []
