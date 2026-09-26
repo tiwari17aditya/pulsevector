@@ -267,10 +267,11 @@ class PipelineEngine:
         
         font_regular, font_bold = ensure_fonts(self.archive_dir)
         
-        # 1. Thumbnail Slide
+        # 1. Thumbnail Slide (Pillar 1: High-Retention Headline Hook)
         thumb_path = img_dir / "thumbnail.png"
         cat_short = "MONTHLY" if content_type == "monthly" else ("WEEKLY" if content_type == "weekly" else "DAILY")
-        generate_thumbnail_slide_image(target_date, font_bold, font_regular, thumb_path, cat_short)
+        headline_hook = payload.points[0][1] if payload.points and content_type == "daily" else None
+        generate_thumbnail_slide_image(target_date, font_bold, font_regular, thumb_path, cat_short, headline_hook=headline_hook)
         
         # 2. Animated Outro Frames
         anim_dir = self.archive_dir / "temp_end_frames"
@@ -301,7 +302,7 @@ class PipelineEngine:
             raise FileNotFoundError(f"No slide images found in {img_dir}")
             
         temp_video = img_dir / "temp_video.mp4"
-        duration_per_static = 3.5 if content_type == "daily" else 4.5
+        duration_per_static = 1.8 if content_type == "daily" else 4.5
         
         compile_images_to_video_enhanced(
             thumb_path, slide_images, anim_frames, str(temp_video),

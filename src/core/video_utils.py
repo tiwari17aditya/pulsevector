@@ -306,7 +306,14 @@ def draw_text_with_shadow_helper(draw, text, x, y, font, shadow_color=(0, 0, 0, 
         draw.text((x + offset[0], y + offset[1]), text, font=font, fill=shadow_color, anchor=anchor)
     draw.text((x, y), text, font=font, fill=text_color, anchor=anchor)
 
-def generate_thumbnail_slide_image(date_obj: datetime.datetime, font_bold_path: pathlib.Path, font_regular_path: pathlib.Path, output_path: pathlib.Path, category_name: str = "DAILY"):
+def generate_thumbnail_slide_image(
+    date_obj: datetime.datetime,
+    font_bold_path: pathlib.Path,
+    font_regular_path: pathlib.Path,
+    output_path: pathlib.Path,
+    category_name: str = "DAILY",
+    headline_hook: Optional[str] = None
+):
     logging.info(f"Generating dynamic thumbnail slide for: {date_obj} (Category: {category_name})")
     W, H = 1080, 1920
     
@@ -315,11 +322,11 @@ def generate_thumbnail_slide_image(date_obj: datetime.datetime, font_bold_path: 
     
     card = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     draw_card = ImageDraw.Draw(card)
-    card_box = [(80, 400), (1000, 1520)]
+    card_box = [(80, 360), (1000, 1560)]
     draw_card.rounded_rectangle(
         card_box,
         radius=40,
-        fill=(15, 23, 42, 165),
+        fill=(15, 23, 42, 175),
         outline=(255, 255, 255, 35),
         width=2
     )
@@ -328,21 +335,21 @@ def generate_thumbnail_slide_image(date_obj: datetime.datetime, font_bold_path: 
     try:
         font_logo = ImageFont.truetype(str(font_bold_path), 26)
         font_sublogo = ImageFont.truetype(str(font_regular_path), 36)
-        font_title = ImageFont.truetype(str(font_bold_path), 72)
-        font_size_date = 46 if category_name == "WEEKLY" else 54
+        font_title = ImageFont.truetype(str(font_bold_path), 68)
+        font_size_date = 42 if category_name == "WEEKLY" else 48
         font_date = ImageFont.truetype(str(font_bold_path), font_size_date)
+        font_hook_title = ImageFont.truetype(str(font_bold_path), 48)
+        font_micro = ImageFont.truetype(str(font_bold_path), 28)
     except Exception:
-        font_logo = font_sublogo = font_title = font_date = ImageFont.load_default()
+        font_logo = font_sublogo = font_title = font_date = font_hook_title = font_micro = ImageFont.load_default()
     
     draw = ImageDraw.Draw(image)
     draw.text((140, 215), "P U L S E   V E C T O R", font=font_logo, fill=(255, 255, 255, 80))
     
     cx = 540
     cat_label = category_name.upper().strip()
-    draw_text_with_shadow_helper(draw, cat_label, cx, 660, font_sublogo, text_color=(56, 189, 248, 200))
-    draw_text_with_shadow_helper(draw, "CURRENT AFFAIRS", cx, 780, font_title, text_color=(255, 255, 255, 255))
-    draw.line([(240, 890), (840, 890)], fill=(255, 255, 255, 35), width=2)
     
+    # Format date string
     if category_name == "WEEKLY":
         week_start = date_obj - datetime.timedelta(days=6)
         if week_start.year != date_obj.year:
@@ -354,7 +361,46 @@ def generate_thumbnail_slide_image(date_obj: datetime.datetime, font_bold_path: 
     else:
         formatted_date_str = format_date_custom(date_obj)
         
-    draw_text_with_shadow_helper(draw, formatted_date_str, cx, 1000, font_date, text_color=(251, 191, 36, 255))
+    if headline_hook and category_name == "DAILY":
+        # --- High-Retention Headline Hook Layout ---
+        # 1. Top Urgent Category Badge
+        badge_y = 440
+        draw.rounded_rectangle([(180, badge_y), (900, badge_y + 60)], radius=30, fill=(245, 158, 11, 40), outline=(245, 158, 11, 200), width=2)
+        draw_text_with_shadow_helper(draw, "⚡ TOP STORIES TODAY", cx, badge_y + 30, font_sublogo, text_color=(251, 191, 36, 255))
+        
+        # 2. Date Subtitle
+        draw_text_with_shadow_helper(draw, formatted_date_str, cx, 560, font_date, text_color=(148, 163, 184, 255))
+        draw.line([(240, 630), (840, 630)], fill=(255, 255, 255, 30), width=2)
+        
+        # 3. Breaking Headline Preview Card
+        preview_box = [(120, 680), (960, 1380)]
+        draw.rounded_rectangle(preview_box, radius=25, fill=(30, 41, 59, 140), outline=(56, 189, 248, 90), width=2)
+        
+        # Micro pill: STORY #1
+        draw.rounded_rectangle([(160, 720), (380, 770)], radius=15, fill=(239, 68, 68, 220))
+        draw_text_with_shadow_helper(draw, "🔥 STORY #1", 270, 745, font_micro, text_color=(255, 255, 255, 255))
+        
+        # Clean and wrap the headline text
+        clean_headline = re.sub(r"^[\d\.\-\s]+", "", headline_hook).strip()
+        from .content_parser import clean_markdown_decorations
+        clean_headline = clean_markdown_decorations(clean_headline)
+        
+        from .image_utils import wrap_text
+        lines = wrap_text(clean_headline, font_hook_title, max_width=760)
+        curr_y = 830
+        for line in lines[:5]:
+            draw_text_with_shadow_helper(draw, line, cx, curr_y, font_hook_title, text_color=(255, 255, 255, 255))
+            curr_y += 65
+            
+        # 4. Bottom Call-To-Action Pill
+        draw.rounded_rectangle([(240, 1440), (840, 1500)], radius=25, fill=(15, 23, 42, 220), outline=(255, 255, 255, 30), width=1)
+        draw_text_with_shadow_helper(draw, "▶ WATCH COMPLETE DAILY BRIEFING", cx, 1470, font_micro, text_color=(56, 189, 248, 230))
+    else:
+        # Standard Classic Title Card
+        draw_text_with_shadow_helper(draw, cat_label, cx, 660, font_sublogo, text_color=(56, 189, 248, 200))
+        draw_text_with_shadow_helper(draw, "CURRENT AFFAIRS", cx, 780, font_title, text_color=(255, 255, 255, 255))
+        draw.line([(240, 890), (840, 890)], fill=(255, 255, 255, 35), width=2)
+        draw_text_with_shadow_helper(draw, formatted_date_str, cx, 1000, font_date, text_color=(251, 191, 36, 255))
     
     output_path.parent.mkdir(parents=True, exist_ok=True)
     image.convert("RGB").save(output_path, "PNG")

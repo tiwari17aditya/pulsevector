@@ -757,7 +757,31 @@ def generate_brainteaser_video(target_date):
     W_canvas, H_canvas = 1080, 1920
     
     # 1. Synthesize Intro Voiceover Hook & compute word timings for Karaoke Subtitles
-    intro_hook = "Daily Brain Teaser! Can you solve this puzzle before the countdown ends?"
+    # High-retention ego-challenge hooks that trigger immediate viewer engagement in the first 3 seconds
+    RETENTION_HOOKS = [
+        {
+            "badge": "🔥 95% FAIL THIS TEST!",
+            "subtitle": "Can you solve it before zero?",
+            "speech": "Ninety-five percent of people fail this puzzle! Can you solve it in eight seconds?"
+        },
+        {
+            "badge": "⚡ ONLY 5% SPOT THE RULE!",
+            "subtitle": "Think fast! What is the answer?",
+            "speech": "Only five percent of people spot the pattern! What is the missing answer?"
+        },
+        {
+            "badge": "🧠 GENIUS IQ CHALLENGE!",
+            "subtitle": "Beat the clock & solve it!",
+            "speech": "Genius challenge! Find the correct answer before the timer hits zero!"
+        },
+        {
+            "badge": "⏱️ SPEED REASONING TEST!",
+            "subtitle": "Can you beat 90% of viewers?",
+            "speech": "Speed test! Can you beat ninety percent of viewers and solve this now?"
+        }
+    ]
+    hook_data = RETENTION_HOOKS[target_date.day % len(RETENTION_HOOKS)]
+    intro_hook = hook_data["speech"]
     temp_vo_path = videos_dir / f"temp_{bt_path.stem}_vo.mp3"
     vo_timings = []
     if HAS_TTS:
@@ -786,8 +810,8 @@ def generate_brainteaser_video(target_date):
             frame_img.paste(card_img, (card_x, card_y), card_img)
             
             draw = ImageDraw.Draw(frame_img)
-            draw_text_with_shadow_helper(draw, "DAILY BRAIN TEASER", W_canvas/2, 450, font_title, text_color=(251, 191, 36))
-            draw_text_with_shadow_helper(draw, "Can you solve this puzzle?", W_canvas/2, 530, font_subtitle, text_color=(229, 231, 235))
+            draw_text_with_shadow_helper(draw, hook_data["badge"], W_canvas/2, 450, font_title, text_color=(251, 191, 36))
+            draw_text_with_shadow_helper(draw, hook_data["subtitle"], W_canvas/2, 530, font_subtitle, text_color=(229, 231, 235))
             
             remaining_secs = math.ceil((80 - i) / fps)
             progress = (80 - i) / 80.0
