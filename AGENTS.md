@@ -14,9 +14,14 @@
 - Load ONLY the skill relevant to the target files or action being performed.
 - Do NOT load unrelated skills into agent context.
 
+## Branching Strategy & Environment Segregation
+- **Production Branch (`main`)**: Exclusively reserved for stable, verified, production-ready code. Scheduled GitHub Actions (daily news generation, brain teaser uploads, weekly/monthly runs, and report crons) execute strictly on `main`.
+- **Active Development Branch (`v<version>-dev`)**: All feature development, refactoring, and experimental code must be created and tested on the version-specific development branch (e.g. `v2.4.2-dev`). Never develop directly on `main`.
+- **Milestone Promotion to Main**: Merging from the dev branch into `main` occurs only after all tests pass, stage dry-runs succeed, and milestone sign-off is confirmed.
+
 ## Continuous Implementation & Testing Directives
 - **Immediate Automated Testing**: As soon as any code change, feature, or refactoring is implemented on tracked files, immediately run `python scripts/test_pipeline.py` (or stage dry-runs). Thoroughly report test outcomes and flag any issues, warnings, or regressions right away.
-- **Git Push on Modification**: Whenever modifications to tracked files are completed and verified with tests, automatically stage, commit, and push the changes to remote (`git push origin main`) to keep remote CI / GitHub Actions synchronized.
+- **Git Push on Modification**: Whenever modifications to tracked files are completed and verified with tests, automatically stage, commit, and push the changes to the active branch (`git push origin <current-branch>`) to maintain remote synchronization safely.
 
 ## Available Slash Workflows
 - `/packup` (or `/pulse_packup`): **Unified Master Sign-Off Workflow** (Sequentially triggers `/pulse_monitor`, `/pulse_structure`, `/pulse_test`, `/pulse_clean`, all 6 domain skills audits, and remote git push).

@@ -149,12 +149,16 @@ def main():
         subprocess.run(["git", "add", "."], cwd=str(ROOT_DIR))
         subprocess.run(["git", "commit", "-m", "chore(packup): automated sign-off and session synchronization"], cwd=str(ROOT_DIR))
 
+    # Detect current active branch
+    branch_res = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=str(ROOT_DIR), capture_output=True, text=True)
+    current_branch = branch_res.stdout.strip() or "main"
+
     # Pull with rebase to ensure local is up-to-date with remote commits
-    print("  🔄 Rebase-syncing with origin/main...")
-    subprocess.run(["git", "pull", "--rebase", "origin", "main"], cwd=str(ROOT_DIR))
-    push_res = subprocess.run(["git", "push", "origin", "main"], cwd=str(ROOT_DIR), capture_output=True, text=True)
+    print(f"  🔄 Rebase-syncing with origin/{current_branch}...")
+    subprocess.run(["git", "pull", "--rebase", "origin", current_branch], cwd=str(ROOT_DIR))
+    push_res = subprocess.run(["git", "push", "origin", current_branch], cwd=str(ROOT_DIR), capture_output=True, text=True)
     if push_res.returncode == 0:
-        print("  ✅ Successfully pushed all changes to origin/main.")
+        print(f"  ✅ Successfully pushed all changes to origin/{current_branch}.")
         results["git_push"] = True
     else:
         print(f"  ❌ Git push warning: {push_res.stderr.strip()}")
