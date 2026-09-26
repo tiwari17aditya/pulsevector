@@ -1004,20 +1004,20 @@ def publish_teaser_to_youtube(video_path, data, target_date, privacy_status=None
         # Feature 2: Community Auto-Broadcast (Telegram & Discord)
         try:
             teaser_title = f"Daily Brain Teaser: {date_str} 🧠"
-            play_url = f"{PULSE_PLAY_BASE_URL.rstrip('/')}/?challenge={date_file_str}"
             teaser_summary = (
                 f"{data.get('question_header', '')}\n{data.get('series', '')}\n\n"
                 f"Options:\n" + "\n".join([f"• {opt}" for opt in data.get('options', [])]) +
                 f"\n\n🧠 Drop your answer in the comments! Solution revealed in 24 hours."
-                f"\n\n🎮 Play Interactively: {play_url}"
             )
             img_path = ARCHIVE_DIR / year_str / target_date.strftime("%B") / "Brain_Teasers" / "Images" / f"brainteaser-{date_file_str}.png"
+            v_path = pathlib.Path(video_path) if video_path else None
             broadcast_daily_content(
                 content_type="Brain Teaser",
                 date_obj=target_date,
                 title=teaser_title,
                 summary_text=teaser_summary,
-                image_path=img_path if img_path.exists() else None,
+                image_path=img_path if img_path and img_path.exists() else None,
+                video_path=v_path if v_path and v_path.exists() else None,
                 video_url=f"https://youtu.be/{video_id}"
             )
         except Exception as b_err:

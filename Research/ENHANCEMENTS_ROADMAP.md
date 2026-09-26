@@ -87,10 +87,11 @@ This document outlines the versioned progression of the automated content creati
 * **Concurrency Lock**: Added `threading.Lock()` to `find_or_create_folder()` in `gdrive_utils.py` to prevent multi-threaded race conditions during batch uploads.
 * **Dual-Sync Prevention**: Serialized cloud sync to prioritize API uploads and eliminate simultaneous disk copy races.
 
-### 🟡 v2.4.2 - Native Video Broadcasting & Universal Social Media Footers (Active Enhancement — September 2026)
-* **Native Video Uploads to Telegram**: Upgrades `broadcast_telegram()` to stream actual `.mp4` video files via Telegram Bot API `sendVideo` (`supports_streaming=True`) instead of static images.
-* **Native Video Attachments to Discord**: Upgrades `broadcast_discord()` to upload `.mp4` video files directly as webhook attachments alongside rich embeds.
-* **Universal Social Media Block**: Integrates standardized, clean social media footers across YouTube descriptions, Telegram captions, and Discord embeds (YouTube, Telegram Channel, Discord).
+### 🟢 v2.4.2 - Native Video Broadcasting & Universal Social Media Footers (Completed — September 2026)
+* **Native Video Uploads to Telegram**: Upgraded `broadcast_telegram()` to stream actual `.mp4` video files via Telegram Bot API `sendVideo` (`supports_streaming=True`, max 50 MB) with safe HTML tag balancing and caption truncation (`truncate_html_caption`).
+* **Native Video Attachments to Discord**: Upgraded `broadcast_discord()` to upload `.mp4` video files directly as multipart webhook attachments (max 25 MB) alongside rich embeds.
+* **Universal Social Media Block**: Implemented `get_social_links_block()` across YouTube descriptions (plain text), Telegram captions (HTML), and Discord embeds (Markdown). Includes YouTube channel, Telegram community, and Discord server, strictly excluding bot handles and interactive play links.
+* **Pipeline Integration**: Connected compiled `video_path` in `stage_youtube_publish` (`pipeline_engine.py`) and `publish_teaser_to_youtube` (`brainteaser_pipeline.py`). Verified with 43/43 automated unit tests.
 
 ---
 

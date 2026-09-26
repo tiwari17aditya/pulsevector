@@ -386,6 +386,7 @@ class PipelineEngine:
                 title=payload.title,
                 summary_text=summary_points,
                 image_path=thumb_path if thumb_path.exists() else None,
+                video_path=video_path if video_path and video_path.exists() else None,
                 video_url=f"https://youtu.be/{video_id}"
             )
         except Exception as b_err:

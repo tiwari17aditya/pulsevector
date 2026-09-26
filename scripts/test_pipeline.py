@@ -17,11 +17,12 @@ SRC_DIR = pathlib.Path(__file__).resolve().parent.parent / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+from unittest.mock import patch, MagicMock
 from core.content_parser import (
     clean_markdown_decorations, strip_metadata_section, extract_news_points,
     extract_metadata_fields, extract_date_str, parse_news_content, parse_teaser_content,
     format_community_poll_text, classify_news_category, format_teaser_challenge_comment,
-    format_solution_reveal_comment, format_brainteaser_description
+    format_solution_reveal_comment, format_brainteaser_description, get_social_links_block
 )
 from core.youtube_utils import sanitize_youtube_tags
 from core.tts_utils import sanitize_text_for_speech, verify_speech_points_alignment, get_ffmpeg_executable
@@ -30,7 +31,9 @@ from core.video_utils import (
     create_transition_frames, generate_countdown_sfx, merge_brainteaser_audio,
     compute_word_timings, render_karaoke_subtitle_overlay
 )
-from core.broadcast_utils import broadcast_daily_content
+from core.broadcast_utils import (
+    broadcast_daily_content, broadcast_telegram, broadcast_discord, truncate_html_caption
+)
 from core.pipeline_engine import PipelineEngine
 from core.genai_utils import build_brainteaser_prompt, BRAIN_TEASER_TYPES
 
@@ -238,6 +241,50 @@ Correct Answer: c
         self.assertIn("📸 Instagram: https://instagram.com/pulsevector", custom_desc)
         self.assertIn("🐦 X (Twitter): https://x.com/pulsevector", custom_desc)
 
+    def test_get_social_links_block(self):
+        """Tests plain, HTML, and markdown formats of get_social_links_block."""
+        # 1. Plain text format (YouTube)
+        plain = get_social_links_block("plain")
+        self.assertIn("CONNECT WITH PULSE VECTOR", plain)
+        self.assertIn("📺 Subscribe on YouTube: https://www.youtube.com/@PulseVector", plain)
+        self.assertIn("💬 Telegram Community: https://t.me/pulsevector_daily", plain)
+        self.assertIn("👾 Discord Community:", plain)
+        # Excluded handles
+        self.assertNotIn("@PulseVectorOfficial_bot", plain)
+        self.assertNotIn("pulsevector/play", plain)
+        
+        # 2. HTML format (Telegram)
+        html_block = get_social_links_block("html")
+        self.assertIn("<b>CONNECT WITH PULSE VECTOR:</b>", html_block)
+        self.assertIn('<a href="https://www.youtube.com/@PulseVector">Subscribe on YouTube</a>', html_block)
+        self.assertIn('<a href="https://t.me/pulsevector_daily">Telegram Community</a>', html_block)
+        self.assertNotIn("@PulseVectorOfficial_bot", html_block)
+        self.assertNotIn("pulsevector/play", html_block)
+        
+        # 3. Markdown format (Discord)
+        md_block = get_social_links_block("markdown")
+        self.assertIn("**CONNECT WITH PULSE VECTOR:**", md_block)
+        self.assertIn("[Subscribe on YouTube](https://www.youtube.com/@PulseVector)", md_block)
+        self.assertIn("[Telegram Community](https://t.me/pulsevector_daily)", md_block)
+        self.assertNotIn("@PulseVectorOfficial_bot", md_block)
+        self.assertNotIn("pulsevector/play", md_block)
+
+    def test_news_content_includes_social_links_block(self):
+        """parse_news_content description must include standard social block."""
+        sample = (
+            "Daily Current Affairs 26 September 2026\n\n"
+            "1. Major tech breakthrough announced. [Source: Reuters]\n\n"
+            "Title: Daily Current Affairs 26 September 2026\n"
+            "Reel Description: Catch the top headlines.\n"
+            "Hashtags: #CurrentAffairs #Shorts\n"
+        )
+        payload = parse_news_content(sample, "daily", datetime.datetime(2026, 9, 26))
+        self.assertIn("CONNECT WITH PULSE VECTOR", payload.description)
+        self.assertIn("https://www.youtube.com/@PulseVector", payload.description)
+        self.assertIn("https://t.me/pulsevector_daily", payload.description)
+        self.assertNotIn("@PulseVectorOfficial_bot", payload.description)
+        self.assertNotIn("pulsevector/play", payload.description)
+
 class TestTTSUtils(unittest.TestCase):
     def test_speech_sanitization(self):
         text = "1. Wildfires rage in Spain. [Source: Reuters] Major disaster declared."
@@ -350,15 +397,118 @@ class TestPipelineEngine(unittest.TestCase):
         self.assertEqual(len(res_monthly.errors), 0)
 
     def test_broadcast_daily_content_graceful(self):
-        result = broadcast_daily_content(
-            content_type="daily",
-            date_obj=datetime.date(2026, 9, 4),
-            title="Test Broadcast Title",
-            summary_text="• Point 1 summary\n• Point 2 summary"
-        )
-        self.assertIsInstance(result, dict)
-        self.assertIn("telegram", result)
-        self.assertIn("discord", result)
+        with patch("core.broadcast_utils.requests.post") as mock_post:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_post.return_value = mock_resp
+            result = broadcast_daily_content(
+                content_type="daily",
+                date_obj=datetime.date(2026, 9, 4),
+                title="Test Broadcast Title",
+                summary_text="• Point 1 summary\n• Point 2 summary"
+            )
+            self.assertIsInstance(result, dict)
+            self.assertIn("telegram", result)
+            self.assertIn("discord", result)
+
+    def test_truncate_html_caption(self):
+        """Tests that HTML captions are safely truncated and tags are balanced."""
+        short_text = "<b>Short caption</b>"
+        self.assertEqual(truncate_html_caption(short_text), short_text)
+        
+        # Test long text with open tags
+        long_body = "word " * 300
+        html_text = f"<b>Title</b>: <i>{long_body}</i>"
+        truncated = truncate_html_caption(html_text, max_length=100)
+        self.assertLessEqual(len(truncated), 100)
+        self.assertTrue(truncated.endswith("</i>") or truncated.endswith("</b>") or truncated.endswith("..."))
+        # Verify tag balance
+        self.assertEqual(truncated.count("<b"), truncated.count("</b>"))
+        self.assertEqual(truncated.count("<i"), truncated.count("</i>"))
+
+    def test_broadcast_telegram_native_video(self):
+        """Verifies Telegram sendVideo API call with native .mp4 upload."""
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_vid:
+            tmp_vid.write(b"\x00\x00\x00\x18ftypmp42")
+            tmp_vid_path = pathlib.Path(tmp_vid.name)
+            
+        try:
+            with patch("core.broadcast_utils.get_env_var") as mock_env, \
+                 patch("core.broadcast_utils.requests.post") as mock_post:
+                mock_env.side_effect = lambda k, default=None: "dummy_val" if k in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID") else default
+                mock_resp = MagicMock()
+                mock_resp.status_code = 200
+                mock_post.return_value = mock_resp
+                
+                success = broadcast_telegram(
+                    message="<b>Test video short</b>",
+                    video_path=tmp_vid_path
+                )
+                self.assertTrue(success)
+                self.assertTrue(mock_post.called)
+                url_called = mock_post.call_args[0][0]
+                self.assertIn("sendVideo", url_called)
+                kwargs = mock_post.call_args[1]
+                self.assertIn("video", kwargs["files"])
+                self.assertEqual(kwargs["data"]["supports_streaming"], "true")
+        finally:
+            if tmp_vid_path.exists():
+                tmp_vid_path.unlink()
+
+    def test_broadcast_discord_native_video(self):
+        """Verifies Discord webhook call with native .mp4 file attachment."""
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_vid:
+            tmp_vid.write(b"\x00\x00\x00\x18ftypmp42")
+            tmp_vid_path = pathlib.Path(tmp_vid.name)
+            
+        try:
+            with patch("core.broadcast_utils.get_env_var") as mock_env, \
+                 patch("core.broadcast_utils.requests.post") as mock_post:
+                mock_env.side_effect = lambda k, default=None: "https://discord.com/api/webhooks/test" if k == "DISCORD_WEBHOOK_URL" else default
+                mock_resp = MagicMock()
+                mock_resp.status_code = 204
+                mock_post.return_value = mock_resp
+                
+                success = broadcast_discord(
+                    title="Test Short",
+                    description="Test description",
+                    video_path=tmp_vid_path
+                )
+                self.assertTrue(success)
+                self.assertTrue(mock_post.called)
+                kwargs = mock_post.call_args[1]
+                self.assertIn("file", kwargs["files"])
+                self.assertEqual(kwargs["files"]["file"][2], "video/mp4")
+        finally:
+            if tmp_vid_path.exists():
+                tmp_vid_path.unlink()
+
+    def test_broadcast_daily_content_with_video(self):
+        """Verifies broadcast_daily_content accepts video_path gracefully."""
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_vid:
+            tmp_vid.write(b"\x00\x00\x00\x18ftypmp42")
+            tmp_vid_path = pathlib.Path(tmp_vid.name)
+            
+        try:
+            with patch("core.broadcast_utils.requests.post") as mock_post:
+                mock_resp = MagicMock()
+                mock_resp.status_code = 200
+                mock_post.return_value = mock_resp
+                
+                result = broadcast_daily_content(
+                    content_type="daily",
+                    date_obj=datetime.date(2026, 9, 26),
+                    title="Daily Current Affairs",
+                    summary_text="• Point 1\n• Point 2",
+                    video_path=tmp_vid_path,
+                    video_url="https://youtu.be/dummy123"
+                )
+                self.assertIsInstance(result, dict)
+                self.assertIn("telegram", result)
+                self.assertIn("discord", result)
+        finally:
+            if tmp_vid_path.exists():
+                tmp_vid_path.unlink()
 
 
 class TestYouTubeTagSafety(unittest.TestCase):

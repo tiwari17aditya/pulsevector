@@ -220,6 +220,13 @@ def parse_news_content(raw_text: str, content_type: str, target_date: datetime.d
         top_points = " ".join([p[1] for p in points_tuples[:5]])
         desc = f"Catch the top headlines: {top_points[:450]}... #CurrentAffairs #PulseVector"
         
+    # Standardized social media block
+    social_block = get_social_links_block("plain")
+    if "CONNECT WITH PULSE VECTOR" not in desc:
+        desc = f"{desc}\n\n{social_block}".strip()
+    if len(desc) > 4950:
+        desc = desc[:4947] + "..."
+        
     # Fallback tags if missing — plain keywords, no '#' prefix (YouTube API requirement)
     tags = meta["hashtags"]
     if not tags:
@@ -408,6 +415,94 @@ def format_solution_reveal_comment(yesterday_data: Dict[str, Any]) -> str:
         f"Did you crack it? Try today's fresh brain teaser on the channel! 🧠🔥"
     )
 
+def get_social_links_block(
+    format_type: str = "plain",
+    youtube_url: Optional[str] = None,
+    telegram_url: Optional[str] = None,
+    discord_url: Optional[str] = None,
+    instagram_url: Optional[str] = None,
+    x_url: Optional[str] = None,
+    include_divider: bool = True
+) -> str:
+    """
+    Constructs a standardized, unified social media links block.
+    Supports formats:
+      - 'plain' / 'text' / 'youtube': Plain text URLs (for YouTube descriptions)
+      - 'html' / 'telegram': HTML <a> tags (for Telegram captions)
+      - 'markdown' / 'discord': Markdown [Label](url) links (for Discord embeds)
+    
+    Includes:
+      - YouTube channel
+      - Telegram community channel
+      - Discord community server
+    
+    Explicitly excludes bot handles (@PulseVectorOfficial_bot) and interactive web play links.
+    """
+    from .config import (
+        PULSE_YOUTUBE_URL, PULSE_TELEGRAM_URL, PULSE_DISCORD_URL,
+        PULSE_INSTAGRAM_URL, PULSE_X_URL
+    )
+    
+    yt = youtube_url or PULSE_YOUTUBE_URL or "https://www.youtube.com/@PulseVector"
+    tg = telegram_url or PULSE_TELEGRAM_URL or "https://t.me/pulsevector_daily"
+    dc = discord_url if discord_url is not None else (PULSE_DISCORD_URL or "https://discord.gg/pulsevector")
+    insta = instagram_url or PULSE_INSTAGRAM_URL
+    x = x_url or PULSE_X_URL
+    
+    fmt = (format_type or "plain").lower()
+    
+    if fmt in ("html", "telegram"):
+        lines = []
+        if include_divider:
+            lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        lines.append("🌐 <b>CONNECT WITH PULSE VECTOR:</b>")
+        lines.append(f"📺 <a href=\"{yt}\">Subscribe on YouTube</a>")
+        lines.append(f"💬 <a href=\"{tg}\">Telegram Community</a>")
+        if dc:
+            lines.append(f"👾 <a href=\"{dc}\">Discord Community</a>")
+        if insta:
+            lines.append(f"📸 <a href=\"{insta}\">Instagram</a>")
+        if x:
+            lines.append(f"🐦 <a href=\"{x}\">X (Twitter)</a>")
+        if include_divider:
+            lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        return "\n".join(lines)
+        
+    elif fmt in ("markdown", "md", "discord"):
+        lines = []
+        if include_divider:
+            lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        lines.append("🌐 **CONNECT WITH PULSE VECTOR:**")
+        lines.append(f"📺 **[Subscribe on YouTube]({yt})**")
+        lines.append(f"💬 **[Telegram Community]({tg})**")
+        if dc:
+            lines.append(f"👾 **[Discord Community]({dc})**")
+        if insta:
+            lines.append(f"📸 **[Instagram]({insta})**")
+        if x:
+            lines.append(f"🐦 **[X (Twitter)]({x})**")
+        if include_divider:
+            lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        return "\n".join(lines)
+        
+    else:  # 'plain', 'text', 'youtube'
+        lines = []
+        if include_divider:
+            lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        lines.append("🌐 CONNECT WITH PULSE VECTOR:")
+        lines.append(f"📺 Subscribe on YouTube: {yt}")
+        lines.append(f"💬 Telegram Community: {tg}")
+        if dc:
+            lines.append(f"👾 Discord Community: {dc}")
+        if insta:
+            lines.append(f"📸 Instagram: {insta}")
+        if x:
+            lines.append(f"🐦 X (Twitter): {x}")
+        if include_divider:
+            lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        return "\n".join(lines)
+
+
 def format_brainteaser_description(
     data: Dict[str, Any],
     date_str: str,
@@ -425,10 +520,7 @@ def format_brainteaser_description(
     Includes question details, series, options, answer call-to-action,
     and verified social media & community handles.
     """
-    from .config import (
-        PULSE_PLAY_BASE_URL, PULSE_TELEGRAM_URL, PULSE_YOUTUBE_URL,
-        PULSE_DISCORD_URL, PULSE_INSTAGRAM_URL, PULSE_X_URL
-    )
+    from .config import PULSE_PLAY_BASE_URL
     
     if play_url is None:
         if date_file_str:
@@ -436,17 +528,6 @@ def format_brainteaser_description(
         else:
             play_url = PULSE_PLAY_BASE_URL
             
-    if telegram_url is None:
-        telegram_url = PULSE_TELEGRAM_URL
-    if youtube_url is None:
-        youtube_url = PULSE_YOUTUBE_URL
-    if discord_url is None:
-        discord_url = PULSE_DISCORD_URL
-    if instagram_url is None:
-        instagram_url = PULSE_INSTAGRAM_URL
-    if x_url is None:
-        x_url = PULSE_X_URL
-        
     desc_lines = [
         f"Daily Brain Teaser - {date_str} 🧠",
         "",
@@ -457,27 +538,24 @@ def format_brainteaser_description(
     for opt in data.get("options", []):
         desc_lines.append(opt)
         
+    social_block = get_social_links_block(
+        format_type="plain",
+        youtube_url=youtube_url,
+        telegram_url=telegram_url,
+        discord_url=discord_url,
+        instagram_url=instagram_url,
+        x_url=x_url,
+        include_divider=True
+    )
+        
     desc_lines.extend([
         "",
         "Comment your answer below! 👇",
         "Correct answer pinned in 24 hours.",
         "",
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        "🧠 CONNECT & PLAY WITH PULSE VECTOR:",
         f"🎮 Play Interactively: {play_url}",
-        f"💬 Telegram Community: {telegram_url}",
-        f"📺 Subscribe on YouTube: {youtube_url}"
-    ])
-    
-    if discord_url:
-        desc_lines.append(f"👾 Discord Community: {discord_url}")
-    if instagram_url:
-        desc_lines.append(f"📸 Instagram: {instagram_url}")
-    if x_url:
-        desc_lines.append(f"🐦 X (Twitter): {x_url}")
-        
-    desc_lines.extend([
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "",
+        social_block,
         "",
         " ".join(formatted_hashtags)
     ])
