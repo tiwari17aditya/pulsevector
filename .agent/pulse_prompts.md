@@ -8,7 +8,17 @@ Crucially, for each point, identify the reputable news publisher/source from the
 
 Additionally, provide YouTube metadata in this order:
 - Title: A high-CTR curiosity title strictly under 85 characters formatted as: '🔥 [Punchy Subject / Action of Story #1] & Top News ([Date]) #Shorts'
-- Reel Description: A Reel Description covering top highlights (max 25 words per point) formatted as 'Catch the top... [points] . . . . . [Hashtags]' including a 'Question of the Day: Which of today's events will have the greatest impact? Drop your thoughts below! 👇'
+- Reel Description: A clean, structured multi-section description with line breaks and bulleted highlights (never all in one paragraph):
+  📌 Daily Current Affairs — [Date]
+  Stay ahead with today's essential national and international developments curated for competitive exams (UPSC, SSC, Banking, Railways) and rapid daily awareness.
+
+  ⚡ KEY HIGHLIGHTS:
+  • Story 1 headline
+  • Story 2 headline
+  • Story 3 headline
+
+  💬 QUESTION OF THE DAY:
+  Which of today's events will have the greatest impact? Drop your thoughts below! 👇
 - Hashtags: 50 high-reach hashtags (separated by spaces, NOT as a numbered list) including popular, niche, and educational tags.
 - Source URLs: Provide a list of the source URLs you used from the context, structured as:
   - Publisher Name: URL
@@ -17,7 +27,7 @@ Do NOT use numbers for headings, subheadings, or the hashtags list in the YouTub
 ## Weekly Current Affairs Prompt
 Act as a Social Media and Educational expert for the 'Pulse Vector' YouTube channel (IST timezone) to generate Weekly Current Affairs Masterclass content (16:9 widescreen educational revision for competitive exams like UPSC, Banking, SSC, State PSCs). When given a date range [start_date] to [end_date], generate 'Weekly Current Affairs ( [start_date] - [end_date] )' with 15 numbered points (each under 25 words). Point #1 must be the defining story of the week. Crucially, for each point, identify the reputable news publisher/source from the context (e.g. BBC News, Reuters, Bloomberg, etc.) and append it at the end of the point strictly in the format: '[Source: Publisher Name]'. Do not include URL inside the point's source brackets. Additionally, provide YouTube metadata in this order:
 - Title: 'Weekly Current Affairs Masterclass ([start_date] - [end_date]) | Full Revision'
-- Reel Description: A Reel Description covering top highlights (max 25 words per point) formatted as 'Catch the top... [points] . . . . . [Hashtags]'
+- Reel Description: A clean, structured multi-section description with line breaks and bulleted highlights covering the defining developments of the week.
 - Hashtags: 50 high-reach hashtags (separated by spaces, NOT as a numbered list) including popular, niche, and educational tags.
 - Source URLs: Provide a list of the source URLs you used from the context, structured as:
   - Publisher Name: URL
@@ -26,7 +36,7 @@ Do NOT use numbers for headings, subheadings, or the hashtags list in the YouTub
 ## Monthly Current Affairs Prompt
 Act as a Social Media and Educational expert for the 'Pulse Vector' YouTube channel (IST timezone) to generate Monthly Current Affairs Masterclass content (16:9 widescreen comprehensive deep-dive revision). When given a month and year [month_name] [year], generate 'Monthly Current Affairs - [month_name] [year]' with 50 numbered points (each under 25 words). Point #1 must be the month's biggest milestone. Crucially, for each point, identify the reputable news publisher/source from the context (e.g. BBC News, Reuters, Bloomberg, etc.) and append it at the end of the point strictly in the format: '[Source: Publisher Name]'. Do not include URL inside the point's source brackets. Additionally, provide YouTube metadata in this order:
 - Title: 'Monthly Current Affairs Masterclass - [month_name] [year] | Complete Revision'
-- Reel Description: A Reel Description covering top highlights (max 25 words per point) formatted as 'Catch the top... [points] . . . . . [Hashtags]'
+- Reel Description: A clean, structured multi-section description with line breaks and bulleted highlights covering the full monthly breakdown.
 - Hashtags: 50 high-reach hashtags (separated by spaces, NOT as a numbered list) including popular, niche, and educational tags.
 - Source URLs: Provide a list of the source URLs you used from the context, structured as:
   - Publisher Name: URL

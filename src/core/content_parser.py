@@ -129,7 +129,17 @@ def extract_metadata_fields(content: str) -> Dict[str, Any]:
         stop_match = re.search(r"(?i)\n+\s*\*?\*?(?:Hashtags|Source\s+URLs)\*?\*?", desc_raw)
         if stop_match:
             desc_raw = desc_raw[:stop_match.start()]
-        desc = desc_raw.strip()
+        
+        # Check if hashtags were appended directly inside Reel Description with dots / spaces
+        ht_in_desc = re.findall(r"#\w+", desc_raw)
+        if ht_in_desc and not result["hashtags"]:
+            result["hashtags"] = [t.lstrip("#") for t in ht_in_desc]
+            
+        # Clean off trailing . . . . . and hashtags from desc_raw
+        desc_cleaned = re.sub(r"(\s*\.\s*){2,}.*", "", desc_raw, flags=re.DOTALL)
+        desc_cleaned = re.sub(r"(?:\s*#\w+)+$", "", desc_cleaned).strip()
+        
+        desc = desc_cleaned if desc_cleaned else desc_raw.strip()
         if len(desc) > 4950:
             desc = desc[:4947] + "..."
         result["description"] = desc
@@ -143,7 +153,9 @@ def extract_metadata_fields(content: str) -> Dict[str, Any]:
         ht_text = ht_match.group(1)
         raw_tags = re.findall(r"#\w+", ht_text)
         # Strip '#' — keep plain keywords for YouTube API tags array
-        result["hashtags"] = [t.lstrip("#") for t in raw_tags]
+        parsed_tags = [t.lstrip("#") for t in raw_tags]
+        if parsed_tags:
+            result["hashtags"] = parsed_tags
         
     # 4. Source URLs
     src_match = re.search(r"(?i)\*?\*?Source\s+URLs\*?\*?:\s*(.+)", content, re.DOTALL)
@@ -240,6 +252,93 @@ def optimize_youtube_title(
         
     return raw_title[:100] if raw_title else f"Pulse Vector | {content_type.title()} ({date_compact})"
 
+def format_structured_description(
+    content_type: str,
+    target_date: datetime.datetime,
+    points: List[Tuple[int, str]],
+    raw_desc: str = "",
+    hashtags: Optional[List[str]] = None,
+    source_urls: Optional[Dict[str, str]] = None
+) -> str:
+    """
+    Builds a beautifully structured, multi-section YouTube description:
+      1. Clean header with date & exam/general awareness summary.
+      2. Key headlines / highlights cleanly formatted with bullet points & line breaks.
+      3. Community discussion / question of the day prompt.
+      4. Standard social media connectivity block (YouTube, Telegram, Discord).
+      5. Curated hashtag row placed neatly at the bottom.
+    """
+    sections = []
+    date_str = target_date.strftime("%d %B %Y")
+    
+    # 1. Header / Intro Block
+    if content_type == "daily":
+        sections.append(
+            f"📌 Daily Current Affairs — {date_str}\n"
+            "Stay ahead with today's essential national and international developments curated for competitive exams (UPSC, SSC, Banking, Railways) and rapid daily awareness."
+        )
+    elif content_type == "weekly":
+        start_d = target_date - datetime.timedelta(days=6)
+        sections.append(
+            f"📚 Weekly Current Affairs Masterclass — {start_d.strftime('%d %B %Y')} to {date_str}\n"
+            "Comprehensive 16:9 widescreen revision covering the defining developments of the week for UPSC, SSC CGL, Banking, and State PSC aspirants."
+        )
+    elif content_type == "monthly":
+        month_name = target_date.strftime("%B %Y")
+        sections.append(
+            f"🏆 Monthly Current Affairs Masterclass — {month_name}\n"
+            "Complete deep-dive monthly revision covering all critical milestones across National, International, Economy, Science & Tech, and Governance."
+        )
+    else:
+        sections.append(f"📌 Pulse Vector Current Affairs — {date_str}")
+        
+    # 2. Key Stories / Highlights (Clean Bulleted Points)
+    if points:
+        heading = "⚡ KEY HEADLINES TODAY:" if content_type == "daily" else "⚡ MAJOR TOPICS COVERED:"
+        stories_lines = [heading]
+        for idx, pt in points:
+            clean_pt = re.sub(r"\[Source:[^\]]+\]", "", str(pt)).strip()
+            clean_pt = clean_pt.rstrip(".- ")
+            stories_lines.append(f"• {idx:02d}. {clean_pt}")
+        sections.append("\n".join(stories_lines))
+    elif raw_desc:
+        sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', raw_desc) if s.strip()]
+        if len(sentences) > 1:
+            sections.append("⚡ TODAY'S HIGHLIGHTS:\n" + "\n".join([f"• {s}" for s in sentences]))
+        else:
+            sections.append(raw_desc)
+            
+    # 3. Discussion / Call to Action
+    if content_type == "daily":
+        sections.append(
+            "💬 QUESTION OF THE DAY:\n"
+            "Which of today's stories do you believe will have the greatest impact? Share your thoughts and perspective below — top analytical comments get pinned! 📌"
+        )
+    else:
+        sections.append(
+            "💬 DISCUSSION:\n"
+            "Which key topic covered in this masterclass do you want an in-depth breakdown for next? Drop your request in the comments below! 👇"
+        )
+        
+    # 4. Social Media Connectivity Block
+    social_block = get_social_links_block("plain")
+    sections.append(social_block)
+    
+    # 5. Curated Hashtags (Clean list of 8-10 primary tags at the bottom)
+    if hashtags:
+        top_tags = [f"#{t.lstrip('#')}" for t in hashtags[:10]]
+        sections.append(" ".join(top_tags))
+    else:
+        default_tags = ["#DailyCurrentAffairs", "#CurrentAffairs", "#UPSC", "#SSC", "#Banking", "#PulseVector", "#GeneralKnowledge"]
+        if content_type == "daily":
+            default_tags.append("#Shorts")
+        sections.append(" ".join(default_tags))
+        
+    full_desc = "\n\n".join(sections).strip()
+    if len(full_desc) > 4950:
+        full_desc = full_desc[:4947] + "..."
+    return full_desc
+
 def parse_news_content(raw_text: str, content_type: str, target_date: datetime.datetime, file_path: Optional[pathlib.Path] = None) -> ContentPayload:
     """Parses raw LLM text into a structured ContentPayload."""
     points_data = extract_news_points(raw_text)
@@ -251,19 +350,6 @@ def parse_news_content(raw_text: str, content_type: str, target_date: datetime.d
     raw_title = meta["title"]
     title = optimize_youtube_title(raw_title, content_type, target_date, points_tuples)
             
-    # Fallback description if missing
-    desc = meta["description"]
-    if not desc and points_tuples:
-        top_points = " ".join([p[1] for p in points_tuples[:5]])
-        desc = f"Catch the top headlines: {top_points[:450]}... #CurrentAffairs #PulseVector"
-        
-    # Standardized social media block
-    social_block = get_social_links_block("plain")
-    if "CONNECT WITH PULSE VECTOR" not in desc:
-        desc = f"{desc}\n\n{social_block}".strip()
-    if len(desc) > 4950:
-        desc = desc[:4947] + "..."
-        
     # Fallback tags if missing — plain keywords, no '#' prefix (YouTube API requirement)
     tags = meta["hashtags"]
     if not tags:
@@ -275,6 +361,16 @@ def parse_news_content(raw_text: str, content_type: str, target_date: datetime.d
         elif content_type == "monthly":
             default_tags.append("MonthlyCurrentAffairs")
         tags = default_tags  # Already plain strings, no '#'
+        
+    # Formatted multi-section description with clean line breaks & bulleted headlines
+    desc = format_structured_description(
+        content_type=content_type,
+        target_date=target_date,
+        points=points_tuples,
+        raw_desc=meta["description"],
+        hashtags=tags,
+        source_urls=meta["source_urls"]
+    )
         
     date_header = extract_date_str(raw_text, content_type, target_date)
     
