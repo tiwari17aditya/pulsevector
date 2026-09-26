@@ -1,8 +1,8 @@
 {
   "enabled": true,
-  "rate": 1,
+  "rate": 2,
   "volume": 100,
-  "max_words": 150,
+  "max_words": 35,
   "engine": "sapi",
   "voice_name": ""
 }

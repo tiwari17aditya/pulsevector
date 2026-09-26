@@ -4,7 +4,7 @@
     "Stop": [
       {
         "type": "command",
-        "command": "python \".agent/voice_assistant/speak_response.py\"",
+        "command": "python \"e:/hdd-data/pulse-vector/.agent/voice_assistant/speak_response.py\"",
         "timeout": 60
       }
     ]
