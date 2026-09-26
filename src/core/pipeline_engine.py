@@ -341,40 +341,45 @@ class PipelineEngine:
         payload = parse_news_content(raw_text, content_type, target_date, text_file)
         
         youtube = get_authenticated_service()
+        video_id = None
         if not youtube:
-            print("⚠️ YouTube authentication failed. Skipping upload.")
-            return None
-            
-        print(f"Uploading '{payload.title}' to YouTube...")
-        video_id = upload_video_to_youtube(
-            youtube, str(video_path), payload.title, payload.description, payload.hashtags
-        )
-        print(f"✅ Upload Complete! Video ID: {video_id}")
-        
-        # Playlist Assignment
-        year_str = target_date.strftime("%Y")
-        if content_type == "daily":
-            _, playlist_title = get_quarter_info(target_date)
-            video_type = "Short (9:16)"
-        elif content_type == "weekly":
-            playlist_title = f"Weekly Current Affairs - {year_str}"
-            video_type = "Weekly Masterclass"
-        elif content_type == "monthly":
-            playlist_title = f"Monthly Current Affairs - {year_str}"
-            video_type = "Monthly Masterclass"
+            print("⚠️ YouTube authentication failed. Skipping YouTube upload; proceeding to backup & broadcast.")
         else:
-            playlist_title = "Pulse Vector News"
-            video_type = "Video"
-            
-        add_video_to_playlist(youtube, video_id, playlist_title)
-        log_upload_details(
-            title=payload.title,
-            category_name="Education (27)",
-            video_type=video_type,
-            related_video_setting="Linked to Playlist",
-            pinned_comment_status="Pinned Standard Comment",
-            video_id=video_id
-        )
+            try:
+                print(f"Uploading '{payload.title}' to YouTube...")
+                video_id = upload_video_to_youtube(
+                    youtube, str(video_path), payload.title, payload.description, payload.hashtags
+                )
+                print(f"✅ Upload Complete! Video ID: {video_id}")
+                
+                # Playlist Assignment
+                year_str = target_date.strftime("%Y")
+                if content_type == "daily":
+                    _, playlist_title = get_quarter_info(target_date)
+                    video_type = "Short (9:16)"
+                elif content_type == "weekly":
+                    playlist_title = f"Weekly Current Affairs - {year_str}"
+                    video_type = "Weekly Masterclass"
+                elif content_type == "monthly":
+                    playlist_title = f"Monthly Current Affairs - {year_str}"
+                    video_type = "Monthly Masterclass"
+                else:
+                    playlist_title = "Pulse Vector News"
+                    video_type = "Video"
+                    
+                add_video_to_playlist(youtube, video_id, playlist_title)
+                log_upload_details(
+                    title=payload.title,
+                    category_name="Education (27)",
+                    video_type=video_type,
+                    related_video_setting="Linked to Playlist",
+                    pinned_comment_status="Pinned Standard Comment",
+                    video_id=video_id
+                )
+            except Exception as yt_err:
+                print(f"⚠️ YouTube upload encountered an error: {yt_err}")
+                print("  > Auto-healing: Continuing pipeline to preserve video and trigger community broadcast.")
+                video_id = None
         
         # Feature 2: Community Auto-Broadcast (Telegram & Discord)
         try:
@@ -388,7 +393,7 @@ class PipelineEngine:
                 summary_text=summary_points,
                 image_path=thumb_path if thumb_path.exists() else None,
                 video_path=video_path if video_path and video_path.exists() else None,
-                video_url=f"https://youtu.be/{video_id}"
+                video_url=f"https://youtu.be/{video_id}" if video_id else None
             )
         except Exception as b_err:
             print(f"  > Broadcast notice: {b_err}")

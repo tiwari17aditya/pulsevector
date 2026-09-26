@@ -52,6 +52,24 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+      - name: Pre-Flight Health & Quota Diagnostics
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          python -c "
+          import asyncio
+          from src.mcp_server.pulse_ops import check_quotas_and_health
+          try:
+              res = asyncio.run(check_quotas_and_health())
+              print('Pre-flight Health Assessment:', res.get('overall_health', 'UNKNOWN'))
+              for k, v in res.get('checks', {}).items():
+                  print(f'  • {k}: {v.get(\"status\")}')
+          except Exception as e:
+              print(f'Pre-flight warning: {e}')
+          "
+
       - name: Run Pulse Vector Pipeline
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -67,13 +85,33 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python src/pipeline.py --daily
 
+      - name: Autonomous Cloud Sentinel Alert
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          python -c "
+          from src.core.broadcast_utils import broadcast_discord, broadcast_telegram
+          import datetime
+          now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M UTC')
+          alert_msg = f'⚠️ **Pulse Vector Cloud Alert** ({now})\nDaily pipeline run encountered a step error on GitHub Actions runner. Logs preserved in artifacts.'
+          try:
+              broadcast_discord('Pulse Vector Sentinel', alert_msg)
+          except Exception as e:
+              print(f'Discord alert skipped: {e}')
+          try:
+              broadcast_telegram('⚠️ <b>Pulse Vector Cloud Alert</b>\nDaily run encountered an issue on GitHub Actions runner. Check workflow artifacts.')
+          except Exception as e:
+              print(f'Telegram alert skipped: {e}')
+          "
+
       - name: Push Git Commits
         if: always()
         run: |
           git pull --rebase -X theirs origin main || (git rebase --abort && git pull --no-rebase -X theirs origin main --no-edit || (git checkout --ours . && git add . && git commit -m "Auto-resolve merge conflicts"))
           git push origin main
-
-
 
       - name: Upload Pipeline Logs
         if: always()

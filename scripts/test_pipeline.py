@@ -12,10 +12,13 @@ import tempfile
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-# Ensure src/ is on sys.path
-SRC_DIR = pathlib.Path(__file__).resolve().parent.parent / "src"
+# Ensure src/ and project root are on sys.path
+ROOT_DIR = pathlib.Path(__file__).resolve().parent.parent
+SRC_DIR = ROOT_DIR / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 from unittest.mock import patch, MagicMock
 from core.content_parser import (
@@ -750,6 +753,34 @@ class TestMCPOperationalServer(unittest.TestCase):
 
     def test_mcp_server_tools_registered(self):
         self.assertIsNotNone(mcp_app)
+
+
+class TestSecretSync(unittest.TestCase):
+    """Verifies the GitHub Actions secret synchronization utility."""
+    def test_collect_secrets_dry_run(self):
+        from scripts.sync_secrets import collect_all_secrets, sync_secrets
+        secrets = collect_all_secrets()
+        self.assertIsInstance(secrets, dict)
+        # Verify dry run completes cleanly
+        self.assertTrue(sync_secrets(dry_run=True))
+
+    def test_encrypt_secret_libsodium(self):
+        from scripts.sync_secrets import encrypt_secret
+        from nacl import public, encoding
+        import base64
+        # Generate a temporary ephemeral keypair for testing
+        test_key = public.PrivateKey.generate()
+        test_pub_b64 = test_key.public_key.encode(encoding.Base64Encoder).decode("utf-8")
+        raw_secret = "super_secret_token_123"
+        encrypted = encrypt_secret(test_pub_b64, raw_secret)
+        self.assertIsInstance(encrypted, str)
+        self.assertGreater(len(encrypted), len(raw_secret))
+
+        # Decrypt to verify roundtrip integrity
+        box = public.SealedBox(test_key)
+        decrypted = box.decrypt(base64.b64decode(encrypted)).decode("utf-8")
+        self.assertEqual(decrypted, raw_secret)
+
 
 
 def main():
