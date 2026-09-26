@@ -938,7 +938,14 @@ def publish_teaser_to_youtube(video_path, data, target_date, privacy_status=None
         date_str = target_date.strftime("%B %d, %Y")
         year_str = target_date.strftime("%Y")
         
-        title = f"Daily Brain Teaser - {date_str} 🧠 #Shorts"
+        date_compact = target_date.strftime("%d %b")
+        CURIOSITY_TITLES = [
+            f"🧠 Can You Solve This in 8s? Daily Brain Teaser ({date_compact}) #Shorts",
+            f"🔥 95% Fail This Logic Test! Can You Beat It? ({date_compact}) #Shorts",
+            f"⚡ Spot the Pattern Challenge! Daily Brain Teaser ({date_compact}) #Shorts",
+            f"🧩 Genius IQ Puzzle: Find the Missing Value! ({date_compact}) #Shorts"
+        ]
+        title = CURIOSITY_TITLES[target_date.day % len(CURIOSITY_TITLES)]
         
         # Get hashtags from parsed data or use rich default list
         file_hashtags = data.get("hashtags", [])

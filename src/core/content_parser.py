@@ -196,6 +196,50 @@ def extract_date_str(content: str, content_type: str, fallback_date: Optional[da
         
     return ""
 
+def optimize_youtube_title(
+    raw_title: str,
+    content_type: str,
+    target_date: datetime.datetime,
+    points: List[Tuple[int, str]]
+) -> str:
+    """
+    Transforms generic calendar titles into high-CTR curiosity-driven YouTube titles.
+    Strictly enforces YouTube's 100-character title budget.
+    """
+    date_compact = target_date.strftime("%d %b %Y")
+    is_generic = (
+        not raw_title
+        or raw_title.lower().startswith("daily current affairs")
+        or raw_title.lower().startswith("weekly current affairs")
+        or raw_title.lower().startswith("monthly current affairs")
+    )
+    
+    if content_type == "daily":
+        if is_generic and points:
+            # Extract lead story preview
+            lead_text = points[0][1] if isinstance(points[0], (list, tuple)) else str(points[0])
+            lead_clean = re.sub(r'[\.\:\;\-\"\'\`]', '', lead_text).strip()
+            # Trim lead clean to ~42 chars at word boundary
+            if len(lead_clean) > 42:
+                lead_clean = lead_clean[:42].rsplit(' ', 1)[0]
+            candidate = f"🔥 {lead_clean} & Top News ({date_compact}) #Shorts"
+            if len(candidate) <= 100:
+                return candidate
+        elif not is_generic and raw_title:
+            if "#Shorts" not in raw_title and len(raw_title) <= 92:
+                return f"{raw_title} #Shorts"
+            return raw_title[:100]
+        return f"⚡ Daily Current Affairs ({date_compact}) #Shorts"
+        
+    elif content_type == "weekly":
+        start_d = target_date - datetime.timedelta(days=6)
+        return f"Weekly Current Affairs Masterclass ({start_d.strftime('%d %b')} - {target_date.strftime('%d %b %Y')}) | Full Revision"
+        
+    elif content_type == "monthly":
+        return f"Monthly Current Affairs Masterclass - {target_date.strftime('%B %Y')} | Complete Revision"
+        
+    return raw_title[:100] if raw_title else f"Pulse Vector | {content_type.title()} ({date_compact})"
+
 def parse_news_content(raw_text: str, content_type: str, target_date: datetime.datetime, file_path: Optional[pathlib.Path] = None) -> ContentPayload:
     """Parses raw LLM text into a structured ContentPayload."""
     points_data = extract_news_points(raw_text)
@@ -203,16 +247,9 @@ def parse_news_content(raw_text: str, content_type: str, target_date: datetime.d
     
     meta = extract_metadata_fields(raw_text)
     
-    # Fallback title if missing
-    title = meta["title"]
-    if not title:
-        if content_type == "daily":
-            title = f"Daily Current Affairs {target_date.strftime('%d %B %Y')}"
-        elif content_type == "weekly":
-            start_d = target_date - datetime.timedelta(days=6)
-            title = f"Weekly Current Affairs ( {start_d.strftime('%d %B %Y')} - {target_date.strftime('%d %B %Y')} )"
-        elif content_type == "monthly":
-            title = f"Monthly Current Affairs - {target_date.strftime('%B %Y')}"
+    # Curiosity & Packaging Title Optimization for YouTube
+    raw_title = meta["title"]
+    title = optimize_youtube_title(raw_title, content_type, target_date, points_tuples)
             
     # Fallback description if missing
     desc = meta["description"]

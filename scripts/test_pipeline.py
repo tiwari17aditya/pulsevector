@@ -25,7 +25,8 @@ from core.content_parser import (
     clean_markdown_decorations, strip_metadata_section, extract_news_points,
     extract_metadata_fields, extract_date_str, parse_news_content, parse_teaser_content,
     format_community_poll_text, classify_news_category, format_teaser_challenge_comment,
-    format_solution_reveal_comment, format_brainteaser_description, get_social_links_block
+    format_solution_reveal_comment, format_brainteaser_description, get_social_links_block,
+    optimize_youtube_title
 )
 from core.youtube_utils import sanitize_youtube_tags
 from core.tts_utils import sanitize_text_for_speech, verify_speech_points_alignment, get_ffmpeg_executable
@@ -292,6 +293,23 @@ Correct Answer: c
         self.assertIn("https://t.me/pulsevector_daily", payload.description)
         self.assertNotIn("@PulseVectorOfficial_bot", payload.description)
         self.assertNotIn("pulsevector/play", payload.description)
+
+    def test_optimize_youtube_title(self):
+        """Pillar 3: Verifies that generic titles are transformed into high-CTR curiosity titles."""
+        points = [(1, "ISRO launches advanced quantum communication satellite")]
+        target_d = datetime.datetime(2026, 9, 26)
+        
+        # Generic daily title transformation
+        opt_title = optimize_youtube_title("Daily Current Affairs 26 September 2026", "daily", target_d, points)
+        self.assertIn("🔥", opt_title)
+        self.assertIn("ISRO launches advanced quantum", opt_title)
+        self.assertIn("#Shorts", opt_title)
+        self.assertLessEqual(len(opt_title), 100)
+        
+        # Weekly masterclass title transformation
+        opt_weekly = optimize_youtube_title("Weekly Current Affairs", "weekly", target_d, points)
+        self.assertIn("Weekly Current Affairs Masterclass", opt_weekly)
+        self.assertIn("Full Revision", opt_weekly)
 
 class TestTTSUtils(unittest.TestCase):
     def test_speech_sanitization(self):
