@@ -126,3 +126,4 @@ This log tracks all uploaded videos, their metadata, category, related video set
 | 2026-09-26 06:10 IST | Daily Current Affairs 26 September 2026 | Education (27) | Short (9:16) | Linked to Playlist | Pinned Standard Comment | wU2N68EvCek |
 | 2026-09-26 14:55 IST | 🔥 Indian government announces new & Top News (26 Sep 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | 5N8eOFYF-yo |
 | 2026-09-27 06:09 IST | Weekly Current Affairs Masterclass (21 Sep - 27 Sep 2026) | Full Revision | Education (27) | Weekly Masterclass | Linked to Playlist | Interactive Comment Posted | CVHB_OO1uyE |
+| 2026-09-30 06:55 IST | Monthly Current Affairs Masterclass - September 2026 | Complete Revision | Education (27) | Monthly Masterclass | Linked to Playlist | Interactive Comment Posted | oxAuNay4nRM |
