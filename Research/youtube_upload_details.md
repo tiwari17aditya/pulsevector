@@ -128,3 +128,4 @@ This log tracks all uploaded videos, their metadata, category, related video set
 | 2026-09-27 06:09 IST | Weekly Current Affairs Masterclass (21 Sep - 27 Sep 2026) | Full Revision | Education (27) | Weekly Masterclass | Linked to Playlist | Interactive Comment Posted | CVHB_OO1uyE |
 | 2026-09-30 06:55 IST | Monthly Current Affairs Masterclass - September 2026 | Complete Revision | Education (27) | Monthly Masterclass | Linked to Playlist | Interactive Comment Posted | oxAuNay4nRM |
 | 2026-10-04 06:10 IST | Weekly Current Affairs Masterclass (28 Sep - 04 Oct 2026) | Full Revision | Education (27) | Weekly Masterclass | Linked to Playlist | Interactive Comment Posted | h5eLLNy2tqc |
+| 2026-10-11 06:33 IST | Weekly Current Affairs Masterclass (05 Oct - 11 Oct 2026) | Full Revision | Education (27) | Weekly Masterclass | Linked to Playlist | Interactive Comment Posted | -wqwqscmeKQ |
