@@ -2,8 +2,8 @@ name: Pulse Daily Automation
 
 on:
   schedule:
-    # Trigger daily at 3:45 AM IST (which is 10:15 PM UTC the night before) to execute around 7:45 AM IST after delays
-    - cron: '15 22 * * *'
+    # Trigger daily at 7:55 AM IST (which is 02:25 AM UTC)
+    - cron: '25 2 * * *'
   workflow_dispatch:
     # Allows manual triggering from the Actions tab on GitHub
 
