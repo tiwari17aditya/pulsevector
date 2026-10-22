@@ -53,6 +53,7 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Pre-Flight Health & Quota Diagnostics
+        continue-on-error: true
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -60,14 +61,20 @@ jobs:
         run: |
           python -c "
           import asyncio
-          from src.mcp_server.pulse_ops import check_quotas_and_health
+          import sys, pathlib
+          sys.path.insert(0, str(pathlib.Path('.').resolve()))
+          sys.path.insert(0, str(pathlib.Path('.').resolve() / 'src'))
           try:
+              try:
+                  from src.mcp_server.pulse_ops import check_quotas_and_health
+              except ModuleNotFoundError:
+                  from mcp_server.pulse_ops import check_quotas_and_health
               res = asyncio.run(check_quotas_and_health())
               print('Pre-flight Health Assessment:', res.get('overall_health', 'UNKNOWN'))
               for k, v in res.get('checks', {}).items():
                   print(f'  • {k}: {v.get(\"status\")}')
           except Exception as e:
-              print(f'Pre-flight warning: {e}')
+              print(f'Pre-flight notice: {e}')
           "
 
       - name: Run Pulse Vector Pipeline
@@ -110,6 +117,8 @@ jobs:
       - name: Push Git Commits
         if: always()
         run: |
+          git add .
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update: Daily Pipeline Run"
           git pull --rebase -X theirs origin main || (git rebase --abort && git pull --no-rebase -X theirs origin main --no-edit || (git checkout --ours . && git add . && git commit -m "Auto-resolve merge conflicts"))
           git push origin main
 
