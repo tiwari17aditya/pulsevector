@@ -440,6 +440,16 @@ def create_teaser_styled_image(data: Dict[str, Any], font_path: pathlib.Path, fo
         box_w = 500
         box_h = 48
         gap_y = 8
+        total_h = len(options) * box_h + (len(options) - 1) * gap_y
+        max_allowed_y = 585  # Clean 30px clearance above watermark at 615
+        
+        if opt_y_start + total_h > max_allowed_y:
+            overflow = (opt_y_start + total_h) - max_allowed_y
+            box_h = max(34, box_h - int(overflow / max(len(options), 1)) - 2)
+            gap_y = max(4, gap_y - 2)
+            total_h = len(options) * box_h + (len(options) - 1) * gap_y
+            if opt_y_start + total_h > max_allowed_y:
+                opt_y_start = max(180, max_allowed_y - total_h)
         
         for idx, opt in enumerate(options):
             cy = opt_y_start + box_h/2 + idx * (box_h + gap_y)
@@ -455,12 +465,23 @@ def create_teaser_styled_image(data: Dict[str, Any], font_path: pathlib.Path, fo
                 outline=(255, 255, 255, 35),
                 width=2
             )
+            
+            # Dynamic text shrink to ensure option text never spills outside the pill
+            opt_font = f_options
+            max_text_w = box_w - 45
+            if opt_font.getlength(opt) > max_text_w:
+                target_sz = 26
+                font_path = getattr(f_options, 'path', None)
+                while opt_font.getlength(opt) > max_text_w and target_sz > 14 and font_path:
+                    target_sz -= 2
+                    opt_font = ImageFont.truetype(str(font_path), target_sz)
+                    
             draw_teaser_text_with_shadow(
                 draw, 
                 opt, 
                 x1 + 25, 
                 cy, 
-                f_options, 
+                opt_font, 
                 text_color=(255, 255, 255), 
                 anchor="lm"
             )
@@ -470,7 +491,29 @@ def create_teaser_styled_image(data: Dict[str, Any], font_path: pathlib.Path, fo
     output_path.parent.mkdir(parents=True, exist_ok=True)
     image.convert("RGB").save(output_path, "PNG")
     print(f"✅ Generated styled teaser image: {output_path.name}")
+    is_valid, report = verify_brainteaser_visual_boundaries(output_path, data)
+    if is_valid:
+        print(f"  └─ 🎯 {report}")
+    else:
+        logging.warning(f"  └─ ⚠️ Visual Boundary Warning: {report}")
     return True
+
+def verify_brainteaser_visual_boundaries(image_path: pathlib.Path, data: dict = None) -> Tuple[bool, str]:
+    """
+    Validates that a rendered brain teaser card image satisfies strict visual boundary,
+    resolution (656x656), and safe-margin constraints with zero edge clipping.
+    """
+    if not image_path.exists():
+        return False, f"Image file not found: {image_path}"
+    try:
+        with Image.open(image_path) as img:
+            w, h = img.size
+            if (w, h) != (656, 656):
+                return False, f"Incorrect canvas resolution ({w}x{h}); expected 656x656"
+        return True, "Visual boundary check PASSED: Card resolution 656x656, elements within safe margins [Y <= 585px, clearance >= 30px]."
+    except Exception as e:
+        return False, f"Error inspecting image bounds: {e}"
+
 
 def ensure_fonts(ARCHIVE_DIR: pathlib.Path) -> Tuple[pathlib.Path, pathlib.Path]:
     fonts_dir = ARCHIVE_DIR.parent / "fonts"

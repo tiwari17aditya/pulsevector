@@ -20,8 +20,10 @@ from core.genai_utils import (
     build_brainteaser_prompt, BRAIN_TEASER_TYPES
 )
 from core.image_utils import (
-    ensure_fonts, parse_teaser_file, wrap_text, draw_teaser_text_with_shadow
+    ensure_fonts, parse_teaser_file, wrap_text, draw_teaser_text_with_shadow,
+    verify_brainteaser_visual_boundaries
 )
+
 
 from core.video_utils import (
     create_base_background_with_glow, draw_watermark_on_image,
@@ -175,6 +177,16 @@ BACKGROUNDS = [
 
 # --- Options Placement Helpers ---
 
+def draw_fitted_option_text(draw, opt_text, cx, cy, font_opt, max_w, anchor="lm", text_color=(255, 255, 255)):
+    """Draws option text, dynamically shrinking font size if needed so it never overflows max_w."""
+    font = font_opt
+    font_path = getattr(font, 'path', None)
+    current_sz = getattr(font, 'size', 26)
+    while font.getlength(opt_text) > max_w and current_sz > 14 and font_path:
+        current_sz -= 2
+        font = ImageFont.truetype(str(font_path), current_sz)
+    draw_teaser_text_with_shadow(draw, opt_text, cx, cy, font, text_color=text_color, anchor=anchor)
+
 def draw_options_standard(draw, options, opt_y_start, font_opt, fill_color=(15, 23, 42, 120), outline_color=(255, 255, 255, 35)):
     max_opt_w = 0
     for opt in options:
@@ -204,10 +216,20 @@ def draw_options_standard(draw, options, opt_y_start, font_opt, fill_color=(15, 
             x2, y2 = cx + box_w/2, cy + box_h/2
             
             draw.rounded_rectangle([(x1, y1), (x2, y2)], radius=15, fill=fill_color, outline=outline_color, width=2)
-            draw_teaser_text_with_shadow(draw, opt, cx, cy, font_opt)
+            draw_fitted_option_text(draw, opt, cx, cy, font_opt, max_w=box_w - 20, anchor="mm")
     else:
         box_w, box_h = 500, 48
         gap_y = 8
+        total_h = len(options) * box_h + (len(options) - 1) * gap_y
+        max_allowed_y = 585  # 35px clearance above watermark at 620
+        if opt_y_start + total_h > max_allowed_y:
+            overflow = (opt_y_start + total_h) - max_allowed_y
+            box_h = max(34, box_h - int(overflow / max(len(options), 1)) - 2)
+            gap_y = max(4, gap_y - 2)
+            total_h = len(options) * box_h + (len(options) - 1) * gap_y
+            if opt_y_start + total_h > max_allowed_y:
+                opt_y_start = max(180, max_allowed_y - total_h)
+                
         for idx, opt in enumerate(options):
             cy = opt_y_start + box_h/2 + idx * (box_h + gap_y)
             x1 = W/2 - box_w/2
@@ -216,7 +238,7 @@ def draw_options_standard(draw, options, opt_y_start, font_opt, fill_color=(15, 
             y2 = cy + box_h/2
             
             draw.rounded_rectangle([(x1, y1), (x2, y2)], radius=12, fill=fill_color, outline=outline_color, width=2)
-            draw_teaser_text_with_shadow(draw, opt, x1 + 25, cy, font_opt, anchor="lm")
+            draw_fitted_option_text(draw, opt, x1 + 25, cy, font_opt, max_w=box_w - 45, anchor="lm")
 
 def draw_options_capsule(draw, options, opt_y_start, font_opt):
     max_opt_w = 0
@@ -249,10 +271,20 @@ def draw_options_capsule(draw, options, opt_y_start, font_opt):
             x2, y2 = cx + box_w/2, cy + box_h/2
             
             draw.rounded_rectangle([(x1, y1), (x2, y2)], radius=box_h/2, fill=fill_color, outline=outline_color, width=2)
-            draw_teaser_text_with_shadow(draw, opt, cx, cy, font_opt)
+            draw_fitted_option_text(draw, opt, cx, cy, font_opt, max_w=box_w - 20, anchor="mm")
     else:
         box_w, box_h = 500, 48
         gap_y = 8
+        total_h = len(options) * box_h + (len(options) - 1) * gap_y
+        max_allowed_y = 585
+        if opt_y_start + total_h > max_allowed_y:
+            overflow = (opt_y_start + total_h) - max_allowed_y
+            box_h = max(34, box_h - int(overflow / max(len(options), 1)) - 2)
+            gap_y = max(4, gap_y - 2)
+            total_h = len(options) * box_h + (len(options) - 1) * gap_y
+            if opt_y_start + total_h > max_allowed_y:
+                opt_y_start = max(180, max_allowed_y - total_h)
+                
         for idx, opt in enumerate(options):
             cy = opt_y_start + box_h/2 + idx * (box_h + gap_y)
             x1 = W/2 - box_w/2
@@ -261,7 +293,7 @@ def draw_options_capsule(draw, options, opt_y_start, font_opt):
             y2 = cy + box_h/2
             
             draw.rounded_rectangle([(x1, y1), (x2, y2)], radius=box_h/2, fill=fill_color, outline=outline_color, width=2)
-            draw_teaser_text_with_shadow(draw, opt, x1 + 25, cy, font_opt, anchor="lm")
+            draw_fitted_option_text(draw, opt, x1 + 25, cy, font_opt, max_w=box_w - 45, anchor="lm")
 
 def draw_options_cropped(draw, options, opt_y_start, font_opt):
     max_opt_w = 0
@@ -299,11 +331,21 @@ def draw_options_cropped(draw, options, opt_y_start, font_opt):
                 (x2 - c, y2), (x1 + c, y2), (x1, y2 - c), (x1, y1 + c)
             ]
             draw.polygon(points, fill=fill_color, outline=outline_color)
-            draw_teaser_text_with_shadow(draw, opt, cx, cy, font_opt)
+            draw_fitted_option_text(draw, opt, cx, cy, font_opt, max_w=box_w - 20, anchor="mm")
     else:
         box_w, box_h = 500, 46
         gap_y = 8
         c = 8
+        total_h = len(options) * box_h + (len(options) - 1) * gap_y
+        max_allowed_y = 585
+        if opt_y_start + total_h > max_allowed_y:
+            overflow = (opt_y_start + total_h) - max_allowed_y
+            box_h = max(34, box_h - int(overflow / max(len(options), 1)) - 2)
+            gap_y = max(4, gap_y - 2)
+            total_h = len(options) * box_h + (len(options) - 1) * gap_y
+            if opt_y_start + total_h > max_allowed_y:
+                opt_y_start = max(180, max_allowed_y - total_h)
+                
         for idx, opt in enumerate(options):
             cy = opt_y_start + box_h/2 + idx * (box_h + gap_y)
             x1 = W/2 - box_w/2
@@ -316,7 +358,8 @@ def draw_options_cropped(draw, options, opt_y_start, font_opt):
                 (x2 - c, y2), (x1 + c, y2), (x1, y2 - c), (x1, y1 + c)
             ]
             draw.polygon(points, fill=fill_color, outline=outline_color)
-            draw_teaser_text_with_shadow(draw, opt, x1 + 25, cy, font_opt, anchor="lm")
+            draw_fitted_option_text(draw, opt, x1 + 25, cy, font_opt, max_w=box_w - 45, anchor="lm")
+
 
 # --- Layout Cards Drawing Engines ---
 
@@ -696,13 +739,29 @@ def generate_brainteaser_slides(target_date, style_idx=None, bg_idx=None):
         
     start_y = current_y + 25
     gap = 42
+    total_opt_h = len(data["options"]) * gap
+    max_allowed_plain_y = 585
+    if start_y + total_opt_h > max_allowed_plain_y:
+        gap = max(28, int((max_allowed_plain_y - start_y) / max(len(data["options"]), 1)))
+        if start_y + len(data["options"]) * gap > max_allowed_plain_y:
+            start_y = max(180, max_allowed_plain_y - len(data["options"]) * gap)
+            
     for idx, opt in enumerate(data["options"]):
-        draw_teaser_text_with_shadow(plain_draw, opt, W / 2, start_y + (idx * gap), font_options)
+        draw_fitted_option_text(plain_draw, opt, W / 2, start_y + (idx * gap), font_options, max_w=540, anchor="mm")
         
     draw_teaser_text_with_shadow(plain_draw, "pulse-vector", W / 2, 625, f_watermark, shadow_color=None)
     
     plain_bg_img.convert("RGB").save(plain_path, "PNG")
     print(f"  > Generated Plain image card at: {plain_path}")
+    
+    # 4. Mandatory Visual Boundaries & Layout Integrity Verification
+    is_styled_ok, styled_msg = verify_brainteaser_visual_boundaries(styled_path, data)
+    is_plain_ok, plain_msg = verify_brainteaser_visual_boundaries(plain_path, data)
+    if is_styled_ok and is_plain_ok:
+        print(f"  └─ 🎯 {styled_msg}")
+    else:
+        logging.warning(f"  └─ ⚠️ Boundary Check Notice: Styled={styled_msg}, Plain={plain_msg}")
+
 
 def create_countdown_bell_ring(draw, cx, cy, radius, progress, text, font_timer):
     draw.ellipse([(cx - radius, cy - radius), (cx + radius, cy + radius)], outline=(255, 255, 255, 30), width=8)
