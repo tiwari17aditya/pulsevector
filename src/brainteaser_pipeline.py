@@ -1096,7 +1096,8 @@ def run_all(target_date=None, force_style=None, force_bg=None, teaser_type=None,
 def main():
     parser = argparse.ArgumentParser(description="Pulse Vector Daily Brain Teaser Autonomous Pipeline")
     parser.add_argument("--date", type=str, help="Target date in YYYY-MM-DD format")
-    parser.add_argument("--type", type=str, choices=list(BRAIN_TEASER_TYPES.keys()) + ["random"], help="Specify puzzle type (bodmas, cipher, grid, trap, sequence, oddone, paradox, random)")
+    parser.add_argument("--type", type=str, choices=list(BRAIN_TEASER_TYPES.keys()) + ["random"], help="Specify puzzle type (bodmas, cipher, grid, trap, sequence, oddone, paradox, detective, relations, weighing, spatial, matchstick, age_speed, random)")
+
     parser.add_argument("--privacy", type=str, choices=["public", "private", "unlisted"], default=None, help="Force YouTube privacy status")
     parser.add_argument("--generate-only", action="store_true", help="Only generate text content from GenAI")
     parser.add_argument("--slides-only", action="store_true", help="Only render image slide cards")

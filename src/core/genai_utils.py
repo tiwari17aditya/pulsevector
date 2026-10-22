@@ -127,6 +127,36 @@ BRAIN_TEASER_TYPES = {
         "name": "Logic Paradoxes & Probability Quick-Hits",
         "description": "A crisp probability puzzle or lateral deduction scenario with an unequivocal mathematical truth.",
         "examples": "e.g., Conditional probability (two-children problem), coin dilemmas, or deductive logic."
+    },
+    "detective": {
+        "name": "Detective Deduction & The Alibi Trap",
+        "description": "A concise 3-line micro-mystery where 3 or 4 suspects make short statements with timestamps or alibis, and exactly one statement reveals the culprit or liar through an unmistakable logical contradiction.",
+        "examples": "e.g., Alex says he was in a meeting until 2:45, Blake says he arrived at 2:50 and saw Charlie leave, Charlie says he was with witnesses until 3:15. Who is lying?"
+    },
+    "relations": {
+        "name": "Blood Relations & Family Tree Riddles",
+        "description": "Clever indirect relationship riddles or coded pedigree connections (e.g., 'Pointing to X, Y said...' or generational pedigree logic) with an unequivocal kinship answer.",
+        "examples": "e.g., 'Brothers and sisters I have none, but that man\\'s father is my father\\'s son.' Who is in the picture? (Answer: His son)"
+    },
+    "weighing": {
+        "name": "Balance Scales, Weights & Water Transfer",
+        "description": "Classic lateral thinking deduction scenarios: finding counterfeit coins with minimal balance scale weighings, measuring exact liquid with irregular jugs, or river crossing logistics.",
+        "examples": "e.g., 9 coins, 1 is lighter counterfeit. Minimum weighings on a balance scale? (Answer: 2 weighings, split into 3-3-3)"
+    },
+    "spatial": {
+        "name": "Mirror, Water & Spatial Reflection Traps",
+        "description": "Mental geometry and spatial reasoning traps involving clock reflections (mirror/water axes), digital clock digit flips, or paper-folding symmetries.",
+        "examples": "e.g., A digital 24-hr clock displays 08:15. What exact digits appear in its vertical mirror reflection? Or clock hands reflection at 3:40."
+    },
+    "matchstick": {
+        "name": "Matchstick Equation & Geometry Fixes",
+        "description": "An incorrect arithmetic equation or geometric shape (squares/triangles) where moving, removing, or adding exactly 1 or 2 matchsticks makes the mathematical statement completely valid.",
+        "examples": "e.g., '6 + 4 = 4' -> Move 1 matchstick to make it correct (e.g., 0 + 4 = 4 or 8 - 4 = 4 or 5 + 4 ≠ 4)"
+    },
+    "age_speed": {
+        "name": "Age Gap & Speed-Time Conundrums",
+        "description": "Deceptive word math problems involving non-linear intuition traps: relative speeds of trains/cars, compounding age gaps that stay constant, or work-rate illusions.",
+        "examples": "e.g., 'When I was 6, my sister was half my age. Today I am 70. How old is my sister?' (Answer: 67, since the difference is always 3 years, not 35)"
     }
 }
 
@@ -158,11 +188,14 @@ def build_brainteaser_prompt(
     if teaser_type and str(teaser_type).lower() in BRAIN_TEASER_TYPES:
         selected_key = str(teaser_type).lower()
     elif randomize:
+        # Default to dynamic random selection across all 13 categories for maximum engagement
         selected_key = random.choice(list(BRAIN_TEASER_TYPES.keys()))
     else:
         selected_key = WEEKDAY_THEME_MAP.get(weekday_idx, "sequence")
         
     type_info = BRAIN_TEASER_TYPES.get(selected_key, BRAIN_TEASER_TYPES["sequence"])
+
+
     
     prompt = (
         f"Today is {weekday_name}, {date_str} (IST).\n\n"

@@ -19,7 +19,10 @@ description: Domain skill for Gemini API integration, prompt templates, Current 
    - Weekly summaries (Sundays): 30 masterclass points.
    - Monthly summaries (End of month): 50 comprehensive points.
 3. **Brain Teasers**:
-   - Generate high-engagement logic/sequence puzzles with single unequivocal answers and brief step-by-step solutions.
+   - Supported categories (13 total): `bodmas`, `cipher`, `grid`, `trap`, `sequence`, `oddone`, `paradox`, `detective`, `relations`, `weighing`, `spatial`, `matchstick`, `age_speed`.
+   - Dynamic Random Selection: Default to dynamic random selection across all 13 categories to ensure variety, high retention, and surprise factor.
+   - Quality Standards: Every puzzle must have a single unequivocal answer, 4 plausible MCQ options (a., b., c., d.), 10-second readability, and a step-by-step logic explanation.
+
 
 ## Domain Constraints
 - Never hardcode API keys; retrieve strictly from `GEMINI_API_KEY` environment variable.
