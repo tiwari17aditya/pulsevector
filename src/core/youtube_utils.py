@@ -109,8 +109,70 @@ def get_quarter_info(date_obj):
     playlist_title = f"Daily Current Affairs - ( {q_months} )- {year_str}"
     return quarter_name, playlist_title
 
+def generate_playlist_description(title: str) -> str:
+    """Generates an engaging, SEO-optimized, structured description for a Pulse Vector playlist."""
+    t_lower = title.lower()
+    if "brain teaser" in t_lower or "puzzle" in t_lower:
+        return (
+            f"🧠 Welcome to the Official {title} by Pulse Vector!\n\n"
+            "Challenge your mind with sharp, high-yield logical reasoning puzzles, math teasers, "
+            "pattern recognition questions, and analytical thinking riddles engineered for competitive exam aspirants and curious minds.\n\n"
+            "🎯 Key Highlights:\n"
+            "• ⏱️ Fast-Paced Shorts: Interactive 60-second puzzle shorts testing quick deduction and cognitive reflex.\n"
+            "• 💡 Step-by-Step Solutions: Full logic breakdown and reasoning revealed in every episode.\n"
+            "• 🏆 Exam Relevance: Perfect practice for CSAT (UPSC), SSC CGL/CHSL Reasoning, Banking PO/Clerk, Railways (RRB), and Campus Placements.\n"
+            "• 💬 Community Discussion: Drop your answers in the comments before the reveal and compete with fellow aspirants!\n\n"
+            "🔔 Subscribe to @Pulse_vector and turn on notifications for your daily cognitive workout!\n"
+            "🌐 Official Channel: https://www.youtube.com/@Pulse_vector\n\n"
+            "#BrainTeasers #Puzzles #LogicalReasoning #Aptitude #UPSC #SSCCGL #PulseVector #Shorts"
+        )
+    elif "weekly" in t_lower:
+        return (
+            f"📅 Official {title} Masterclasses by Pulse Vector.\n\n"
+            "Consolidate your entire week's preparation with Pulse Vector's in-depth Weekly Current Affairs Masterclasses. "
+            "Released every Sunday, these structured long-form video lectures synthesize all major national and global news "
+            "from the preceding 7 days into an organized, exam-ready format.\n\n"
+            "🎯 Why Follow This Weekly Playlist?\n"
+            "• 🔍 In-Depth Analytical Breakdown: Goes beyond headlines into background context, policy implications, and analytical takeaways.\n"
+            "• 🗂️ Structured Category Walkthrough: Economy, International Relations, Polity, Science & Environment, Defense, and National Affairs.\n"
+            "• ⏱️ Optimized Time Efficiency: Replace hours of scattered newspaper reading with a single high-impact weekly masterclass.\n"
+            "• 🎯 Exam Standard: Directly aligned with the dynamic syllabus of UPSC CSE, State PSCs, SSC CGL/CHSL, and Banking examinations.\n\n"
+            "🔔 Subscribe to @Pulse_vector and master your weekly revision every Sunday!\n"
+            "🌐 Official Channel: https://www.youtube.com/@Pulse_vector\n\n"
+            "#WeeklyCurrentAffairs #CurrentAffairs #UPSC #UPSCMains #SSCCGL #BankingExams #PulseVector"
+        )
+    elif "monthly" in t_lower:
+        return (
+            f"🗓️ Official {title} Masterclass Roundups by Pulse Vector.\n\n"
+            "Your definitive, end-to-end Monthly Current Affairs Compilations. Each monthly masterclass delivers an exhaustive, "
+            "category-by-category synthesis of the entire month's critical events, policy shifts, and global developments.\n\n"
+            "🎯 Masterclass Features:\n"
+            "• 🏛️ Exhaustive Coverage: Complete 360-degree review of National Affairs, International Geopolitics, Economy & Banking, Environment, Science & Tech, Defense, and Major Appointments.\n"
+            "• 📑 Visual & Bulleted Synthesis: High-clarity visual infographics and structured bullet points designed for fast memory recall.\n"
+            "• 🚀 Pre-Exam Power Revision: The ultimate resource for rapid monthly revision before UPSC Prelims/Mains, SSC, Banking, and PSC exams.\n\n"
+            "🔔 Subscribe to @Pulse_vector for authoritative monthly masterclasses!\n"
+            "🌐 Official Channel: https://www.youtube.com/@Pulse_vector\n\n"
+            "#MonthlyCurrentAffairs #CurrentAffairsRoundup #UPSC #SSCCGL #BankingAwareness #PulseVector"
+        )
+    else:
+        return (
+            f"⚡ Official {title} Archive by Pulse Vector.\n\n"
+            "Your comprehensive, chronological archive of high-retention Daily Current Affairs shorts covering all critical "
+            "national, international, economic, defense, and science developments.\n\n"
+            "🎯 What's Inside This Playlist:\n"
+            "• 📰 High-Yield Daily Summaries: Concise 60-second daily news capsules covering exam-centric facts and figures.\n"
+            "• 🏛️ Multi-Domain Coverage: National Policies, Global Geopolitics, Banking & Economy, Science & Tech, Defense Exercises, Appointments, and Awards.\n"
+            "• 🎓 Tailored For: UPSC Civil Services (Prelims & Mains), SSC CGL, CHSL, Banking (IBPS, SBI PO), Railways (RRB NTPC), State PSCs, NDA, and CDS.\n"
+            "• 🔄 Rapid Revision: Watch chronologically or binge-revise key quarters before your competitive examinations.\n\n"
+            "🔔 Subscribe to @Pulse_vector for daily, weekly, and monthly current affairs updates!\n"
+            "🌐 Official Channel: https://www.youtube.com/@Pulse_vector\n\n"
+            "#CurrentAffairs #DailyCurrentAffairs #UPSC #SSCCGL #BankingExams #PulseVector #GeneralKnowledge"
+        )
+
 def create_playlist(youtube, title, description=""):
     try:
+        if not description:
+            description = generate_playlist_description(title)
         request = youtube.playlists().insert(
             part="snippet,status",
             body={
@@ -145,11 +207,13 @@ def add_video_to_playlist(youtube, video_id, playlist_title):
                 
         if not playlist_id:
             print(f"Playlist '{playlist_title}' not found. Creating it...")
-            playlist_id = create_playlist(youtube, playlist_title, f"Collection of {playlist_title}")
+            playlist_desc = generate_playlist_description(playlist_title)
+            playlist_id = create_playlist(youtube, playlist_title, playlist_desc)
             if playlist_id:
                 print(f"✅ Created new YouTube Playlist: '{playlist_title}'")
             else:
                 return False
+
                 
         request = youtube.playlistItems().insert(
             part="snippet",
