@@ -1,0 +1,17 @@
+🧠 Daily Brain Teaser (21 September 2026)
+Q. You have two opaque bags. Bag A contains 2 red marbles and 1 blue marble. Bag B contains 1 red marble and 2 blue marbles. You randomly choose a bag and then randomly draw one marble. If the marble drawn is red, what is the probability you chose Bag A? :-
+
+Bag A: 2 Red, 1 Blue
+Bag B: 1 Red, 2 Blue
+Randomly choose bag, draw 1 marble.
+Marble is RED.
+P(Chose Bag A | Marble is Red) = ?
+
+Vote for your answer below! 👇
+
+• a. 1/2
+• b. 1/3
+• c. 2/3
+• d. 3/4
+
+#BrainTeaser #Puzzle #LogicPuzzle #ProbabilityPuzzle #DailyPuzzle #MindBender #IQTest #Challenge #BrainGames #MathPuzzle #QuickHit #LogicParadox #Probability #BayesTheorem #ConditionalProbability #MarblePuzzle #DailyChallenge #ViralPuzzle #ReelsPuzzle #ShortsPuzzle #PulseVector #BrainWorkout #SolveIt #ThinkFast #MentalChallenge #PuzzleOfTheDay #ProbabilityChallenge #LogicAndMath #BrainTraining #CognitiveChallenge #SmartThinking #QuickSolve #TestYourBrain #PuzzleMaster #DailyDoseOfLogic #MindGamesDaily #BrainTeasersForYou #LogicBoost #ProbabilityBoost #ProblemSolving #MathChallenge #Reasoning #Deduction #ThinkOutsideTheBox #BrainFlex #PuzzleCommunity #LogicGates #ProbabilityTheory #MentalAgility #QuizTime
