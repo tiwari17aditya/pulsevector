@@ -45,11 +45,13 @@ def is_video_already_uploaded(target_date: datetime.datetime) -> Optional[str]:
             if len(parts) >= 8:
                 title = parts[2]
                 vid_id = parts[7]
-                if ("Daily Current Affairs" in title or "Daily" in parts[4]) and (
+                is_daily = "Daily" in title or "Daily" in parts[4] or "Short" in parts[4]
+                has_date = (
                     date_str_1.lower() in title.lower()
                     or date_str_2.lower() in title.lower()
-                    or date_str_3 in parts[1]
-                ):
+                    or parts[1].startswith(date_str_3)
+                )
+                if is_daily and has_date and "Weekly" not in title and "Monthly" not in title:
                     if vid_id and vid_id != "N/A" and not vid_id.startswith("["):
                         return vid_id
     except Exception as e:
@@ -193,7 +195,16 @@ def run_batch_pipeline(
                     print(f"  ⏳ Waiting {interval_seconds}s interval before next upload...")
                     time.sleep(interval_seconds)
                 else:
-                    print(f"  ⚠️ Upload did not return a Video ID. It may have failed or quota exhausted.")
+                    err_obj = getattr(engine, 'last_youtube_error', None)
+                    err_msg = str(err_obj).lower() if err_obj else ""
+                    print(f"  ⚠️ Upload did not return a Video ID. Detail: {err_obj or 'None'}")
+                    if "quotaexceeded" in err_msg or "uploadlimitexceeded" in err_msg or "daily limit" in err_msg:
+                        print("\n" + "!" * 65)
+                        print("  🚨 YouTube API Quota or Daily Upload Limit Exceeded!")
+                        print("  Halting remaining YouTube uploads for this session.")
+                        print("  All slides, voiceovers, and videos are saved locally.")
+                        print("!" * 65)
+                        limit_hit = True
             except Exception as yt_err:
                 err_msg = str(yt_err).lower()
                 print(f"  ❌ YouTube upload error on {date_str}: {yt_err}")

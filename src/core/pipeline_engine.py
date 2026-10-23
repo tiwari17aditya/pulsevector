@@ -43,6 +43,7 @@ class PipelineEngine:
     def __init__(self, archive_dir: Optional[pathlib.Path] = None):
         self.archive_dir = archive_dir or ARCHIVE_DIR
         self.fonts_dir = self.archive_dir.parent / "fonts"
+        self.last_youtube_error: Optional[Exception] = None
         
     def get_paths(self, content_type: str, target_date: datetime.datetime) -> Dict[str, pathlib.Path]:
         year_str = target_date.strftime("%Y")
@@ -391,7 +392,9 @@ class PipelineEngine:
                     pinned_comment_status="Interactive Comment Posted",
                     video_id=video_id
                 )
+                self.last_youtube_error = None
             except Exception as yt_err:
+                self.last_youtube_error = yt_err
                 print(f"⚠️ YouTube upload encountered an error: {yt_err}")
                 print("  > Auto-healing: Continuing pipeline to preserve video and trigger community broadcast.")
                 video_id = None

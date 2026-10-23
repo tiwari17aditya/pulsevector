@@ -130,3 +130,14 @@ This log tracks all uploaded videos, their metadata, category, related video set
 | 2026-10-04 06:10 IST | Weekly Current Affairs Masterclass (28 Sep - 04 Oct 2026) | Full Revision | Education (27) | Weekly Masterclass | Linked to Playlist | Interactive Comment Posted | h5eLLNy2tqc |
 | 2026-10-11 06:33 IST | Weekly Current Affairs Masterclass (05 Oct - 11 Oct 2026) | Full Revision | Education (27) | Weekly Masterclass | Linked to Playlist | Interactive Comment Posted | -wqwqscmeKQ |
 | 2026-10-18 05:35 IST | Weekly Current Affairs Masterclass (12 Oct - 18 Oct 2026) | Full Revision | Education (27) | Weekly Masterclass | Linked to Playlist | Interactive Comment Posted | P9XDhG9C9E4 |
+| 2026-10-23 13:27 IST | 🔥 AI Safety Treaty Signed & Top News (23 Oct 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | SSjGjBnCTZU |
+| 2026-10-23 18:15 IST | 🔥 Global AI Treaty & Top News (01 Oct 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | Opzn84CEotU |
+| 2026-10-23 18:17 IST | 🔥 Woman IAF Officer Makes History & Top News (02 Oct 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | K8FpU-HDrUg |
+| 2026-10-23 18:19 IST | 🔥 NEET Leak Scandal & Top News (03 Oct 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | JyQsyrY2-4I |
+| 2026-10-23 18:21 IST | 🔥 US-Iran Peace Talks & Top News (04 Oct 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | vUTjt0JGc-4 |
+| 2026-10-23 18:22 IST | 🔥 Global Climate Treaty Breakthrough & Top News (05 Oct 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | AX5ktEU_nFc |
+| 2026-10-23 18:24 IST | 🔥 Police Block Opposition March & Top News (06 Oct 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | J9XgBEJWqZ8 |
+| 2026-10-23 18:26 IST | 🔥 Global AI Ethics Pact & Top News (07 Oct 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | fr6T6omE7gw |
+| 2026-10-23 18:27 IST | 🔥 India's Digital Rupee Blastoff & Top News (08 Oct 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | 5aSzvIXlAOM |
+| 2026-10-23 18:29 IST | 🔥 US Green Card Freeze & Top News (09 Oct 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | l3IRgYJXqxE |
+| 2026-10-23 18:31 IST | 🔥 Chandrayaan-4 Launch & Top News (10 Oct 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | eTCpjOFd7Ls |
