@@ -154,3 +154,4 @@ This log tracks all uploaded videos, their metadata, category, related video set
 | 2026-10-23 19:13 IST | 🔥 NEET PG Registration Ends & Top News (21 Oct 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | eFwcGuExEAA |
 | 2026-10-23 19:14 IST | 🔥 Climate Summit Breakthrough & Top News (Oct 22, 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | 9hndckm6Hls |
 | 2026-10-24 13:03 IST | 🔥 NEET/JAM Updates & Top News (24 October 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | DO91wv9SGi8 |
+| 2026-10-25 05:52 IST | Weekly Current Affairs Masterclass (19 Oct - 25 Oct 2026) | Full Revision | Education (27) | Weekly Masterclass | Linked to Playlist | Interactive Comment Posted | pQJTmn5Tjf8 |
