@@ -48,6 +48,7 @@ def get_sample_weekly_insights(week_date_str: str = "12 October - 18 October 202
                     {"label": "BRICS Chair", "value": "India (2026)"}
                 ],
                 "points_title": "KEY EXAM TAKEAWAYS",
+                "layout": "2x2",
                 "points": [
                     "Unanimous condemnation of terrorism in all forms, including cross-border terrorism.",
                     "Called for comprehensive reform of global governance and stronger voice for Global South.",
@@ -289,8 +290,8 @@ def run_capsule_pipeline(target_date: Optional[datetime.datetime] = None,
             "video_path": str(output_video_file) if generate_video else None
         }
 
-    # 1. Render JPEG & PNG Poster
-    renderer = CapsuleRenderer(width=1200)
+    # 1. Render JPEG & PNG Poster (High-Definition 1600px with chroma subsampling=0)
+    renderer = CapsuleRenderer(width=1600)
     jpeg_result = renderer.render_capsule(capsule_data, output_image_base)
     logging.info(f"✅ Generated JPEG Capsule Poster: {jpeg_result}")
 
