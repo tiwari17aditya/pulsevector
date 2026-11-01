@@ -392,6 +392,7 @@ class OutroVideoEngine:
             bg.save(str(temp_dir / f"frame_{f:04d}.jpg"), format="JPEG", quality=92)
         return total_frames
 
+
     # -------------------------------------------------------------------------
     # 2. MRBEAST HYPE STUDIO (8.5s)
     # Features intense urgency, Like + Share + Hero Subscribe + Wobbling Bell
@@ -608,6 +609,7 @@ class OutroVideoEngine:
             bg.save(str(temp_dir / f"frame_{f:04d}.jpg"), format="JPEG", quality=92)
         return total_frames
 
+
     # -------------------------------------------------------------------------
     # 4. KURZGESAGT COSMIC FLAT-ART (8.0s)
     # Twinkling starfield, wobbling planet, candy Like/Share/Sub buttons
@@ -768,10 +770,12 @@ class OutroVideoEngine:
             bg.save(str(temp_dir / f"frame_{f:04d}.jpg"), format="JPEG", quality=92)
         return total_frames
 
+
+
     # -------------------------------------------------------------------------
     # 6. PULSE VECTOR VERTICAL (9:16 Shorts @ 1080x1920, 8.5s)
     # Features dynamic Like -> Share -> Subscribe with cartoon hand clicks,
-    # progressive Bell Enlargement (zooming 3.2x into center focal point),
+    # progressive Bell Enlargement (zooming 3.4x into center focal point),
     # soundwave shockwaves, and final clean fade-out to pure black.
     # -------------------------------------------------------------------------
     def render_frames_pulse_vertical(

@@ -270,3 +270,4 @@ def stitch_video_with_drive_endcredit(
 
     logger.info(f"Successfully generated stitched video with Drive endcredit: {output_video_path} ({output_video_path.stat().st_size // 1024} KB)")
     return output_video_path
+
