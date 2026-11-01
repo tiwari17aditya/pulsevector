@@ -163,3 +163,4 @@ This log tracks all uploaded videos, their metadata, category, related video set
 | 2026-10-30 14:23 IST | 🔥 Italy Strikes & Top News (30 Oct 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | dJziYPfA-Tk |
 | 2026-10-31 07:12 IST | Monthly Current Affairs Masterclass - October 2026 | Complete Revision | Education (27) | Monthly Masterclass | Linked to Playlist | Interactive Comment Posted | v6aYxEgqQtY |
 | 2026-10-31 14:09 IST | 🔥 INS Vikrant Powers Up & Top News (31 Oct 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | YOdJNSyPZwY |
+| 2026-11-01 06:42 IST | Weekly Current Affairs Masterclass (26 Oct - 01 Nov 2026) | Full Revision | Education (27) | Weekly Masterclass | Linked to Playlist | Interactive Comment Posted | 8o7zTTzfS5U |
