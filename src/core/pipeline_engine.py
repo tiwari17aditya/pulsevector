@@ -36,6 +36,7 @@ from .youtube_utils import (
 from .git_backup_utils import run_git_operations, run_backup_operations
 from .database_utils import run_database_upload
 from .broadcast_utils import broadcast_daily_content
+from .gdrive_endcredits import stitch_video_with_drive_endcredit
 
 class PipelineEngine:
     """Pluggable, modular pipeline engine for all Pulse Vector content types."""
@@ -278,9 +279,9 @@ class PipelineEngine:
         headline_hook = payload.points[0][1] if payload.points and content_type == "daily" else None
         generate_thumbnail_slide_image(target_date, font_bold, font_regular, thumb_path, cat_short, headline_hook=headline_hook, aspect_ratio=ar)
         
-        # 2. Animated Outro Frames
-        anim_dir = self.archive_dir / "temp_end_frames"
-        anim_frames = generate_animated_end_slide_frames_pipeline(font_bold, font_regular, anim_dir, aspect_ratio=ar)
+        # 2. Endcredits: Old static card replaced with dynamic Google Drive Runtime Endcredits
+        # anim_frames set to empty list so main video compiles clean without legacy card
+        anim_frames = []
         
         # 3. Voiceover & Durations
         per_slide_durations = None
@@ -314,21 +315,32 @@ class PipelineEngine:
             duration_per_static=duration_per_static, per_slide_durations=per_slide_durations
         )
         
-        # 5. Background Music & Muxing
+        # 5. Background Music, Muxing & Google Drive Runtime Endcredits Attachment
         download_audio_library()
         audio_track = get_random_audio_track()
+        temp_muxed = img_dir / "temp_main_muxed.mp4"
         
         if audio_track:
-            merge_audio_video(str(temp_video), str(audio_track), str(video_path), voiceover_path=voiceover_path)
-            if temp_video.exists():
-                try:
-                    temp_video.unlink()
-                except Exception:
-                    pass
+            merge_audio_video(str(temp_video), str(audio_track), str(temp_muxed), voiceover_path=voiceover_path)
         else:
-            temp_video.rename(video_path)
+            temp_video.rename(temp_muxed)
+
+        # 6. Attach runtime Google Drive Endcredits with Bell Enlargement & clean fade transitions
+        try:
+            stitch_video_with_drive_endcredit(
+                main_video_path=temp_muxed,
+                output_video_path=video_path,
+                aspect_ratio=ar,
+            )
+        finally:
+            for cleanup_file in [temp_video, temp_muxed]:
+                if cleanup_file.exists():
+                    try:
+                        cleanup_file.unlink()
+                    except Exception:
+                        pass
             
-        print(f"✅ Video compiled successfully: {video_path}")
+        print(f"✅ Video compiled & stitched with Drive endcredits successfully: {video_path}")
         return VideoPayload(video_path=video_path, duration=0.0, has_audio=bool(audio_track), has_voiceover=bool(voiceover_path))
 
     # -------------------------------------------------------------

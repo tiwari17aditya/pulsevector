@@ -1,0 +1,167 @@
+{
+  "header": {
+    "main_title": "EXAM RELEVANT CURRENT AFFAIRS 2026",
+    "date_range": "12 October - 18 October 2026",
+    "subtitle": "High-Value Insights for Competitive Exams (UPSC \u2022 SSC \u2022 Banking \u2022 State PSC)"
+  },
+  "sections": [
+    {
+      "num": 1,
+      "title": "BRICS 2026: NEW DELHI DECLARATION",
+      "subtitle": "18th BRICS Summit | Key Highlights for Competitive Exams",
+      "color": [
+        2,
+        132,
+        199
+      ],
+      "metadata_grid": [
+        {
+          "label": "Dates",
+          "value": "12-13 October 2026"
+        },
+        {
+          "label": "Host Country",
+          "value": "India"
+        },
+        {
+          "label": "Host City",
+          "value": "New Delhi"
+        },
+        {
+          "label": "Venue",
+          "value": "Bharat Mandapam, Pragati Maidan"
+        },
+        {
+          "label": "Theme",
+          "value": "Building Resilience, Innovation & Trade"
+        },
+        {
+          "label": "Milestone",
+          "value": "45 Pages | 140 Declarations"
+        },
+        {
+          "label": "BRICS Chair",
+          "value": "India (2026)"
+        }
+      ],
+      "points_title": "KEY EXAM TAKEAWAYS",
+      "layout": "2x2",
+      "points": [
+        "Unanimous condemnation of terrorism in all forms, including cross-border terrorism.",
+        "Called for comprehensive reform of global governance and stronger voice for Global South.",
+        "Endorsed multilateral trade cooperation, energy transition security, and local currency settlements.",
+        "Deepened collaborative initiatives in science, AI governance, and resilient global supply chains."
+      ]
+    },
+    {
+      "num": 2,
+      "title": "BIMSTEC DELHI DECLARATION 2026",
+      "subtitle": "First BIMSTEC Home Ministers' Conclave & Security Framework",
+      "color": [
+        16,
+        149,
+        100
+      ],
+      "metadata_grid": [
+        {
+          "label": "Date",
+          "value": "13 October 2026"
+        },
+        {
+          "label": "Venue",
+          "value": "New Delhi, India"
+        },
+        {
+          "label": "Headquarters",
+          "value": "Dhaka, Bangladesh"
+        },
+        {
+          "label": "Members (7)",
+          "value": "India, Bangladesh, Bhutan, Myanmar, Nepal, Sri Lanka, Thailand"
+        }
+      ],
+      "points_title": "FOCUS AREAS & CORE RESOLUTIONS",
+      "points": [
+        "Strengthened counter-terrorism coordination and action against violent extremist syndicates.",
+        "Combating transnational organised crime through shared intelligence repositories.",
+        "Coordinated interdiction against illicit precursor chemicals and narcotics money laundering.",
+        "Comprehensive regional action framework to dismantle human trafficking networks."
+      ],
+      "side_note": "BIMSTEC Convention on Combating International Terrorism, Transnational Organised Crime and Illicit Drug Trafficking has been actively in force since March 2021."
+    },
+    {
+      "num": 3,
+      "title": "e-SHRAM PORTAL COMPLETES 5 YEARS",
+      "subtitle": "Universal Social Security Infrastructure for India's Unorganised Workforce",
+      "color": [
+        217,
+        119,
+        6
+      ],
+      "metadata_grid": [
+        {
+          "label": "Launch Date",
+          "value": "26 August 2021"
+        },
+        {
+          "label": "Milestone",
+          "value": "5 Years Completed (2026)"
+        },
+        {
+          "label": "Nodal Ministry",
+          "value": "Ministry of Labour & Employment"
+        },
+        {
+          "label": "Developed By",
+          "value": "National Informatics Centre (NIC)"
+        },
+        {
+          "label": "Database",
+          "value": "National Database of Unorganised Workers (NDUW)"
+        },
+        {
+          "label": "Unique ID",
+          "value": "12-digit Universal Account Number (UAN)"
+        }
+      ],
+      "stats": [
+        {
+          "label": "Total Registrations",
+          "value": "31.89 Crore"
+        },
+        {
+          "label": "Largest Age Group",
+          "value": "18-40 Years (55.21%)"
+        },
+        {
+          "label": "Top Registered States",
+          "value": "UP, Bihar, WB, MP, MH"
+        }
+      ],
+      "progress_bar": {
+        "percent1": 54.28,
+        "label1": "Women 54.28%",
+        "label2": "Men 45.72%"
+      },
+      "points_title": "BENEFITS & SYSTEM ARCHITECTURE",
+      "points": [
+        "Aadhaar-seeded centralized registry enabling full portability of social security welfare benefits.",
+        "Seamless API integration with PMSYM pension, PMJJBY insurance, and national apprenticeship portals.",
+        "e-Shram One-Stop-Solution ecosystem delivers aggregated access to healthcare, skilling, and credit.",
+        "Completely free lifelong digital registration across all Common Service Centres (CSCs)."
+      ]
+    }
+  ],
+  "footer": {
+    "tags": [
+      "BRICS Summit 2026",
+      "New Delhi Declaration",
+      "BIMSTEC Delhi Declaration",
+      "Dhaka HQ",
+      "e-Shram Portal",
+      "NDUW",
+      "12-Digit UAN",
+      "UPSC Revision"
+    ]
+  }
+}
