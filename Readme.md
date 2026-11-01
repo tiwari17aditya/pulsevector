@@ -41,6 +41,7 @@
 *   **Intelligent Sorting**: Instantly organizes raw incoming files (from `incoming_data/`) into a clean `Year > Month > Category` structure.
 *   **Git Automation**: Automatically commits and pushes new archived content to your GitHub repository.
 *   **Cloud Database Backup**: Automatically integrates with Supabase to safely upload and log generated media (videos/images) without consuming local or GitHub Actions storage limits.
+*   **Animated YouTube Outro Engine**: Features 5 broadcast-quality animated YouTube End Credit archetypes (Vox, MrBeast, Think School, Kurzgesagt, Veritasium) with animated Like/Share/Subscribe triads, dynamic parameters, and random rotation to prevent viewer fatigue.
 *   **Single-Script Entrypoint**: Run the entire pipeline (including text generation, slide rendering, video compilation, YouTube upload, Git sync, and database backups) using a single command-line interface.
 
 ---
