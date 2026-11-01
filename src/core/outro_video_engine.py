@@ -36,7 +36,7 @@ FONTS_DIR = ROOT_DIR / "fonts"
 AUDIO_DIR = ROOT_DIR / "assets" / "audio"
 SAMPLES_DIR = ROOT_DIR / "samples" / "End_Credits_Videos"
 
-FINALIST_CHANNELS = ["vox", "mrbeast", "thinkschool", "kurzgesagt", "veritasium"]
+FINALIST_CHANNELS = ["vox", "mrbeast", "thinkschool", "kurzgesagt", "veritasium", "pulse_vertical"]
 
 
 class OutroVideoEngine:
@@ -333,10 +333,33 @@ class OutroVideoEngine:
                 font_btn, scale=sub_scale
             )
 
-            # 4. Animated Bell
-            bell_ring = t >= 6.0
-            bell_angle = math.sin((t - 6.0) * 28) * 24.0 if bell_ring else 0.0
-            self.draw_standalone_bell(draw, (1660, 785), bell_angle, bell_ring, scale=0.85, size=46)
+            # 4. Animated Bell with Progressive Enlargement Climax
+            bell_ring = t >= 5.8
+            bell_angle = math.sin((t - 5.8) * 28) * 24.0 if bell_ring else 0.0
+
+            if bell_ring:
+                zoom_p = min(1.0, (t - 5.8) / (duration - 5.8 - 0.7))
+                ease_zoom = 1.0 - (1.0 - zoom_p) ** 2
+                
+                dim_alpha = int(min(220, zoom_p * 260))
+                dim_overlay = Image.new("RGB", (1920, 1080), (10, 14, 26))
+                bg.paste(dim_overlay, (0, 0), Image.new("L", (1920, 1080), dim_alpha))
+                draw = ImageDraw.Draw(bg)
+
+                curr_cx = int(1660 + (960 - 1660) * ease_zoom)
+                curr_cy = int(785 + (540 - 785) * ease_zoom)
+                curr_scale = 0.85 + zoom_p * 3.4
+                bell_center = (curr_cx, curr_cy)
+
+                pedestal_r = int(120 * min(2.0, curr_scale * 0.75))
+                draw.ellipse([bell_center[0] - pedestal_r, bell_center[1] - pedestal_r, bell_center[0] + pedestal_r, bell_center[1] + pedestal_r], fill=(22, 27, 34), outline=(251, 191, 36), width=int(4 * min(2.5, curr_scale)))
+                self.draw_standalone_bell(draw, bell_center, bell_angle, ringing=True, scale=curr_scale, size=52)
+
+                font_dyn = self.get_font(int(28 + zoom_p * 18), "roboto_bold")
+                call_y = int(curr_cy + (52 * curr_scale * 0.72) + 20)
+                draw.text((curr_cx, call_y), "ALL NOTIFICATIONS ON!", font=font_dyn, fill=(253, 224, 71), anchor="mm")
+            else:
+                self.draw_standalone_bell(draw, (1660, 785), bell_angle, False, scale=0.85, size=46)
 
             # Cursor trajectory across all 3 actions
             c_pos, c_click = None, False
@@ -417,14 +440,36 @@ class OutroVideoEngine:
             sub_scale = 1.0 + (0.22 * math.sin((t - 4.2) * 12) if 4.2 <= t <= 4.9 else 0.0)
             self.draw_animated_button(draw, (200, 520, 1220, 680), (15, 23, 42, 255) if sub_active else (220, 38, 38, 255), (34, 197, 94, 255) if sub_active else (239, 68, 68, 255), "SUBSCRIBED! YOU ARE LEGENDARY" if sub_active else "SUBSCRIBE OR ELSE!", font_hero, scale=sub_scale, badge_text="TOP TIER", badge_font=font_badge)
 
-            # Oversized Standalone Bell
+            # Oversized Standalone Bell with Progressive Enlargement Climax
             bell_ring = t >= 5.6
             bell_angle = math.sin((t - 5.6) * 28) * 26.0 if bell_ring else 0.0
-            bell_center = (1530, 510)
-            draw.ellipse([bell_center[0] - 130, bell_center[1] - 130, bell_center[0] + 130, bell_center[1] + 130], fill=(24, 30, 42, 240), outline=(251, 191, 36, 230), width=4)
-            self.draw_standalone_bell(draw, bell_center, bell_angle, bell_ring, scale=1.1, size=60)
-            b_msg = "DING DING DING!" if bell_ring else "RING THE BELL!"
-            self.draw_comic_text(draw, (bell_center[0], bell_center[1] + 115), b_msg, font_sub, fill_color=(253, 224, 71, 255) if bell_ring else (255, 255, 255, 230), anchor="mm")
+
+            if bell_ring:
+                zoom_p = min(1.0, (t - 5.6) / (duration - 5.6 - 0.7))
+                ease_zoom = 1.0 - (1.0 - zoom_p) ** 2
+                
+                dim_alpha = int(min(220, zoom_p * 260))
+                dim_overlay = Image.new("RGBA", (1920, 1080), (10, 12, 18, dim_alpha))
+                bg.paste(dim_overlay, (0, 0), dim_overlay)
+                draw = ImageDraw.Draw(bg)
+
+                curr_cx = int(1530 + (960 - 1530) * ease_zoom)
+                curr_cy = int(510 + (490 - 510) * ease_zoom)
+                curr_scale = 1.1 + zoom_p * 3.2
+                bell_center = (curr_cx, curr_cy)
+
+                pedestal_r = int(130 * min(2.0, curr_scale * 0.75))
+                draw.ellipse([bell_center[0] - pedestal_r, bell_center[1] - pedestal_r, bell_center[0] + pedestal_r, bell_center[1] + pedestal_r], fill=(24, 30, 42, 240), outline=(251, 191, 36, 230), width=int(4 * min(2.5, curr_scale)))
+                self.draw_standalone_bell(draw, bell_center, bell_angle, ringing=True, scale=curr_scale, size=60)
+
+                font_dyn = self.get_font(int(28 + zoom_p * 18), "bangers")
+                call_y = int(curr_cy + (60 * curr_scale * 0.72) + 20)
+                self.draw_comic_text(draw, (curr_cx, call_y), "ALL NOTIFICATIONS ON!", font_dyn, fill_color=(253, 224, 71, 255), anchor="mm")
+            else:
+                bell_center = (1530, 510)
+                draw.ellipse([bell_center[0] - 130, bell_center[1] - 130, bell_center[0] + 130, bell_center[1] + 130], fill=(24, 30, 42, 240), outline=(251, 191, 36, 230), width=4)
+                self.draw_standalone_bell(draw, bell_center, bell_angle, False, scale=1.1, size=60)
+                self.draw_comic_text(draw, (bell_center[0], bell_center[1] + 115), "RING THE BELL!", font_sub, fill_color=(255, 255, 255, 230), anchor="mm")
 
             # Cursor Trajectory
             c_pos, c_click = None, False
@@ -724,6 +769,166 @@ class OutroVideoEngine:
         return total_frames
 
     # -------------------------------------------------------------------------
+    # 6. PULSE VECTOR VERTICAL (9:16 Shorts @ 1080x1920, 8.5s)
+    # Features dynamic Like -> Share -> Subscribe with cartoon hand clicks,
+    # progressive Bell Enlargement (zooming 3.2x into center focal point),
+    # soundwave shockwaves, and final clean fade-out to pure black.
+    # -------------------------------------------------------------------------
+    def render_frames_pulse_vertical(
+        self,
+        temp_dir: Path,
+        duration: float = 8.5,
+        fps: int = 30,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> int:
+        total_frames = int(duration * fps)
+
+        font_header = self.get_font(44, "luckiest")
+        font_sub = self.get_font(24, "russo")
+        font_btn = self.get_font(38, "bangers")
+        font_badge = self.get_font(22, "russo")
+        font_callout = self.get_font(38, "bangers")
+
+        for f in range(total_frames):
+            t = f / fps
+
+            bg = Image.new("RGBA", (1080, 1920), (10, 14, 22, 255))
+            draw = ImageDraw.Draw(bg)
+
+            # Ambient subtle grid/gradient
+            pulse = math.sin(t * 3.0) * 0.15 + 0.85
+            for y in range(0, 1920, 8):
+                factor = y / 1920.0
+                r = int(10 + 16 * factor * pulse)
+                g = int(14 + 18 * factor)
+                b = int(24 + 30 * factor * pulse)
+                draw.rectangle([(0, y), (1080, y + 8)], fill=(r, g, b, 255))
+
+            # Cyan & Crimson Accent Borders
+            draw.rectangle([60, 140, 1020, 148], fill=(56, 189, 248, int(220 * pulse)))
+            draw.rectangle([60, 1780, 1020, 1788], fill=(239, 68, 68, int(220 * pulse)))
+
+            # Header: PULSE VECTOR
+            h_text = "P U L S E   V E C T O R"
+            self.draw_comic_text(draw, (540, 220), h_text, font_header, fill_color=(255, 255, 255, 255), anchor="mm")
+            s_text = "DAILY INTELLIGENCE BRIEFING • UPGRADE YOUR FEED"
+            self.draw_comic_text(draw, (540, 275), s_text, font_sub, fill_color=(56, 189, 248, 230), stroke_width=2, anchor="mm")
+
+            # Main Central Action Card
+            card_box = [(90, 360), (990, 1680)]
+            draw.rounded_rectangle(card_box, radius=40, fill=(15, 23, 42, 200), outline=(255, 255, 255, 35), width=2)
+
+            # 1. LIKE Button
+            like_active = t >= 1.6
+            like_scale = 1.0 + (0.16 * math.sin((t - 1.6) * 14) if 1.6 <= t <= 2.2 else 0.0)
+            self.draw_animated_button(
+                draw, (160, 440, 920, 560),
+                (6, 182, 212, 255) if like_active else (30, 41, 59, 230),
+                (34, 211, 238, 255) if like_active else (71, 85, 105, 200),
+                "LIKED! (+100 AURA)" if like_active else "SMASH LIKE!",
+                font_btn, scale=like_scale, badge_text="FREE BUFF", badge_font=font_badge
+            )
+
+            # 2. SHARE Button
+            share_active = t >= 2.8
+            share_scale = 1.0 + (0.16 * math.sin((t - 2.8) * 14) if 2.8 <= t <= 3.4 else 0.0)
+            self.draw_animated_button(
+                draw, (160, 600, 920, 720),
+                (16, 185, 129, 255) if share_active else (30, 41, 59, 230),
+                (52, 211, 153, 255) if share_active else (71, 85, 105, 200),
+                "SHARED TO NETWORK!" if share_active else "SHARE INTEL",
+                font_btn, scale=share_scale, badge_text="BROADCAST", badge_font=font_badge
+            )
+
+            # 3. SUBSCRIBE Hero Button
+            sub_active = t >= 4.0
+            sub_scale = 1.0 + (0.20 * math.sin((t - 4.0) * 12) if 4.0 <= t <= 4.7 else 0.0)
+            self.draw_animated_button(
+                draw, (160, 760, 920, 900),
+                (15, 23, 42, 255) if sub_active else (220, 38, 38, 255),
+                (34, 197, 94, 255) if sub_active else (239, 68, 68, 255),
+                "SUBSCRIBED & BASE DEFENDED!" if sub_active else "SUBSCRIBE TO CHANNEL!",
+                font_btn, scale=sub_scale, badge_text="ESSENTIAL", badge_font=font_badge
+            )
+
+            # Cursor Trajectory
+            c_pos, c_click = None, False
+            if 1.0 <= t < 1.8:
+                p = (t - 1.0) / 0.8
+                c_pos = (int(300 + p * 240), int(530 - math.sin(p * math.pi) * 60))
+                c_click = 1.5 <= t <= 1.7
+            elif 2.2 <= t < 3.0:
+                p = (t - 2.2) / 0.8
+                c_pos = (int(540 + p * 120), int(680 - math.sin(p * math.pi) * 60))
+                c_click = 2.7 <= t <= 2.9
+            elif 3.4 <= t < 4.2:
+                p = (t - 3.4) / 0.8
+                c_pos = (int(500 + p * 160), int(850 - math.sin(p * math.pi) * 60))
+                c_click = 3.9 <= t <= 4.15
+            elif 4.6 <= t < 5.4:
+                p = (t - 4.6) / 0.8
+                c_pos = (int(450 + p * 150), int(1120 - math.sin(p * math.pi) * 60))
+                c_click = 5.0 <= t <= 5.25
+
+            if c_pos:
+                self.draw_cartoon_hand(draw, c_pos, clicking=c_click)
+
+            # 4. Standalone Bell & Progressive Enlargement Climax
+            bell_ringing = t >= 5.0
+            bell_angle = math.sin((t - 5.0) * 28) * 25.0 if bell_ringing else 0.0
+
+            if t >= 5.4:
+                zoom_p = min(1.0, (t - 5.4) / (duration - 5.4 - 0.8))
+                ease_zoom = 1.0 - (1.0 - zoom_p) ** 2
+                
+                dim_alpha = int(min(225, zoom_p * 265))
+                dim_overlay = Image.new("RGBA", (1080, 1920), (10, 14, 22, dim_alpha))
+                bg.paste(dim_overlay, (0, 0), dim_overlay)
+                draw = ImageDraw.Draw(bg)
+
+                curr_cx = 540
+                curr_cy = int(1220 - ease_zoom * 70)
+                curr_scale = 1.0 + zoom_p * 3.2
+                bell_center = (curr_cx, curr_cy)
+
+                pedestal_r = int(110 * min(2.2, curr_scale))
+                draw.ellipse(
+                    [bell_center[0] - pedestal_r, bell_center[1] - pedestal_r, bell_center[0] + pedestal_r, bell_center[1] + pedestal_r],
+                    fill=(22, 27, 34, 240),
+                    outline=(251, 191, 36, 240),
+                    width=int(4 * min(2.5, curr_scale))
+                )
+
+                self.draw_standalone_bell(draw, bell_center, bell_angle, ringing=True, scale=curr_scale, size=58)
+
+                font_dyn_callout = self.get_font(int(34 + zoom_p * 18), "bangers")
+                call_text = "ALL NOTIFICATIONS ON!"
+                tb = draw.textbbox((0, 0), call_text, font=font_dyn_callout)
+                tw = tb[2] - tb[0]
+                call_y = int(curr_cy + (58 * curr_scale * 0.72) + 25)
+                self.draw_comic_text(draw, ((1080 - tw) // 2, call_y), call_text, font_dyn_callout, fill_color=(253, 224, 71, 255), stroke_width=4)
+            else:
+                bell_center = (540, 1220)
+                draw.ellipse([bell_center[0] - 110, bell_center[1] - 110, bell_center[0] + 110, bell_center[1] + 110], fill=(22, 27, 34, 240), outline=(251, 191, 36, 240), width=4)
+                self.draw_standalone_bell(draw, bell_center, bell_angle, ringing=bell_ringing, scale=1.0, size=58)
+                b_msg = "DING DING DING!" if bell_ringing else "RING THE BELL!"
+                self.draw_comic_text(draw, (540, 1340), b_msg, font_callout, fill_color=(253, 224, 71, 255) if bell_ringing else (255, 255, 255, 230), anchor="mm")
+
+            # Footer
+            f_msg = "NEXT BRIEFING DROPS TOMORROW 06:00 AM IST"
+            self.draw_comic_text(draw, (540, 1620), f_msg, font_sub, fill_color=(148, 163, 184, 220), stroke_width=2, anchor="mm")
+
+            # Final 0.8s Fade-Out to Black
+            if t >= duration - 0.8:
+                fade_alpha = int(((t - (duration - 0.8)) / 0.8) * 255)
+                fade_overlay = Image.new("RGBA", (1080, 1920), (0, 0, 0, fade_alpha))
+                bg.paste(fade_overlay, (0, 0), fade_overlay)
+
+            frame_path = temp_dir / f"frame_{f:04d}.jpg"
+            bg.convert("RGB").save(str(frame_path), format="JPEG", quality=92)
+        return total_frames
+
+    # -------------------------------------------------------------------------
     # FFmpeg Compiler & Dispatcher
     # -------------------------------------------------------------------------
     def compile_video(
@@ -796,6 +1001,7 @@ class OutroVideoEngine:
             "thinkschool": (self.render_frames_thinkschool, 8.5, "clear_waters.mp3", 6.0),
             "kurzgesagt": (self.render_frames_kurzgesagt, 8.0, "carefree.mp3", 4.4),
             "veritasium": (self.render_frames_veritasium, 8.5, "decisions.mp3", 4.8),
+            "pulse_vertical": (self.render_frames_pulse_vertical, 8.5, "electro_cabello.mp3", 5.0),
         }
 
         key = channel_key.lower().strip()
