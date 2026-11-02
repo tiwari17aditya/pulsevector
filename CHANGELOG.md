@@ -5,6 +5,18 @@ All notable changes to the Pulse Vector project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.10.0] - 2026-11-02
+
+### Fixed
+- **Daily CI Pipeline Timeout & Crash Resolution**:
+  - Eliminated unbounded $O(N)$ archive traversal in `stage_generate_teasers()` and `generate_daily_slides()`. Added fast paths targeting the specific active date.
+  - Resolved synthetic audio bottleneck in `download_audio_library()`: tracked 3 baseline tracks in `samples/Audio/` and streamlined synthesis fallback to 3 60-second tracks ($< 2$s).
+  - Hardened `resolve_gdrive_endcredits_dir()` for POSIX/Linux runners, preventing invalid Windows drive letter leakage (`G:\`) into Linux CI runs.
+  - Implemented fail-open video compilation fallback in `stage_compile_video()`: if outro attachment encounters an issue, the pipeline falls back to the main video rather than crashing.
+- **Test Suite Overhaul (`scripts/test_pipeline.py`)**:
+  - Expanded automated test suite from 57 to 63 tests.
+  - Replaced dry-run stubs with real-execution integration tests: actual PIL slide rendering $(1080 \times 1920)$, fast-path timing assertion ($< 1.5$s), instant audio resolution, cross-platform path safety, and compilation fallback verification.
+
 ## [2.9.0] - 2026-11-01
 
 ### Added
