@@ -1,0 +1,17 @@
+🧠 Daily Brain Teaser (27 September 2026)
+Q. You have two coins in your pocket: one is a fair coin (50% chance of Heads) and the other is a biased coin (80% chance of Heads). You randomly pick one coin, flip it, and it lands on Heads. What is the probability that you picked the fair coin? :-
+
+Two Coins Dilemma:
+Coin 1: Fair (P(H)=0.5)
+Coin 2: Biased (P(H)=0.8)
+Randomly picked, flipped, result: Heads.
+P(Picked Fair Coin | Result is Heads) = ?
+
+Vote for your answer below! 👇
+
+• a. 50%
+• b. 25%
+• c. 38.5%
+• d. 61.5%
+
+#ProbabilityPuzzle #LogicParadox #BrainTeaser #DailyPuzzle #MindChallenge #QuickHits #Probability #ConditionalProbability #BayesTheorem #MathPuzzle #LogicGame #BrainGame #PuzzleOfTheDay #ThinkFast #ViralPuzzle #IQTest #SmartChallenge #LogicSkills #MathChallenge #DeductiveReasoning #ProblemSolving #PuzzleTime #BrainTraining #MentalWorkout #ChallengeYourMind #SolveIt #PulseVector #YouTubeShorts #Reels #CommunityPost #BrainFood #CriticalThinking #ProbabilityDilemma #QuickPuzzle #ShortsPuzzle #ReelsChallenge #LogicMaster #PuzzleDesign #DailyChallenge #MentalGym #ProbabilityFun #CognitiveSkills #MathLogic #Paradox #BrainBuster #QuickThink #MindGames #PuzzleLover #SharpenYourMind
