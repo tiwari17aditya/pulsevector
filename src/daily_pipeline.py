@@ -84,8 +84,8 @@ def run_all(target_date=None, enable_tts=True, stages=None, dry_run=False, force
         engine.run_pipeline("daily", target_date=now, stages=stages, enable_tts=enable_tts, dry_run=dry_run, force=force)
     else:
         run_daily_generation(now)
-        generate_daily_slides()
-        generate_teaser_images()
+        generate_daily_slides(now)
+        generate_teaser_images(now)
         run_daily_youtube(now, enable_tts=enable_tts)
         run_git_operations("Auto-update: Daily Pulse Vector Pipeline Run")
         run_backup_operations()

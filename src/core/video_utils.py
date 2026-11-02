@@ -21,8 +21,26 @@ from .tts_utils import get_ffmpeg_executable
 def download_audio_library():
     audio_dir = ARCHIVE_DIR.parent / "samples" / "Audio"
     audio_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Fast path 1: If audio_dir already has tracks, return immediately
+    existing_tracks = list(audio_dir.glob("*.mp3"))
+    if len(existing_tracks) >= 3:
+        return
         
-    logging.info("Checking background music assets (15 open-source copyright-free tracks)...")
+    # Fast path 2: Copy from assets/audio if available (instant, no synthesis needed)
+    assets_audio = ARCHIVE_DIR.parent / "assets" / "audio"
+    if assets_audio.exists():
+        for src_f in assets_audio.glob("*.mp3"):
+            dest_f = audio_dir / src_f.name
+            if not dest_f.exists():
+                try:
+                    shutil.copy2(src_f, dest_f)
+                except Exception:
+                    pass
+        if len(list(audio_dir.glob("*.mp3"))) >= 3:
+            return
+        
+    logging.info("Checking background music assets (synthetic fallback tracks)...")
     ffmpeg_exe = get_ffmpeg_executable()
     
     chord_presets = [
@@ -43,7 +61,7 @@ def download_audio_library():
         "0.04*sin(146.83*2*PI*t)+0.03*sin(220*2*PI*t)*(1+0.1*sin(2*PI*0.5*t))+0.03*sin(329.63*2*PI*t)+0.02*sin(293.66*2*PI*t)"
     ]
 
-    for i in range(1, 16):
+    for i in range(1, 4):
         file_name = f"track_{i:02d}.mp3"
         file_path = audio_dir / file_name
         if not file_path.exists():
@@ -51,8 +69,8 @@ def download_audio_library():
             cmd = [
                 ffmpeg_exe, "-y",
                 "-f", "lavfi",
-                "-i", f"aevalsrc={preset_expr}:s=44100:d=120",
-                "-af", "lowpass=f=1000,afade=t=in:ss=0:d=2,afade=t=out:st=118:d=2",
+                "-i", f"aevalsrc={preset_expr}:s=44100:d=60",
+                "-af", "lowpass=f=1000,afade=t=in:ss=0:d=2,afade=t=out:st=58:d=2",
                 "-c:a", "mp3",
                 "-b:a", "192k",
                 str(file_path)

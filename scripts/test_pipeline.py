@@ -5,6 +5,7 @@ Runs unit and integration tests across all pipeline components without burning A
 
 import os
 import sys
+import time
 import unittest
 import datetime
 import pathlib
@@ -38,7 +39,9 @@ from core.video_utils import (
 from core.broadcast_utils import (
     broadcast_daily_content, broadcast_telegram, broadcast_discord, truncate_html_caption
 )
-from core.pipeline_engine import PipelineEngine
+from core.pipeline_engine import PipelineEngine, ContentPayload
+from core.gdrive_endcredits import resolve_gdrive_endcredits_dir, get_runtime_drive_endcredits, LOCAL_SAMPLES_DIR
+from core.video_utils import download_audio_library
 from core.genai_utils import build_brainteaser_prompt, BRAIN_TEASER_TYPES
 from mcp_server.tools.quotas import check_api_quotas
 from mcp_server.tools.deduplication import query_content_deduplication
@@ -554,6 +557,90 @@ class TestPipelineEngine(unittest.TestCase):
         finally:
             if tmp_vid_path.exists():
                 tmp_vid_path.unlink()
+
+    def test_real_stage_generate_slides_execution(self):
+        """Verifies real slide rendering generates valid 1080x1920 PNG images with proper layout."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_root = pathlib.Path(tmp_dir)
+            engine = PipelineEngine(archive_dir=tmp_root)
+            test_date = datetime.datetime(2026, 11, 2)
+            
+            # Construct a synthetic payload
+            test_payload = ContentPayload(
+                content_type="daily",
+                target_date=test_date,
+                raw_text="Daily Current Affairs 02 November 2026\n\n1. Headline",
+                points=[
+                    (1, "Global leaders commit to next-gen clean fusion power initiative.", "Reuters"),
+                    (2, "AI quantum breakthrough achieved in battery density materials.", "BBC News"),
+                    (3, "Central banks pilot instant cross-border settlement rails.", "Bloomberg")
+                ],
+                title="Daily Current Affairs 02 November 2026",
+                hashtags=["CurrentAffairs", "PulseVector"]
+            )
+            
+            slide_result = engine.stage_generate_slides("daily", test_date, payload=test_payload)
+            self.assertTrue(len(slide_result.slide_image_paths) > 0)
+            for s_path in slide_result.slide_image_paths:
+                self.assertTrue(s_path.exists())
+                with Image.open(s_path) as img:
+                    self.assertEqual(img.size, (1080, 1920))
+
+    def test_teaser_fast_path_performance(self):
+        """Verifies that stage_generate_teasers with target_date executes in < 1.5s (no archive traversal)."""
+        engine = PipelineEngine()
+        test_date = datetime.datetime(2026, 11, 2)
+        start_t = time.time()
+        engine.stage_generate_teasers(target_date=test_date)
+        elapsed = time.time() - start_t
+        self.assertLess(elapsed, 1.5, f"Teaser generation took {elapsed:.2f}s, expected < 1.5s fast-path")
+
+    def test_audio_library_instant_resolution(self):
+        """Verifies that download_audio_library resolves existing tracks in < 0.5s without CPU synthesis."""
+        start_t = time.time()
+        download_audio_library()
+        elapsed = time.time() - start_t
+        self.assertLess(elapsed, 0.5, f"Audio library resolution took {elapsed:.2f}s, expected instant (< 0.5s)")
+
+    def test_gdrive_endcredits_cross_platform_safety(self):
+        """Verifies resolve_gdrive_endcredits_dir never injects illegal Windows drive paths on Linux/POSIX."""
+        with patch("sys.platform", "linux"):
+            resolved = resolve_gdrive_endcredits_dir()
+            self.assertTrue(resolved.exists())
+            self.assertFalse(str(resolved).startswith("G:"), "Must NOT start with G: on Linux")
+            self.assertEqual(resolved.resolve(), LOCAL_SAMPLES_DIR.resolve())
+
+    def test_gdrive_endcredits_runtime_aspect_ratios(self):
+        """Verifies get_runtime_drive_endcredits provides valid vertical (9:16) and widescreen (16:9) files."""
+        vert_v = get_runtime_drive_endcredits(aspect_ratio="9:16")
+        self.assertTrue(vert_v.exists())
+        self.assertGreater(vert_v.stat().st_size, 50000)
+
+        wide_v = get_runtime_drive_endcredits(aspect_ratio="16:9")
+        self.assertTrue(wide_v.exists())
+        self.assertGreater(wide_v.stat().st_size, 50000)
+
+    def test_stage_compile_video_fallback_on_outro_failure(self):
+        """Verifies stage_compile_video falls back gracefully if outro stitching raises an error."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_root = pathlib.Path(tmp_dir)
+            engine = PipelineEngine(archive_dir=tmp_root)
+            test_date = datetime.datetime(2026, 11, 2)
+            paths = engine.get_paths("daily", test_date)
+            paths["text_file"].parent.mkdir(parents=True, exist_ok=True)
+            paths["text_file"].write_text(
+                "Daily Current Affairs 02 November 2026\n\n1. Headline one [Source: Test]\n\nTitle: Test\nHashtags: #Test",
+                encoding="utf-8"
+            )
+            # Render slides first
+            engine.stage_generate_slides("daily", test_date)
+            
+            # Mock stitch_video_with_drive_endcredit to simulate failure
+            with patch("core.pipeline_engine.stitch_video_with_drive_endcredit", side_effect=RuntimeError("FFmpeg outro error")):
+                res = engine.stage_compile_video("daily", test_date, enable_tts=False, force=True)
+                self.assertIsNotNone(res)
+                self.assertTrue(res.video_path.exists())
+                self.assertGreater(res.video_path.stat().st_size, 1000)
 
 
 class TestYouTubeTagSafety(unittest.TestCase):
