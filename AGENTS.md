@@ -7,6 +7,7 @@
 | `src/core/youtube_utils.py`, `credentials/*` | YouTube API & Uploads | `.agent/skills/youtube-dist/SKILL.md` |
 | `src/core/database_utils.py`, `scripts/*supabase*` | Supabase Cloud & DB | `.agent/skills/cloud-db/SKILL.md` |
 | `src/pipeline.py`, `src/core/pipeline_engine.py`, `git_backup_utils.py` | Pipeline & Git Automation | `.agent/skills/pipeline-git/SKILL.md` |
+| `channel_branding/*` | Channel Branding & Visual Identity | `.agent/skills/channel-branding/SKILL.md` |
 | `scripts/test_pipeline.py`, `scripts/monitor_health.py` | Testing & Monitoring | `.agent/workflows/pulse_test.md` |
 | `scripts/packup_pipeline.py`, `.agent/workflows/pulse_packup.md` | Master Packup & Orchestration | `.agent/workflows/pulse_packup.md` |
 
@@ -17,6 +18,7 @@
 ## Branching Strategy & Environment Segregation
 - **Production Branch (`main`)**: Exclusively reserved for stable, verified, production-ready code. Scheduled GitHub Actions (daily news generation, brain teaser uploads, weekly/monthly runs, and report crons) execute strictly on `main`.
 - **Active Development Branch (`v<version>-dev`)**: All feature development, refactoring, and experimental code must be created and tested on the version-specific development branch (e.g. `v2.4.2-dev`). Never develop directly on `main`.
+- **Channel Branding Branch (`channel-branding-update`)**: Dedicated isolated branch for channel branding, assets, Home Tab optimization, and version ledger.
 - **Milestone Promotion to Main**: Merging from the dev branch into `main` occurs only after all tests pass, stage dry-runs succeed, and milestone sign-off is confirmed.
 
 ## Continuous Implementation & Testing Directives
@@ -25,6 +27,7 @@
 
 ## Available Slash Workflows
 - `/packup` (or `/pulse_packup`): **Unified Master Sign-Off Workflow** (Sequentially triggers `/pulse_monitor`, `/pulse_structure`, `/pulse_test`, `/pulse_clean`, all 6 domain skills audits, and remote git push).
+- `/pulse_branding`: YouTube channel branding review, Home Tab optimization & git sync.
 - `/pulse_test`: Run full component test suite & dry-runs (`test_pipeline.py`).
 - `/pulse_daily`: Generate Daily Current Affairs & Brain Teasers.
 - `/pulse_clean`: Audit & clean workspace artifacts safely.
@@ -37,6 +40,6 @@ When the user triggers "packup", "/packup", or "/pulse_packup", the agent execut
 2. **Structure & Asset Hierarchy (`/pulse_structure`)**: Audits fonts, audio library, and archive integrity.
 3. **Automated Test Suite (`/pulse_test`)**: Executes all 20 unit tests and pipeline stage dry-runs.
 4. **Workspace Storage Cleanup (`/pulse_clean`)**: Safely purges temporary frames, intermediate TTS clips, and cache.
-5. **Domain Skills Audit**: Verifies all 6 skills in `.agent/skills/` (`content-gen`, `media-rendering`, `youtube-dist`, `cloud-db`, `pipeline-git`, `clean-optimizer`).
+5. **Domain Skills Audit**: Verifies all skills in `.agent/skills/`.
 6. **Git Remote Synchronization**: Automatically stages all changes, creates a sign-off commit, and pushes to remote (`git push origin main`).
 7. **Session Tracker Log**: Verifies `Research/developer_token_usage.md`, `walkthrough.md`, and prepares sign-off scorecard.
