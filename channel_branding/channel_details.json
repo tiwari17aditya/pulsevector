@@ -1,0 +1,81 @@
+{
+  "channel_id": "UCt154eXNnEfKtRNBrAnay7A",
+  "title": "Pulse Vector",
+  "custom_url": "@pulse_vector",
+  "tagline": "Where Intellect Meets Action — Daily Intelligence, Mind Teasers, Epic Lore & Tactical Survival.",
+  "short_tagline": "Daily Intelligence • Brain Teasers • Epic Lore • Survival Gaming",
+  "pillars": [
+    {
+      "id": "current_affairs",
+      "emoji": "🌐",
+      "name": "Current Affairs & Global Intelligence",
+      "description": "Daily 60s Shorts & Weekly Masterclasses covering Geopolitics, Economy, Governance, and Exam Prep (UPSC CSE, SSC CGL, State PSCs, Banking).",
+      "cadence": "Daily @ 7:55 AM IST + Weekly Sundays"
+    },
+    {
+      "id": "brain_teasers",
+      "emoji": "🧠",
+      "name": "Daily Brain Teasers & Aptitude",
+      "description": "Rapid 8-second logic puzzles, math equations, series sequences, and cognitive pattern riddles.",
+      "cadence": "Daily Shorts"
+    },
+    {
+      "id": "mahabharat",
+      "emoji": "🏹",
+      "name": "Mahabharat: Epic Battle of Dharma (Animated)",
+      "description": "70+ animated historical episodes exploring the Kurukshetra war, Dharma, Karma, Gita philosophy, and timeless statecraft.",
+      "cadence": "Curated Episodic Series"
+    },
+    {
+      "id": "survival_gaming",
+      "emoji": "🧟‍♂️",
+      "name": "Last Day on Earth (LDoE) Survival",
+      "description": "100+ walkthroughs, Bunker Alfa raids, red crate runs, chopper building, base defense, and apocalypse survival tactics.",
+      "cadence": "Regular Gameplay Episodes"
+    },
+    {
+      "id": "tech_projects",
+      "emoji": "💻",
+      "name": "Tech & Autonomous Systems",
+      "description": "Engineering projects, autonomous pipeline engines, developer tooling, and modern tech stack explorations.",
+      "cadence": "Project Showcases"
+    }
+  ],
+  "description": "⚡ Welcome to PULSE VECTOR — The Nexus of Daily Intelligence, Tactical Gaming, Mind Puzzles & Ancient Epics.\n\nWhether preparing for exams, sharpening cognitive agility, exploring epic lore, or mastering survival gaming, Pulse Vector delivers daily.\n\n🔥 CORE PILLARS:\n1️⃣ 🌐 CURRENT AFFAIRS: Daily Shorts & Weekly Masterclasses for UPSC, SSC, Banking & Global News.\n2️⃣ 🧠 BRAIN TEASERS: 8s logic puzzles, math riddles & aptitude challenges.\n3️⃣ 🏹 MAHABHARAT (ANIMATED): 70+ episodes on Kurukshetra, Dharma, Karma & ancient strategy.\n4️⃣ 🧟‍♂️ LDoE SURVIVAL: 100+ walkthroughs, Bunker Alfa raids, base building & apocalypse tactics.\n5️⃣ 💻 TECH & AUTOMATION: Engineering projects & autonomous systems.\n\n📅 SCHEDULE:\n• Daily: Current Affairs & Brain Teaser Shorts\n• Weekly: Masterclasses & LDoE Survival Walkthroughs\n\n🤝 COMMUNITY:\n• Telegram: https://t.me/pulsevector_daily\n• Channel: https://youtube.com/@pulse_vector\n\n🔔 Subscribe to master knowledge, conquer puzzles & stay ahead!",
+  "keywords": [
+    "Pulse Vector",
+    "Current Affairs",
+    "Daily Current Affairs",
+    "UPSC Current Affairs",
+    "SSC CGL",
+    "Brain Teasers",
+    "Logic Puzzles",
+    "Aptitude",
+    "Mahabharat",
+    "Mahabharat Animation",
+    "Last Day on Earth",
+    "LDoE",
+    "LDoE Survival",
+    "Bunker Alfa",
+    "Zombie Survival",
+    "Strategy Game",
+    "Tech Stack",
+    "Knowledge Hub"
+  ],
+  "keywords_string": "\"Pulse Vector\" \"Current Affairs\" \"Daily Current Affairs\" \"UPSC Current Affairs\" \"SSC CGL\" \"Brain Teasers\" \"Logic Puzzles\" \"Aptitude\" \"Mahabharat\" \"Mahabharat Animation\" \"Last Day on Earth\" LDoE \"LDoE Survival\" \"Bunker Alfa\" \"Zombie Survival\" \"Strategy Game\" \"Tech Stack\" \"Knowledge Hub\"",
+  "branding_colors": {
+    "primary_dark": "#0A0E1A",
+    "secondary_dark": "#131C31",
+    "accent_cyan": "#00F0FF",
+    "accent_gold": "#FFB800",
+    "accent_green": "#10B981",
+    "accent_crimson": "#EF4444",
+    "text_white": "#FFFFFF",
+    "text_muted": "#94A3B8"
+  },
+  "community_links": {
+    "youtube": "https://youtube.com/@pulse_vector",
+    "telegram": "https://t.me/pulsevector_daily"
+  }
+}
+
