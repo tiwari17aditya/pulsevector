@@ -15,6 +15,7 @@ This document tracks all versions, visual assets, YouTube CDN URLs, and metadata
 | **Active Banner Asset** | `channel_branding/assets/banners/banner_cinematic_multigenre_master.png` |
 | **Active Profile Icon** | `channel_branding/assets/icons/icon_pulse_vector_3d_master.png` (800x800: `icon_pulse_vector_3d_800.png`) |
 | **Archive Folder** | `channel_branding/history/v1.0.0_2026-11-04_cinematic_multigenre/` |
+| **Home Tab Architecture** | 7 Optimized High-Retention Shelves Deployed Live |
 
 ### Visual Composition & Highlights
 - **Banner ($2560 \times 1440$ px, Universal Safe Zone $1546 \times 423$ px)**:
@@ -27,21 +28,34 @@ This document tracks all versions, visual assets, YouTube CDN URLs, and metadata
 
 ---
 
+## 📺 Live Home Tab Shelves Architecture (Active on YouTube)
+
+Configured and synchronized via `channel_branding/setup_hometab_sections.py`:
+
+| Shelf # | Shelf Name | API Type | Target Playlist ID / Feed | Genre / Audience Strategy |
+| :---: | :--- | :--- | :--- | :--- |
+| **1** | **Daily Current Affairs (Oct - Dec 2026)** | `singleplaylist` | `PLKaPhI3LucGw` | Daily returning UPSC/competitive exam viewers |
+| **2** | **Last Day on Earth: Survival — Official Series** | `singleplaylist` | `PLJPzVNVZwaGY` | High-retention 105-episode binge-watch gaming traffic |
+| **3** | **Daily Brain Teasers — 2026** | `singleplaylist` | `PLENP5DyB-lS4` | Quick engagement logic puzzles & interactive shorts |
+| **4** | **Mahabharat: The Epic Battle of Dharma** | `singleplaylist` | `PLTdRkcKiCRVA` | Cinematic animated historical storytelling (70 episodes) |
+| **5** | **Weekly Current Affairs Masterclasses** | `singleplaylist` | `PL4PQLXRi54n0f5deGjKOCuz3VbMOMzmxO` | In-depth retrospectives & weekend educational viewers |
+| **6** | **Latest Uploads** | `recentuploads` | Channel Recent Uploads | Dynamic showcase of fresh drops across all pillars |
+| **7** | **All Playlists Directory** | `allplaylists` | All Public Playlists | Comprehensive library exploration for channel visitors |
+
+---
+
 ## 📜 Historical Version Ledger
 
 ```mermaid
-timeline
-    title Pulse Vector Branding Version History
-    section 2026
-        v0.1.0 (Pre-Nov 2026) : Legacy text banner : Basic solid colors : Flat graphics
-        v1.0.0 (04 Nov 2026) : Cinematic Multi-Genre Nexus : 3D Titanium & Gold Avatar : All 5 Pillars Unified
+flowchart LR
+    A["v0.1.0 (Pre-Nov 2026)<br/>Legacy Solid/Flat Design"] --> B["v1.0.0 (04 Nov 2026)<br/>Cinematic Multi-Genre Nexus<br/>7-Shelf Home Tab Live"]
 ```
 
 ### Version History Table
 
 | Version | Date | Status | Banner Asset | Banner CDN URL | Icon Asset | Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **v1.0.0** | 2026-11-04 | 🟢 **LIVE** | `banner_cinematic_multigenre_master.png` | [YouTube CDN](https://yt3.googleusercontent.com/2u7xEQWp5YNqus20VGIguSrkJe--MFO3MRDwAORdV8pPAW_2be8hVg8tGAKavHTM4GY7099KfA) | `icon_pulse_vector_3d_master.png` | Full photorealistic multi-genre unification across 416+ videos. Live on YouTube. |
+| **v1.0.0** | 2026-11-04 | 🟢 **LIVE** | `banner_cinematic_multigenre_master.png` | [YouTube CDN](https://yt3.googleusercontent.com/2u7xEQWp5YNqus20VGIguSrkJe--MFO3MRDwAORdV8pPAW_2be8hVg8tGAKavHTM4GY7099KfA) | `icon_pulse_vector_3d_master.png` | Full photorealistic multi-genre unification across 416+ videos. 7 Home Tab sections live. |
 | **v0.1.0** | 2026-10-23 | ⚪ Archived | `mAi7UySB1dEE8Q-s...` | Legacy Google usercontent | Default avatar | Initial setup, flat solid colors, pre-redesign. |
 
 ---
@@ -57,6 +71,7 @@ Whenever creating a new seasonal, event-based, or milestone branding update:
    - Recompile `preview_branding.html` using `python channel_branding/build_branding_showcase.py`.
 3. **Deploy via API**:
    - Run `python channel_branding/update_youtube_channel.py --apply --upload-banner`.
+   - Update Home Tab sections if needed via `python channel_branding/setup_hometab_sections.py --apply`.
 4. **Archive Previous Release**:
    - Archive the old assets into `channel_branding/history/v<version>_<date>_<codename>/`.
    - Update `branding_ledger.json` and `branding_ledger.md` with the new version, date, and live CDN URL.
