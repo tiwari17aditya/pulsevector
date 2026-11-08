@@ -164,8 +164,18 @@ def extract_metadata_fields(content: str) -> Dict[str, Any]:
         lines = src_text.splitlines()
         for line in lines:
             line_clean = line.strip().lstrip("*-• ")
+            md_match = re.search(r"\[([^\]]+)\]\((https?://[^\)]+)\)", line_clean)
+            if md_match:
+                result["source_urls"][md_match.group(1).strip()] = md_match.group(2).strip()
+                continue
             if ":" in line_clean:
                 parts = line_clean.split(":", 1)
+                pub = parts[0].strip()
+                url = parts[1].strip()
+                if url.startswith("http") or url.startswith("www"):
+                    result["source_urls"][pub] = url
+            elif " - " in line_clean:
+                parts = line_clean.split(" - ", 1)
                 pub = parts[0].strip()
                 url = parts[1].strip()
                 if url.startswith("http") or url.startswith("www"):
@@ -313,7 +323,22 @@ def format_structured_description(
         else:
             sections.append(raw_desc)
             
-    # 3. Discussion / Call to Action
+    # 3. Verified Sources & Coverage (Moved from slide face to description)
+    if source_urls:
+        source_lines = ["🔗 VERIFIED SOURCES & COVERAGE:"]
+        for pub_name, pub_url in source_urls.items():
+            p_name = pub_name.strip()
+            p_url = pub_url.strip()
+            if p_url.startswith("http://") or p_url.startswith("https://"):
+                source_lines.append(f"• {p_name}: {p_url}")
+            elif p_url.startswith("www."):
+                source_lines.append(f"• {p_name}: https://{p_url}")
+            else:
+                source_lines.append(f"• {p_name}")
+        if len(source_lines) > 1:
+            sections.append("\n".join(source_lines))
+
+    # 4. Discussion / Call to Action
     if content_type == "daily":
         sections.append(
             "💬 QUESTION OF THE DAY:\n"
@@ -325,11 +350,11 @@ def format_structured_description(
             "Which key topic covered in this masterclass do you want an in-depth breakdown for next? Drop your request in the comments below! 👇"
         )
         
-    # 4. Social Media Connectivity Block
+    # 5. Social Media Connectivity Block
     social_block = get_social_links_block("plain")
     sections.append(social_block)
     
-    # 5. Curated Hashtags (Clean list of 8-10 primary tags at the bottom)
+    # 6. Curated Hashtags (Clean list of 8-10 primary tags at the bottom)
     if hashtags:
         top_tags = [f"#{t.lstrip('#')}" for t in hashtags[:10]]
         sections.append(" ".join(top_tags))

@@ -11,8 +11,9 @@ if hasattr(sys.stdout, 'reconfigure'):
 if hasattr(sys.stderr, 'reconfigure'):
     sys.stderr.reconfigure(encoding='utf-8')
 
-# Setup logging directory and dynamic daily filename
-log_dir = pathlib.Path("logs")
+# Setup logging directory anchored to project root and dynamic daily filename
+PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
+log_dir = PROJECT_ROOT / "logs"
 log_dir.mkdir(exist_ok=True)
 current_date_str = datetime.datetime.now().strftime("%Y-%m-%d")
 log_file = log_dir / f"pipeline_{current_date_str}.log"

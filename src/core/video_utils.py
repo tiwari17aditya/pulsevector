@@ -320,7 +320,12 @@ def generate_thumbnail_slide_image(
     W, H = (1920, 1080) if is_widescreen else (1080, 1920)
     cx = 960 if is_widescreen else 540
     
-    image = create_base_background_with_glow(W, H, t=0.0)
+    from .image_utils import load_thematic_background
+    thematic_bg = load_thematic_background(category_name, (W, H))
+    if thematic_bg:
+        image = thematic_bg
+    else:
+        image = create_base_background_with_glow(W, H, t=0.0)
     draw_watermark_on_image(image, font_bold_path)
     
     card = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -402,6 +407,7 @@ def generate_thumbnail_slide_image(
         
         # Clean and wrap the headline text
         clean_headline = re.sub(r"^[\d\.\-\s]+", "", headline_hook).strip()
+        clean_headline = re.sub(r"\[Source:[^\]]+\]", "", clean_headline, flags=re.IGNORECASE).strip()
         from .content_parser import clean_markdown_decorations
         clean_headline = clean_markdown_decorations(clean_headline)
         

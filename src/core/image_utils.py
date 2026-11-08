@@ -11,6 +11,84 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from .config import ARCHIVE_DIR, BT_DATE_FMT
 from .content_parser import parse_teaser_content, classify_news_category, CATEGORY_PALETTES
 
+ROOT_DIR = pathlib.Path(__file__).resolve().parent.parent.parent
+BACKGROUNDS_DIR = ROOT_DIR / "assets" / "backgrounds"
+
+CATEGORY_BACKGROUND_MAP = {
+    "DEFENCE": "defence.jpg",
+    "ECONOMY": "economy.jpg",
+    "TECH & AI": "tech_ai.jpg",
+    "GEOPOLITICS": "geopolitics.jpg",
+    "ENVIRONMENT": "environment.jpg",
+    "NATIONAL": "national.jpg",
+    "GLOBAL": "global.jpg"
+}
+
+def load_thematic_background(
+    category_name: str,
+    target_size: Tuple[int, int],
+    custom_bg_path: Optional[pathlib.Path] = None,
+    darken_factor: float = 0.52
+) -> Optional[Image.Image]:
+    """
+    Loads, scales, center-crops, and applies cinematic darkening treatment
+    to a thematic editorial background image. Returns an RGBA Image or None.
+    """
+    img_path = None
+    if custom_bg_path and pathlib.Path(custom_bg_path).exists():
+        img_path = pathlib.Path(custom_bg_path)
+    else:
+        bg_filename = CATEGORY_BACKGROUND_MAP.get(category_name.upper().strip(), "global.jpg")
+        candidate = BACKGROUNDS_DIR / bg_filename
+        if candidate.exists():
+            img_path = candidate
+        else:
+            default_cand = BACKGROUNDS_DIR / "default.jpg"
+            if default_cand.exists():
+                img_path = default_cand
+
+    if not img_path or not img_path.exists():
+        return None
+
+    try:
+        raw_bg = Image.open(img_path).convert("RGBA")
+        W, H = target_size
+        bw, bh = raw_bg.size
+
+        # Cover scaling
+        scale = max(W / bw, H / bh)
+        nw, nh = int(bw * scale), int(bh * scale)
+        scaled_bg = raw_bg.resize((nw, nh), Image.Resampling.LANCZOS)
+
+        # Center crop
+        left = (nw - W) // 2
+        top = (nh - H) // 2
+        cropped = scaled_bg.crop((left, top, left + W, top + H))
+
+        # Atmospheric Darkening & Vignette Scrim
+        # Ensures text readability while keeping the background photograph clearly recognizable
+        scrim = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        draw_scrim = ImageDraw.Draw(scrim)
+
+        # Base dark tint
+        base_alpha = int(255 * (1.0 - darken_factor))  # ~122 (48% dark scrim)
+        draw_scrim.rectangle([(0, 0), (W, H)], fill=(8, 14, 28, base_alpha))
+
+        # Vertical gradient: deeper dark behind the text body
+        gradient = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        draw_grad = ImageDraw.Draw(gradient)
+        for y in range(H):
+            mid_factor = math.sin((y / H) * math.pi) ** 1.5
+            extra_alpha = int(mid_factor * 85)
+            draw_grad.line([(0, y), (W, y)], fill=(4, 8, 18, extra_alpha))
+
+        scrim = Image.alpha_composite(scrim, gradient)
+        result = Image.alpha_composite(cropped, scrim)
+        return result
+    except Exception as e:
+        logging.warning(f"Failed to load thematic background '{img_path}': {e}")
+        return None
+
 def wrap_text(text: str, font: ImageFont.ImageFont, max_width: int) -> List[str]:
     raw_lines = text.splitlines()
     if not raw_lines:
@@ -44,7 +122,8 @@ def create_slide_image_file(
     font_bold_path: pathlib.Path,
     output_path: pathlib.Path,
     category_title: str = "DAILY CURRENT AFFAIRS",
-    aspect_ratio: str = "9:16"
+    aspect_ratio: str = "9:16",
+    background_image_path: Optional[pathlib.Path] = None
 ) -> bool:
     is_widescreen = (aspect_ratio == "16:9")
     W, H = (1920, 1080) if is_widescreen else (1080, 1920)
@@ -53,22 +132,32 @@ def create_slide_image_file(
     clean_date = re.sub(r"^[\(\:\-\s]+|[\)\:\-\s]+$", "", date_str).strip()
     clean_cat = category_title.strip()
     
-    # Base dark background
-    image = Image.new("RGBA", (W, H), (3, 7, 18, 255))
-    
-    # Glowing Ambient Orbs
-    glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    draw_glow = ImageDraw.Draw(glow)
-    if is_widescreen:
-        draw_glow.ellipse([(-200, -200), (800, 600)], fill=(6, 182, 212, 90))
-        draw_glow.ellipse([(1100, 300), (2100, 1100)], fill=(124, 58, 237, 75))
-        draw_glow.ellipse([(500, -100), (1400, 500)], fill=(217, 70, 239, 70))
+    # Determine dominant category across points for this page
+    cat_counts = {}
+    for _, pt_text in page_points:
+        c = classify_news_category(pt_text)
+        cat_counts[c] = cat_counts.get(c, 0) + 1
+    dominant_cat = max(cat_counts.items(), key=lambda x: x[1])[0] if cat_counts else "GLOBAL"
+
+    # 1. Background Layer: Thematic Editorial Photograph with Darkening Vignette
+    thematic_bg = load_thematic_background(dominant_cat, (W, H), custom_bg_path=background_image_path)
+    if thematic_bg:
+        image = thematic_bg
     else:
-        draw_glow.ellipse([(-200, -200), (600, 600)], fill=(6, 182, 212, 90))
-        draw_glow.ellipse([(600, 700), (1400, 1500)], fill=(124, 58, 237, 75))
-        draw_glow.ellipse([(-300, 1400), (500, 2200)], fill=(217, 70, 239, 85))
-    blurred_glow = glow.filter(ImageFilter.GaussianBlur(200))
-    image.alpha_composite(blurred_glow)
+        # Fallback to procedural dark canvas with Glowing Ambient Orbs
+        image = Image.new("RGBA", (W, H), (3, 7, 18, 255))
+        glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        draw_glow = ImageDraw.Draw(glow)
+        if is_widescreen:
+            draw_glow.ellipse([(-200, -200), (800, 600)], fill=(6, 182, 212, 90))
+            draw_glow.ellipse([(1100, 300), (2100, 1100)], fill=(124, 58, 237, 75))
+            draw_glow.ellipse([(500, -100), (1400, 500)], fill=(217, 70, 239, 70))
+        else:
+            draw_glow.ellipse([(-200, -200), (600, 600)], fill=(6, 182, 212, 90))
+            draw_glow.ellipse([(600, 700), (1400, 1500)], fill=(124, 58, 237, 75))
+            draw_glow.ellipse([(-300, 1400), (500, 2200)], fill=(217, 70, 239, 85))
+        blurred_glow = glow.filter(ImageFilter.GaussianBlur(200))
+        image.alpha_composite(blurred_glow)
     
     # Glassmorphic Main Card Layer
     card = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -188,9 +277,6 @@ def create_slide_image_file(
         )
         draw.text((text_x + 9, pill_y + 2), cat_name, font=font_cat_badge, fill=accent_col)
         
-        if source_name:
-            draw.text((text_x + cat_w + 14, pill_y + 2), f"Source: {source_name}", font=font_source, fill=(156, 163, 175, 220))
-            
         current_y += item_height + item_gap
             
     # Page Footer

@@ -308,7 +308,7 @@ class PipelineEngine:
             raise FileNotFoundError(f"No slide images found in {img_dir}")
             
         temp_video = img_dir / "temp_video.mp4"
-        duration_per_static = 1.8 if content_type == "daily" else 4.5
+        duration_per_static = 6.5 if content_type == "daily" else 4.5
         
         compile_images_to_video_enhanced(
             thumb_path, slide_images, anim_frames, str(temp_video),
