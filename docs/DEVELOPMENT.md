@@ -15,7 +15,7 @@ Run the complete component test suite and dry-runs:
 ```powershell
 python scripts/test_pipeline.py
 ```
-Ensure all 57 automated tests pass before committing.
+Ensure all 63 automated unit & integration tests pass before committing.
 
 ## 4. Generating Outro Videos
 To re-render all 5 finalized animated YouTube end credit scenes:
@@ -38,3 +38,4 @@ To run full diagnostics, clean temporary frames, audit all 6 skills, and push ch
 ```powershell
 python scripts/packup_pipeline.py
 ```
+

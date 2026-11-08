@@ -15,10 +15,17 @@ scratch/
 client_secrets.json
 token.json
 credentials/
+# Ignore compiled media by default
 *.mp4
+!samples/End_Credits_Videos/*.mp4
 *.mp3
-**/samples/Audio/
-samples/Audio/
+!samples/Audio/track_01.mp3
+!samples/Audio/track_02.mp3
+!samples/Audio/track_03.mp3
+
+# Ignore extra audio tracks beyond baseline 3
+samples/Audio/track_0[4-9].mp3
+samples/Audio/track_1[0-9].mp3
 **/samples/Templates/
 samples/Templates/
 

@@ -28,24 +28,24 @@ def resolve_gdrive_endcredits_dir() -> pathlib.Path:
     """
     Resolves the active Google Drive directory for end credits videos.
     Checks environment overrides, primary Drive mount, and secondary Drive paths.
+    Cross-platform safe: never attempts Windows-style drive letters on Linux/POSIX.
     """
     env_dir = os.getenv("PULSE_DRIVE_OUTRO_DIR")
     if env_dir and pathlib.Path(env_dir).exists():
         return pathlib.Path(env_dir)
 
-    if DEFAULT_GDRIVE_DIR.exists():
-        return DEFAULT_GDRIVE_DIR
-
-    # Try creating primary if parent exists
-    if DEFAULT_GDRIVE_DIR.parent.exists():
+    import sys
+    if sys.platform == "win32":
         try:
-            DEFAULT_GDRIVE_DIR.mkdir(parents=True, exist_ok=True)
-            return DEFAULT_GDRIVE_DIR
+            if DEFAULT_GDRIVE_DIR.exists():
+                return DEFAULT_GDRIVE_DIR
+            if DEFAULT_GDRIVE_DIR.parent.exists():
+                DEFAULT_GDRIVE_DIR.mkdir(parents=True, exist_ok=True)
+                return DEFAULT_GDRIVE_DIR
+            if SECONDARY_GDRIVE_DIR.exists():
+                return SECONDARY_GDRIVE_DIR
         except Exception:
             pass
-
-    if SECONDARY_GDRIVE_DIR.exists():
-        return SECONDARY_GDRIVE_DIR
 
     # Fallback to local samples directory
     LOCAL_SAMPLES_DIR.mkdir(parents=True, exist_ok=True)
@@ -150,14 +150,17 @@ def get_runtime_drive_endcredits(
     If the Drive directory is empty or missing matching formats, it automatically seeds it.
     """
     target_dir = drive_dir or resolve_gdrive_endcredits_dir()
-    logger.info(f"Checking Google Drive for endcredits at runtime: {target_dir}")
+    logger.info(f"Checking for endcredits at runtime: {target_dir}")
 
     videos = list_drive_endcredit_videos(target_dir)
 
-    # If Drive is empty, seed it immediately!
-    if not videos:
-        logger.info("Google Drive End_Credits_Videos is empty. Auto-seeding fresh broadcast endcredits...")
-        videos = seed_drive_endcredits_library(target_dir)
+    # If target_dir is empty and not LOCAL_SAMPLES_DIR, check LOCAL_SAMPLES_DIR
+    if not videos and target_dir != LOCAL_SAMPLES_DIR:
+        local_videos = list_drive_endcredit_videos(LOCAL_SAMPLES_DIR)
+        if local_videos:
+            logger.info(f"Using local cached endcredit pool: {LOCAL_SAMPLES_DIR}")
+            videos = local_videos
+            target_dir = LOCAL_SAMPLES_DIR
 
     is_vertical_target = (aspect_ratio == "9:16")
 
@@ -169,16 +172,17 @@ def get_runtime_drive_endcredits(
         if is_vertical_target == v_is_vertical:
             matching_videos.append(v)
 
-    # If no exact aspect ratio match found on Drive, fall back to any available Drive video
     pool = matching_videos if matching_videos else videos
 
     if not pool:
-        # Ultimate fallback: generate single on the fly
-        logger.warning("No valid videos found in Drive pool. Generating on the fly...")
+        # Generate single on-demand outro video tailored for the required aspect ratio
+        logger.warning(f"No existing {aspect_ratio} endcredit found in pool. Generating single outro on demand...")
         from .outro_video_engine import OutroVideoEngine
-        engine = OutroVideoEngine(output_dir=target_dir)
+        out_dir = LOCAL_SAMPLES_DIR if not target_dir.exists() else target_dir
+        out_dir.mkdir(parents=True, exist_ok=True)
+        engine = OutroVideoEngine(output_dir=out_dir)
         ch_key = "pulse_vertical" if is_vertical_target else "vox"
-        out_v = target_dir / f"{ch_key}_runtime.mp4"
+        out_v = out_dir / f"{ch_key}_runtime.mp4"
         return engine.generate_single_outro_video(ch_key, output_path=out_v)
 
     # Filter by preferred style if specified

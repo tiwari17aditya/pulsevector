@@ -6,6 +6,7 @@ YouTube distribution, cloud database sync, and git automation with independent p
 
 import os
 import re
+import shutil
 import logging
 import datetime
 import pathlib
@@ -237,6 +238,25 @@ class PipelineEngine:
         font_regular, font_bold = ensure_fonts(self.archive_dir)
         font_poppins = self.fonts_dir / "Poppins-Bold.ttf"
         
+        # Fast path: If target_date is specified, process ONLY that day's brain teaser
+        if target_date:
+            paths = self.get_paths("daily", target_date)
+            bt_file = paths.get("bt_text")
+            if bt_file and bt_file.exists():
+                img_dir = bt_file.parent.parent / "Images"
+                img_dir.mkdir(parents=True, exist_ok=True)
+                base_name = bt_file.stem
+                plain_p = img_dir / f"{base_name}_plain.png"
+                styled_p = img_dir / f"{base_name}_styled.png"
+                if not plain_p.exists() or not styled_p.exists():
+                    data = parse_teaser_file(bt_file)
+                    if data:
+                        if not plain_p.exists():
+                            create_teaser_plain_image(data, font_poppins, font_bold, font_regular, plain_p)
+                        if not styled_p.exists():
+                            create_teaser_styled_image(data, font_poppins, font_bold, font_regular, styled_p)
+            return
+        
         for root, dirs, files in os.walk(self.archive_dir):
             if "Brain_Teasers" in pathlib.Path(root).parts and "Text" in pathlib.Path(root).parts:
                 for file in files:
@@ -340,15 +360,20 @@ class PipelineEngine:
                 output_video_path=video_path,
                 aspect_ratio=ar,
             )
+            print(f"✅ Video compiled & stitched with Drive endcredits successfully: {video_path}")
+        except Exception as outro_err:
+            logging.error(f"Endcredits stitching encountered an issue ({outro_err}). Using main video as fallback.")
+            if not video_path.exists() and temp_muxed.exists():
+                shutil.copy2(temp_muxed, video_path)
+            print(f"✅ Video compiled successfully (fallback without outro): {video_path}")
         finally:
             for cleanup_file in [temp_video, temp_muxed]:
-                if cleanup_file.exists():
+                if cleanup_file.exists() and cleanup_file != video_path:
                     try:
                         cleanup_file.unlink()
                     except Exception:
                         pass
             
-        print(f"✅ Video compiled & stitched with Drive endcredits successfully: {video_path}")
         return VideoPayload(video_path=video_path, duration=0.0, has_audio=bool(audio_track), has_voiceover=bool(voiceover_path))
 
     # -------------------------------------------------------------

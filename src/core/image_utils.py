@@ -306,8 +306,14 @@ def create_slide_image_file(
     
     wrapped_items = []
     total_text_height = 0
-    for num, text in page_points:
-        source_name = None
+    for item in page_points:
+        if len(item) >= 3:
+            num, text, explicit_source = item[0], item[1], item[2]
+        else:
+            num, text = item[0], item[1]
+            explicit_source = None
+            
+        source_name = explicit_source
         source_match = re.search(r"\[Source:\s*([^\]]+)\]", text, re.IGNORECASE)
         if source_match:
             source_name = source_match.group(1).strip()

@@ -45,7 +45,7 @@ pulse-vector/
 │   └── content_parser.py      # Text processing & news extraction
 ├── scripts/
 │   ├── packup_pipeline.py     # Master sign-off & audit orchestrator
-│   ├── test_pipeline.py       # Full automated test suite (57 tests)
+│   ├── test_pipeline.py       # Full automated test suite (63 unit & integration tests)
 │   ├── monitor_health.py      # System health diagnostics
 │   ├── cleanup_workspace.py   # Temporary frame and cache cleaner
 │   ├── build_video_theater.py # Interactive HTML5 video theater generator
@@ -56,3 +56,4 @@ pulse-vector/
 ├── pulse_archive/             # Date-organized publication archive
 └── Research/                  # Quota logs, upload records, and developer notes
 ```
+
