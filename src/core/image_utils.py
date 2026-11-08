@@ -1,3 +1,5 @@
+import os
+import random
 import math
 import re
 import datetime
@@ -23,6 +25,24 @@ CATEGORY_BACKGROUND_MAP = {
     "NATIONAL": "national.jpg",
     "GLOBAL": "global.jpg"
 }
+
+DAILY_LAYOUT_CHOICES = ["spotlight", "minimalist", "inline_tag", "split_pane"]
+
+def get_daily_layout_style(target_date: Optional[datetime.date] = None, override: Optional[str] = None) -> str:
+    """
+    Returns the daily layout style.
+    Can be explicitly set via override or PULSE_DAILY_LAYOUT env var.
+    If 'random' or unset, selects a daily layout deterministically seeded by target_date
+    (or randomly) among: spotlight, minimalist, inline_tag, split_pane.
+    """
+    env_style = os.getenv("PULSE_DAILY_LAYOUT", "").strip().lower()
+    style = override or env_style or "random"
+    if style in DAILY_LAYOUT_CHOICES:
+        return style
+    if target_date:
+        seed_val = target_date.toordinal() if hasattr(target_date, "toordinal") else hash(str(target_date))
+        return random.Random(seed_val).choice(DAILY_LAYOUT_CHOICES)
+    return random.choice(DAILY_LAYOUT_CHOICES)
 
 def load_thematic_background(
     category_name: str,
@@ -123,7 +143,9 @@ def create_slide_image_file(
     output_path: pathlib.Path,
     category_title: str = "DAILY CURRENT AFFAIRS",
     aspect_ratio: str = "9:16",
-    background_image_path: Optional[pathlib.Path] = None
+    background_image_path: Optional[pathlib.Path] = None,
+    layout_style: str = "auto",
+    active_point_idx: Optional[int] = None
 ) -> bool:
     is_widescreen = (aspect_ratio == "16:9")
     W, H = (1920, 1080) if is_widescreen else (1080, 1920)
@@ -132,45 +154,104 @@ def create_slide_image_file(
     clean_date = re.sub(r"^[\(\:\-\s]+|[\)\:\-\s]+$", "", date_str).strip()
     clean_cat = category_title.strip()
     
-    # Determine dominant category across points for this page
-    cat_counts = {}
-    for _, pt_text in page_points:
-        c = classify_news_category(pt_text)
-        cat_counts[c] = cat_counts.get(c, 0) + 1
-    dominant_cat = max(cat_counts.items(), key=lambda x: x[1])[0] if cat_counts else "GLOBAL"
-
-    # 1. Background Layer: Thematic Editorial Photograph with Darkening Vignette
-    thematic_bg = load_thematic_background(dominant_cat, (W, H), custom_bg_path=background_image_path)
-    if thematic_bg:
-        image = thematic_bg
+    # Resolve dynamic daily layout style
+    if layout_style in DAILY_LAYOUT_CHOICES:
+        active_style = layout_style
+    elif is_widescreen:
+        active_style = "minimalist"
     else:
-        # Fallback to procedural dark canvas with Glowing Ambient Orbs
-        image = Image.new("RGBA", (W, H), (3, 7, 18, 255))
-        glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-        draw_glow = ImageDraw.Draw(glow)
-        if is_widescreen:
-            draw_glow.ellipse([(-200, -200), (800, 600)], fill=(6, 182, 212, 90))
-            draw_glow.ellipse([(1100, 300), (2100, 1100)], fill=(124, 58, 237, 75))
-            draw_glow.ellipse([(500, -100), (1400, 500)], fill=(217, 70, 239, 70))
-        else:
-            draw_glow.ellipse([(-200, -200), (600, 600)], fill=(6, 182, 212, 90))
-            draw_glow.ellipse([(600, 700), (1400, 1500)], fill=(124, 58, 237, 75))
-            draw_glow.ellipse([(-300, 1400), (500, 2200)], fill=(217, 70, 239, 85))
-        blurred_glow = glow.filter(ImageFilter.GaussianBlur(200))
-        image.alpha_composite(blurred_glow)
+        parsed_d = None
+        try:
+            parsed_d = datetime.datetime.strptime(clean_date, "%d %B %Y").date()
+        except Exception:
+            pass
+        active_style = get_daily_layout_style(parsed_d)
     
-    # Glassmorphic Main Card Layer
-    card = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    draw_card = ImageDraw.Draw(card)
-    card_box = [(60, 50), (1860, 1030)] if is_widescreen else [(80, 160), (1000, 1760)]
-    draw_card.rounded_rectangle(
-        card_box,
-        radius=35 if is_widescreen else 40,
-        fill=(15, 23, 42, 165),
-        outline=(255, 255, 255, 35),
-        width=2
-    )
-    image.alpha_composite(card)
+    # Determine background category: strictly locked to the TOP point on this page
+    if page_points:
+        lead_point_text = page_points[0][1]
+        dominant_cat = classify_news_category(lead_point_text)
+    else:
+        dominant_cat = "GLOBAL"
+
+    # 1. Background & Base Card Layer
+    if active_style == "split_pane" and not is_widescreen:
+        # Split-Screen Dual Pane Layout (Adda247 educational capsule style)
+        image = Image.new("RGBA", (W, H), (11, 15, 25, 255))
+        draw_glow = ImageDraw.Draw(image)
+        draw_glow.ellipse([(-200, -200), (600, 600)], fill=(6, 182, 212, 70))
+        draw_glow.ellipse([(600, 700), (1400, 1500)], fill=(124, 58, 237, 60))
+        image = image.filter(ImageFilter.GaussianBlur(180))
+
+        # Top Photo Box (framed photograph container with lead category photo)
+        photo_w, photo_h = 920, 500
+        top_photo = load_thematic_background(dominant_cat, (photo_w, photo_h), custom_bg_path=background_image_path, darken_factor=0.35)
+        if not top_photo:
+            top_photo = Image.new("RGBA", (photo_w, photo_h), (30, 41, 59, 255))
+        
+        mask = Image.new("L", (photo_w, photo_h), 0)
+        mask_draw = ImageDraw.Draw(mask)
+        mask_draw.rounded_rectangle([(0, 0), (photo_w, photo_h)], radius=24, fill=255)
+        image.paste(top_photo, (80, 200), mask)
+        
+        draw_img = ImageDraw.Draw(image)
+        draw_img.rounded_rectangle([(80, 200), (1000, 700)], radius=24, outline=(255, 255, 255, 40), width=2)
+        
+        # Category badge on photo
+        cat_pal = CATEGORY_PALETTES.get(dominant_cat, CATEGORY_PALETTES["GLOBAL"])
+        try:
+            f_cat_badge = ImageFont.truetype(str(font_bold_path), 20)
+        except Exception:
+            f_cat_badge = ImageFont.load_default()
+        bbox_pcat = draw_img.textbbox((0, 0), dominant_cat, font=f_cat_badge)
+        pcat_w = (bbox_pcat[2] - bbox_pcat[0]) + 20
+        draw_img.rounded_rectangle([(105, 645), (105 + pcat_w, 680)], radius=8, fill=(15, 23, 42, 220), outline=cat_pal["pill_border"], width=1)
+        draw_img.text((115, 652), dominant_cat, font=f_cat_badge, fill=cat_pal["text_color"])
+
+        # Bottom Glassmorphic card for exam points
+        card = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        draw_card = ImageDraw.Draw(card)
+        draw_card.rounded_rectangle([(80, 730), (1000, 1760)], radius=35, fill=(15, 23, 42, 195), outline=(255, 255, 255, 35), width=2)
+        image.alpha_composite(card)
+        
+        start_y = 770
+        available_height = 920
+        line_spacing = 42
+    else:
+        # Full-Bleed Thematic Background with Darkening Scrim (Spotlight, Minimalist, Inline Tag)
+        thematic_bg = load_thematic_background(dominant_cat, (W, H), custom_bg_path=background_image_path)
+        if thematic_bg:
+            image = thematic_bg
+        else:
+            image = Image.new("RGBA", (W, H), (3, 7, 18, 255))
+            glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+            draw_glow = ImageDraw.Draw(glow)
+            if is_widescreen:
+                draw_glow.ellipse([(-200, -200), (800, 600)], fill=(6, 182, 212, 90))
+                draw_glow.ellipse([(1100, 300), (2100, 1100)], fill=(124, 58, 237, 75))
+                draw_glow.ellipse([(500, -100), (1400, 500)], fill=(217, 70, 239, 70))
+            else:
+                draw_glow.ellipse([(-200, -200), (600, 600)], fill=(6, 182, 212, 90))
+                draw_glow.ellipse([(600, 700), (1400, 1500)], fill=(124, 58, 237, 75))
+                draw_glow.ellipse([(-300, 1400), (500, 2200)], fill=(217, 70, 239, 85))
+            blurred_glow = glow.filter(ImageFilter.GaussianBlur(200))
+            image.alpha_composite(blurred_glow)
+        
+        card = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        draw_card = ImageDraw.Draw(card)
+        card_box = [(60, 50), (1860, 1030)] if is_widescreen else [(80, 160), (1000, 1760)]
+        draw_card.rounded_rectangle(
+            card_box,
+            radius=35 if is_widescreen else 40,
+            fill=(15, 23, 42, 175),
+            outline=(255, 255, 255, 35),
+            width=2
+        )
+        image.alpha_composite(card)
+        
+        start_y = 155 if is_widescreen else 380
+        available_height = 820 if is_widescreen else 1240
+        line_spacing = 42 if is_widescreen else 50
     
     # Subtle Watermark
     watermark_canvas = Image.new("RGBA", (2400, 2400), (0, 0, 0, 0))
@@ -195,10 +276,8 @@ def create_slide_image_file(
         font_body = ImageFont.truetype(str(font_regular_path), 34 if is_widescreen else 38)
         font_badge = ImageFont.truetype(str(font_bold_path), 40)
         font_footer = ImageFont.truetype(str(font_regular_path), 26)
-        font_source = ImageFont.truetype(str(font_regular_path), 24)
-        font_cat_badge = ImageFont.truetype(str(font_bold_path), 20)
     except Exception:
-        font_logo = font_title = font_subtitle = font_body = font_badge = font_footer = font_source = font_cat_badge = ImageFont.load_default()
+        font_logo = font_title = font_subtitle = font_body = font_badge = font_footer = ImageFont.load_default()
     
     draw = ImageDraw.Draw(image)
     
@@ -209,6 +288,12 @@ def create_slide_image_file(
         draw.text((1820 - date_width, 72), clean_date, font=font_subtitle, fill=(156, 163, 175, 255))
         draw.text((960, 90), clean_cat, font=font_title, fill=(255, 255, 255, 255), anchor="mm")
         draw.line([(100, 130), (1820, 130)], fill=(255, 255, 255, 25), width=1)
+    elif active_style == "split_pane":
+        draw.text((140, 95), "P U L S E   V E C T O R", font=font_logo, fill=(255, 255, 255, 80))
+        date_width = draw.textlength(clean_date, font=font_subtitle)
+        draw.text((940 - date_width, 92), clean_date, font=font_subtitle, fill=(156, 163, 175, 255))
+        draw.text((540, 145), clean_cat, font=font_title, fill=(255, 255, 255, 255), anchor="mm")
+        draw.line([(140, 180), (940, 180)], fill=(255, 255, 255, 25), width=1)
     else:
         draw.text((140, 215), "P U L S E   V E C T O R", font=font_logo, fill=(255, 255, 255, 80))
         date_width = draw.textlength(clean_date, font=font_subtitle)
@@ -217,10 +302,7 @@ def create_slide_image_file(
         draw.line([(140, 335), (940, 335)], fill=(255, 255, 255, 25), width=1)
     
     # Points Layout (5 per page)
-    start_y = 155 if is_widescreen else 380
     max_text_width = 1620 if is_widescreen else 690
-    line_spacing = 42 if is_widescreen else 50
-    available_height = 820 if is_widescreen else 1240
     
     wrapped_items = []
     total_text_height = 0
@@ -235,14 +317,14 @@ def create_slide_image_file(
         cat_palette = CATEGORY_PALETTES.get(cat_name, CATEGORY_PALETTES["GLOBAL"])
         
         lines = wrap_text(text, font_body, max_text_width)
-        item_height = len(lines) * line_spacing + 34
+        item_height = len(lines) * line_spacing
         wrapped_items.append((num, lines, source_name, cat_name, cat_palette, item_height))
         total_text_height += item_height
         
     remaining_height = available_height - total_text_height
     if len(page_points) > 1:
         item_gap = remaining_height // (len(page_points) - 1)
-        item_gap = max(20 if is_widescreen else 35, min(140 if is_widescreen else 200, item_gap))
+        item_gap = max(18 if is_widescreen else 28, min(140 if is_widescreen else 120, item_gap))
     else:
         item_gap = 30 if is_widescreen else 40
         
@@ -251,32 +333,48 @@ def create_slide_image_file(
     divider_x = 145 if is_widescreen else 185
     text_x = 170 if is_widescreen else 210
     
+    active_idx_target = active_point_idx if active_point_idx is not None else 0
+
     for idx, (num, lines, source_name, cat_name, cat_palette, item_height) in enumerate(wrapped_items):
         accent_col = cat_palette["text_color"]
         badge_text = f"{num:02d}"
         
-        # Accented number badge and divider
-        draw.text((badge_x, current_y + 3), badge_text, font=font_badge, fill=accent_col)
-        draw.line([(divider_x, current_y + 5), (divider_x, current_y + max(35, item_height - 5))], fill=(*accent_col[:3], 120), width=2)
+        is_spotlight_active = (active_style == "spotlight" and (idx == active_idx_target))
         
-        for l_idx, line in enumerate(lines):
-            draw.text((text_x, current_y + (l_idx * line_spacing)), line, font=font_body, fill=(243, 244, 246, 255))
+        if active_style == "spotlight":
+            # Spotlight: glowing focus box, white text, dimmed inactive points (NO 'ACTIVE' text!)
+            if is_spotlight_active:
+                spot_box = [(badge_x - 30, current_y - 12), (W - 100, current_y + item_height + 12)]
+                draw.rounded_rectangle(spot_box, radius=18, fill=(30, 41, 59, 230), outline=(*accent_col[:3], 180), width=2)
+                num_col = accent_col
+                div_col = (*accent_col[:3], 200)
+                text_col = (255, 255, 255, 255)
+            else:
+                num_col = (100, 116, 139, 120)
+                div_col = (255, 255, 255, 30)
+                text_col = (148, 163, 184, 110)
+        else:
+            num_col = accent_col
+            div_col = (*accent_col[:3], 140)
+            text_col = (243, 244, 246, 255)
             
-        # Category pill badge + Source
-        pill_y = current_y + (len(lines) * line_spacing) + 6
-        bbox_cat = draw.textbbox((0, 0), cat_name, font=font_cat_badge)
-        cat_w = (bbox_cat[2] - bbox_cat[0]) + 18
-        cat_h = 24
+        draw.text((badge_x, current_y + 3), badge_text, font=font_badge, fill=num_col)
+        draw.line([(divider_x, current_y + 5), (divider_x, current_y + max(35, item_height - 5))], fill=div_col, width=2)
         
-        draw.rounded_rectangle(
-            [text_x, pill_y, text_x + cat_w, pill_y + cat_h],
-            radius=6,
-            fill=cat_palette["pill_bg"],
-            outline=cat_palette["pill_border"],
-            width=1
-        )
-        draw.text((text_x + 9, pill_y + 2), cat_name, font=font_cat_badge, fill=accent_col)
-        
+        if active_style == "inline_tag" and lines:
+            # Inline category tag on first line (zero pills below!)
+            first_line = lines[0]
+            tag_prefix = f"[{cat_name}] "
+            draw.text((text_x, current_y), tag_prefix, font=font_body, fill=accent_col)
+            tag_w = draw.textlength(tag_prefix, font=font_body)
+            draw.text((text_x + tag_w, current_y), first_line, font=font_body, fill=text_col)
+            for l_idx in range(1, len(lines)):
+                draw.text((text_x, current_y + (l_idx * line_spacing)), lines[l_idx], font=font_body, fill=text_col)
+        else:
+            for l_idx, line in enumerate(lines):
+                draw.text((text_x, current_y + (l_idx * line_spacing)), line, font=font_body, fill=text_col)
+                
+        # Category pills below points are completely removed in all styles!
         current_y += item_height + item_gap
             
     # Page Footer

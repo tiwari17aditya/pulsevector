@@ -202,6 +202,13 @@ class PipelineEngine:
         points_per_page = 5
         total_pages = (len(points) + points_per_page - 1) // points_per_page
         
+        # Resolve dynamic layout approach for daily videos (or widescreen minimalist for masterclasses)
+        layout_style = "auto"
+        if content_type == "daily":
+            from .image_utils import get_daily_layout_style
+            layout_style = get_daily_layout_style(target_date.date() if hasattr(target_date, "date") else target_date)
+            print(f"🎨 [Daily Layout Mode] Dynamic approach selected: '{layout_style.upper()}' (locked to top headline background)")
+        
         generated_slides = []
         for i in range(0, len(points), points_per_page):
             page_points = points[i:i+points_per_page]
@@ -210,7 +217,8 @@ class PipelineEngine:
             create_slide_image_file(
                 date_header, page_points, page_num, total_pages,
                 font_regular, font_bold, out_path, cat_title,
-                aspect_ratio=ar
+                aspect_ratio=ar,
+                layout_style=layout_style
             )
             generated_slides.append(out_path)
             
