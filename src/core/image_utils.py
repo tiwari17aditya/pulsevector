@@ -337,7 +337,7 @@ def create_slide_image_file(
 
     for idx, (num, lines, source_name, cat_name, cat_palette, item_height) in enumerate(wrapped_items):
         accent_col = cat_palette["text_color"]
-        badge_text = f"{num:02d}"
+        badge_text = str(num)
         
         is_spotlight_active = (active_style == "spotlight" and (idx == active_idx_target))
         
@@ -358,8 +358,12 @@ def create_slide_image_file(
             div_col = (*accent_col[:3], 140)
             text_col = (243, 244, 246, 255)
             
-        draw.text((badge_x, current_y + 3), badge_text, font=font_badge, fill=num_col)
-        draw.line([(divider_x, current_y + 5), (divider_x, current_y + max(35, item_height - 5))], fill=div_col, width=2)
+        # Vertically centered number badge & symmetrical divider line
+        center_y = current_y + (item_height / 2)
+        draw.text((badge_x, center_y), badge_text, font=font_badge, fill=num_col, anchor="mm")
+        div_top = current_y + 4
+        div_bot = current_y + item_height - 4
+        draw.line([(divider_x, div_top), (divider_x, div_bot)], fill=div_col, width=2)
         
         if active_style == "inline_tag" and lines:
             # Inline category tag on first line (zero pills below!)
