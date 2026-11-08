@@ -161,3 +161,4 @@ This log tracks all uploaded videos, their metadata, category, related video set
 | 2026-11-05 15:13 IST | 🔥 Climate Crisis Summit & Top News (05 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | kNHJtcgpJKQ |
 | 2026-11-06 15:06 IST | 🔥 Global AI Treaty & Top News (06 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | -DJ7UJLTDWU |
 | 2026-11-07 14:30 IST | 🔥 Climate Summit Breakthrough & Top News (07 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | zk3qjOTMLjs |
+| 2026-11-08 06:59 IST | Weekly Current Affairs Masterclass (02 Nov - 08 Nov 2026) | Full Revision | Education (27) | Weekly Masterclass | Linked to Playlist | Interactive Comment Posted | y7QGfGovgrI |
