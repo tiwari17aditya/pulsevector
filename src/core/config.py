@@ -31,7 +31,12 @@ load_dotenv()
 ARCHIVE_DIR = pathlib.Path(os.getenv("PULSE_ARCHIVE_DIR", "pulse_archive"))
 INPUT_DIR = pathlib.Path(os.getenv("PULSE_INPUT_DIR", "incoming_data"))
 PROMPTS_FILE = pathlib.Path(os.getenv("PULSE_PROMPTS_FILE", ".agent/pulse_prompts.md"))
-BACKUP_DIR = os.getenv("PULSE_BACKUP_DIR", r"G:\My Drive\antigravity-projects-storage\pulse-vector\pulse_archive")
+# External Backup Path (only activate when G: drive is mounted on Windows)
+_default_backup = r"G:\My Drive\antigravity-projects-storage\pulse-vector\pulse_archive"
+BACKUP_DIR = os.getenv(
+    "PULSE_BACKUP_DIR",
+    _default_backup if os.name == "nt" and os.path.exists(r"G:\My Drive") else None
+)
 API_KEY = os.getenv("GEMINI_API_KEY")
 
 BT_DATE_FMT = "%d%b%y"

@@ -32,3 +32,8 @@ pulse_archive/**/*.wav
 pulse_archive/temp_end_frames/
 **/tts_temp/
 reports/
+
+# Prevent accidental Linux runner drive path tracking
+G:*
+"G:*"
+*G:\*

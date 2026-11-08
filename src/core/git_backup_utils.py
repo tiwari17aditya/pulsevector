@@ -40,6 +40,10 @@ def run_git_operations(commit_msg="Auto-update: Pulse Vector Pipeline Run"):
 def run_backup_operations():
     print("\n🚀 Starting External Backup...")
     logging.info("Starting external backup...")
+    if not BACKUP_DIR:
+        print("ℹ️ External backup skipped (PULSE_BACKUP_DIR not set or G: drive not mounted).")
+        logging.info("External backup skipped (no BACKUP_DIR).")
+        return
     try:
         if not os.path.exists(BACKUP_DIR):
             os.makedirs(BACKUP_DIR)
