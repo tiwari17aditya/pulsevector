@@ -417,8 +417,44 @@ def parse_news_content(raw_text: str, content_type: str, target_date: datetime.d
         extra_metadata={"date_header": date_header}
     )
 
+def classify_teaser_archetype(data: Dict[str, Any]) -> str:
+    """
+    Classifies a brain teaser into one of the core presentation archetypes:
+    'grid', 'detective', 'formula', 'scale', 'sequence', 'oddone', 'cipher', 'relations', or 'riddle'.
+    """
+    series = data.get("series", "")
+    q = data.get("question_header", "")
+    full_text = f"{q}\n{series}".lower()
+    
+    # 1. 3x3 Grid / Matrix
+    if any(k in full_text for k in ["grid", "matrix", "magic square"]) or ("\n" in series and ("|" in series or ("[" in series and "]" in series))):
+        return "grid"
+    # 2. Detective / Whodunnit
+    if any(k in full_text for k in ["who is lying", "who lied", "stolen", "heist", "curator", "suspect", "alibi", "murder"]):
+        return "detective"
+    # 3. Formula / BODMAS / Matchstick
+    if any(k in full_text for k in ["matchstick", "bodmas", "pemdas", "order of operations"]) or ("=" in series and any(op in series for op in ["+", "-", "*", "×", "÷"])):
+        return "formula"
+    # 4. Weighing / Scale Balance
+    if any(k in full_text for k in ["scale", "weighing", "balance", "apples", "bananas"]):
+        return "scale"
+    # 5. Sequence
+    if any(k in full_text for k in ["sequence", "what comes next", "next in"]) or (re.search(r'\d+,\s*\d+,\s*\d+', series) and "?" in series):
+        return "sequence"
+    # 6. Odd One Out
+    if any(k in full_text for k in ["odd one out", "odd one", "not belong", "impostor", "pattern breaker"]):
+        return "oddone"
+    # 7. Cipher
+    if any(k in full_text for k in ["cipher", "alphanumeric", "letter-math", "decode"]):
+        return "cipher"
+    # 8. Blood Relations
+    if any(k in full_text for k in ["blood relation", "mother-in-law", "daughter", "father", "sister", "brother", "pointing to a woman"]):
+        return "relations"
+    # 9. Lateral Riddle / Paradox
+    return "riddle"
+
 def parse_teaser_content(raw_text: str, target_date: Optional[datetime.datetime] = None, file_path: Optional[pathlib.Path] = None) -> Dict[str, Any]:
-    """Robust parser for Brain Teasers."""
+    """Robust parser for Brain Teasers supporting multi-category archetypes."""
     clean_content = raw_text
     for marker in ['---', 'image generation', 'image_generation', 'Image Generation']:
         idx = clean_content.lower().find(marker.lower())
@@ -440,14 +476,21 @@ def parse_teaser_content(raw_text: str, target_date: Optional[datetime.datetime]
     else:
         date_text = datetime.datetime.now().strftime("%d %B %Y")
         
-    # Options
-    option_matches = re.findall(r'\b([a-d])[\.\)]\s*([^\n]+?)(?=\s+\b[a-d][\.\)]|\n|$)', clean_content, re.IGNORECASE)
-    options = [f"{opt_letter.lower()}. {opt_val.strip()}" for opt_letter, opt_val in option_matches]
+    # Options: strip hashtags and answer line first to prevent false matches
+    content_for_opts = re.sub(r'#.*', '', clean_content, flags=re.DOTALL)
+    content_for_opts = re.sub(r'(?:Correct Answer|Answer):.*', '', content_for_opts, flags=re.DOTALL | re.IGNORECASE)
+    option_matches = re.findall(r'^[ \t]*(?:\[|\()?\b([a-d])(?:[\.\)\]]|\b\]|\b\))\s*([^\n]+)', content_for_opts, re.MULTILINE | re.IGNORECASE)
+    options = []
+    for opt_letter, opt_val in option_matches:
+        v = opt_val.strip()
+        v = re.sub(r'^[\[\(](.+)[\]\)]$', r'\1', v).strip()
+        options.append(f"{opt_letter.lower()}. {v}")
     
-    # Question and Series
+    # Question and Series / Puzzle Content
     q_s_content = clean_content
-    q_s_content = re.sub(r'^(?:Daily Brain Teaser|Brain Teaser)\s*-\s*\d{1,2}\s+[A-Za-z]+\s+\d{4}\s*🧠\s*', '', q_s_content, flags=re.IGNORECASE)
-    opt_start = re.search(r'\b[a-d][\.\)]\s*', q_s_content, re.IGNORECASE)
+    # Remove header line and emojis
+    q_s_content = re.sub(r'^(?:Daily Brain Teaser|Brain Teaser)\s*-[^\n]+', '', q_s_content, flags=re.IGNORECASE)
+    opt_start = re.search(r'(?:^|\n)\s*(?:\[|\()?[a-d][\.\)\]]', q_s_content, re.IGNORECASE)
     if opt_start:
         q_s_content = q_s_content[:opt_start.start()]
     q_s_content = re.sub(r'#\w+', '', q_s_content)
@@ -457,9 +500,9 @@ def parse_teaser_content(raw_text: str, target_date: Optional[datetime.datetime]
     series_text = ""
     full_text = "\n".join(q_s_lines)
     
-    tag_pattern = r'^[ \t]*(?:Series|Puzzle|Equation|Grid|Expression|Sequence|Problem):\s*'
+    tag_pattern = r'^[ \t]*(?:Series|Puzzle|Equation|Grid|Expression|Sequence|Problem|Formula|Suspects|Scenario|Quote|Cipher|Numbers|Words):\s*'
     series_match = re.search(rf'{tag_pattern}(.+)', full_text, re.IGNORECASE | re.MULTILINE | re.DOTALL)
-    q_match = re.search(r'^[ \t]*Q\.\s*(.+?)(?=\n[ \t]*(?:Series|Puzzle|Equation|Grid|Expression|Sequence|Problem):|\Z)', full_text, re.IGNORECASE | re.MULTILINE | re.DOTALL)
+    q_match = re.search(r'^[ \t]*Q\.\s*(.+?)(?=\n[ \t]*(?:Series|Puzzle|Equation|Grid|Expression|Sequence|Problem|Formula|Suspects|Scenario|Quote|Cipher|Numbers|Words):|\Z)', full_text, re.IGNORECASE | re.MULTILINE | re.DOTALL)
     
     if series_match:
         series_text = series_match.group(1).strip()
@@ -491,7 +534,7 @@ def parse_teaser_content(raw_text: str, target_date: Optional[datetime.datetime]
                 else:
                     series_text = first_val_clean
                     
-    series_text = re.sub(r'\b[a-d][\.\)].*', '', series_text, flags=re.IGNORECASE | re.DOTALL).strip()
+    series_text = re.sub(r'(?:^|\n)\s*[a-d][\.\)].*', '', series_text, flags=re.IGNORECASE | re.DOTALL).strip()
     question_header = question_header.strip()
     if not question_header.endswith(":-"):
         if question_header.endswith("?"):
@@ -510,7 +553,7 @@ def parse_teaser_content(raw_text: str, target_date: Optional[datetime.datetime]
     answer_match = re.search(r'(?:Correct Answer|Answer):\s*([a-d])', clean_content, re.IGNORECASE)
     correct_answer = answer_match.group(1).lower() if answer_match else None
     
-    return {
+    parsed_data = {
         "question_header": question_header,
         "series": series_text,
         "options": options,
@@ -519,6 +562,47 @@ def parse_teaser_content(raw_text: str, target_date: Optional[datetime.datetime]
         "correct_answer": correct_answer,
         "file_path": file_path
     }
+    
+    # Enrich with archetype and structured sub-fields
+    archetype = classify_teaser_archetype(parsed_data)
+    parsed_data["archetype"] = archetype
+    
+    # 1. Suspects extraction for detective puzzles
+    if archetype == "detective":
+        suspect_list = []
+        for line in series_text.splitlines():
+            line_s = line.strip()
+            if not line_s:
+                continue
+            if ":" in line_s:
+                parts = line_s.split(":", 1)
+                suspect_list.append((parts[0].strip(), parts[1].strip().strip('"').strip("'")))
+            elif "claims" in line_s or "states" in line_s or "saw" in line_s:
+                # e.g., "Ben claims he saw David..."
+                suspect_list.append((line_s.split()[0], line_s))
+        if suspect_list:
+            parsed_data["suspects"] = suspect_list
+            
+    # 2. Grid extraction for matrix puzzles
+    elif archetype == "grid":
+        grid_rows = []
+        for line in series_text.splitlines():
+            line_s = line.strip()
+            if not line_s:
+                continue
+            cells = [c.strip() for c in re.split(r'[\s|,]+', line_s.replace('[', '').replace(']', '')) if c.strip()]
+            if len(cells) == 3:
+                grid_rows.append(cells)
+        if len(grid_rows) == 3:
+            parsed_data["grid"] = grid_rows
+            
+    # 3. Sequence nodes extraction
+    elif archetype == "sequence":
+        nodes = [t.strip() for t in re.split(r'->|➔|,|\s{2,}', series_text) if t.strip()]
+        if len(nodes) >= 3:
+            parsed_data["sequence_nodes"] = nodes
+            
+    return parsed_data
 
 def format_community_poll_text(data: Dict[str, Any]) -> str:
     """

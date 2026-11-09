@@ -197,6 +197,19 @@ def build_brainteaser_prompt(
 
 
     
+    # Archetype-specific layout instructions
+    layout_instruction = "Put the main puzzle clearly under the 'Series:' label."
+    if selected_key in ["grid", "spatial"]:
+        layout_instruction = "Format the 3x3 grid on 3 separate lines under 'Grid:' or 'Series:' using '|' separators (e.g., 4 | 9 | 2), with '?' marking the missing cell."
+    elif selected_key == "detective":
+        layout_instruction = "Provide 3 concise suspect statements under 'Suspects:' or 'Series:' in the format: Name (Role): 'Statement'."
+    elif selected_key in ["bodmas", "matchstick", "age_speed"]:
+        layout_instruction = "Put the exact equation/challenge clearly under 'Formula:' or 'Series:', e.g., 50 - 50 × 0 + 2 + 2 = ?"
+    elif selected_key in ["sequence", "cipher"]:
+        layout_instruction = "Put the progression or cipher equations clearly under 'Sequence:' or 'Series:'."
+    elif selected_key == "weighing":
+        layout_instruction = "List the scale balance equations clearly under 'Scales:' or 'Series:'."
+
     prompt = (
         f"Today is {weekday_name}, {date_str} (IST).\n\n"
         f"TARGET PUZZLE CATEGORY FOR TODAY: **{type_info['name']}**\n"
@@ -207,7 +220,13 @@ def build_brainteaser_prompt(
         f"2. Ensure there is a single, unequivocal, mathematically or logically verifiable correct answer.\n"
         f"3. Provide exactly 4 distinct multiple-choice options labeled a., b., c., d. (ensure options are plausible and one is the exact answer).\n"
         f"4. The puzzle must be solvable within 10 seconds on a short video or social post.\n"
-        f"5. Put the main puzzle/equation/grid/sequence clearly under the 'Series:' label.\n\n"
+        f"5. {layout_instruction}\n"
+        f"6. DO NOT use raw emojis in the puzzle question, series, or options to ensure clean video rendering.\n"
+        f"7. DO NOT use square brackets around option letters. Format options strictly as:\n"
+        f"   a. Option Text\n"
+        f"   b. Option Text\n"
+        f"   c. Option Text\n"
+        f"   d. Option Text\n\n"
         f"{base_prompt}"
     )
     return prompt, selected_key
