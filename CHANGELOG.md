@@ -5,6 +5,31 @@ All notable changes to the Pulse Vector project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.11.0] - 2026-11-09
+
+### Added
+- **Multi-Archetype Brain Teaser Formatting & Rendering Engine**:
+  - Dynamically classifies brain teaser content into 9 specialized archetypes (`grid`, `detective`, `sequence`, `formula`, `scale`, `cipher`, `relations`, `oddone`, `riddle`).
+  - Hero visual component rendering:
+    - `grid`: 3x3 graphic layout with cell borders, center accent highlights, and monospace digit rendering.
+    - `detective`: Dossier-style suspect cards with avatar badges and formatted witness statement bubbles.
+    - `sequence`: Number/node flow progression with custom vector transition arrows.
+    - `formula`: High-contrast algebraic badge cards with highlighted operator tokens.
+  - Category-aware LLM prompt architecture (`build_brainteaser_prompt`) tailored for 5 core genres (Mathematical, Spatial/Grid, Logic/Alibi, Word/Cipher, Pattern/Sequence).
+  - Circular letter badge option buttons (`A`, `B`, `C`, `D`) replacing bracketed text across both 2x2 grid and 1-column layouts.
+  - Safe margin enforcement ($Y \le 585$px) ensuring 100% zero collision with lower third and options.
+  - Master Showcase Video compiling 20 standardized format templates across 5 genres uploaded to YouTube private playlist (`Pulse Vector - Brain Teaser Format Showcase`).
+  - Comprehensive Step-by-Step Solution Guide for all prior week brain teasers (Nov 1–9, 2026) archived in `reports/last_week_brain_teaser_solutions.md`.
+
+### Fixed
+- **Font Glyph Tofu & Missing Symbol Rendering**:
+  - Completely eradicated `.notdef` missing glyph ("box with an X") rendering by eliminating raw Unicode emoji and arrow characters from slide text.
+  - Implemented mathematical `draw_vector_arrow()` via PIL polygon graphics for clean, anti-aliased sequence indicators.
+  - Stripped square bracket noise `[` `]` from options for a modern, sleek mobile UX.
+- **Teaser Parser Option Extraction**:
+  - Hardened option regex (`classify_teaser_archetype`, `parse_teaser_content`) to prevent false positives from hashtags or inline text containing bare letters.
+  - Added structured parser extraction for suspects, 3x3 grids, and sequence nodes.
+
 ## [2.10.0] - 2026-11-08
 
 ### Added
