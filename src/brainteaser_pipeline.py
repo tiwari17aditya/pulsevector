@@ -210,13 +210,29 @@ def draw_options_standard(draw, options, opt_y_start, font_opt, fill_color=(15, 
             (col1_x, row2_y), (col2_x, row2_y)
         ]
         
-        for idx, opt in enumerate(options):
+        for idx, opt in enumerate(options[:4]):
+            opt_letter = chr(65 + idx)
+            opt_val = opt
+            if len(opt) >= 2 and opt[1] in ['.', ')', ':', ']']:
+                opt_letter = opt[0].upper()
+                opt_val = opt[2:].strip().lstrip('.').strip()
+            elif opt.startswith(('a. ', 'b. ', 'c. ', 'd. ')):
+                opt_letter = opt[0].upper()
+                opt_val = opt[3:].strip()
+
             cx, cy = coords[idx]
             x1, y1 = cx - box_w/2, cy - box_h/2
             x2, y2 = cx + box_w/2, cy + box_h/2
             
             draw.rounded_rectangle([(x1, y1), (x2, y2)], radius=15, fill=fill_color, outline=outline_color, width=2)
-            draw_fitted_option_text(draw, opt, cx, cy, font_opt, max_w=box_w - 20, anchor="mm")
+            
+            circle_r = 14
+            circle_cx = x1 + circle_r + 10
+            circle_cy = cy
+            draw.ellipse([(circle_cx - circle_r, circle_cy - circle_r), (circle_cx + circle_r, circle_cy + circle_r)], fill=(56, 189, 248, 65), outline=(56, 189, 248), width=2)
+            draw_teaser_text_with_shadow(draw, opt_letter, circle_cx, circle_cy, font_opt, text_color=(255, 255, 255), anchor="mm")
+            
+            draw_fitted_option_text(draw, opt_val, circle_cx + circle_r + 10, cy, font_opt, max_w=box_w - (circle_r * 2 + 25), anchor="lm")
     else:
         box_w, box_h = 500, 48
         gap_y = 8
@@ -230,7 +246,16 @@ def draw_options_standard(draw, options, opt_y_start, font_opt, fill_color=(15, 
             if opt_y_start + total_h > max_allowed_y:
                 opt_y_start = max(180, max_allowed_y - total_h)
                 
-        for idx, opt in enumerate(options):
+        for idx, opt in enumerate(options[:4]):
+            opt_letter = chr(65 + idx)
+            opt_val = opt
+            if len(opt) >= 2 and opt[1] in ['.', ')', ':', ']']:
+                opt_letter = opt[0].upper()
+                opt_val = opt[2:].strip().lstrip('.').strip()
+            elif opt.startswith(('a. ', 'b. ', 'c. ', 'd. ')):
+                opt_letter = opt[0].upper()
+                opt_val = opt[3:].strip()
+
             cy = opt_y_start + box_h/2 + idx * (box_h + gap_y)
             x1 = W/2 - box_w/2
             y1 = cy - box_h/2
@@ -238,7 +263,14 @@ def draw_options_standard(draw, options, opt_y_start, font_opt, fill_color=(15, 
             y2 = cy + box_h/2
             
             draw.rounded_rectangle([(x1, y1), (x2, y2)], radius=12, fill=fill_color, outline=outline_color, width=2)
-            draw_fitted_option_text(draw, opt, x1 + 25, cy, font_opt, max_w=box_w - 45, anchor="lm")
+            
+            circle_r = 14
+            circle_cx = x1 + circle_r + 12
+            circle_cy = cy
+            draw.ellipse([(circle_cx - circle_r, circle_cy - circle_r), (circle_cx + circle_r, circle_cy + circle_r)], fill=(56, 189, 248, 65), outline=(56, 189, 248), width=2)
+            draw_teaser_text_with_shadow(draw, opt_letter, circle_cx, circle_cy, font_opt, text_color=(255, 255, 255), anchor="mm")
+            
+            draw_fitted_option_text(draw, opt_val, circle_cx + circle_r + 12, cy, font_opt, max_w=box_w - (circle_r * 2 + 30), anchor="lm")
 
 def draw_options_capsule(draw, options, opt_y_start, font_opt):
     max_opt_w = 0

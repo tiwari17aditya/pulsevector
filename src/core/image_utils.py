@@ -422,6 +422,47 @@ def parse_teaser_file(file_path: pathlib.Path) -> Optional[Dict[str, Any]]:
     content = path.read_text(encoding="utf-8")
     return parse_teaser_content(content, file_path=path)
 
+def draw_vector_arrow(draw: ImageDraw.ImageDraw, x1: float, y: float, x2: float, color: Tuple[int, int, int] = (56, 189, 248), width: int = 3, head_size: int = 8):
+    """Draws a clean, resolution-independent vector arrow with zero font/glyph dependencies."""
+    draw.line([(x1, y), (x2, y)], fill=color, width=width)
+    draw.polygon([(x2, y), (x2 - head_size, y - head_size // 2 - 1), (x2 - head_size, y + head_size // 2 + 1)], fill=color)
+
+def draw_option_pill_button(
+    draw: ImageDraw.ImageDraw,
+    x1: float, y1: float, x2: float, y2: float,
+    opt_letter: str, opt_val: str,
+    font_letter: ImageFont.ImageFont, font_val: ImageFont.ImageFont,
+    accent_color: Tuple[int, int, int] = (56, 189, 248),
+    bg_color: Tuple[int, int, int, int] = (15, 23, 42, 140)
+):
+    """Draws an option button with an integrated circular letter badge (A, B, C, D) and zero square brackets."""
+    draw.rounded_rectangle([(x1, y1), (x2, y2)], radius=14, fill=bg_color, outline=(255, 255, 255, 40), width=2)
+    box_h = y2 - y1
+    circle_r = min(15, int(box_h * 0.32))
+    circle_cx = x1 + circle_r + 12
+    circle_cy = y1 + box_h / 2
+    
+    # Letter badge circle
+    draw.ellipse(
+        [(circle_cx - circle_r, circle_cy - circle_r), (circle_cx + circle_r, circle_cy + circle_r)],
+        fill=(accent_color[0], accent_color[1], accent_color[2], 65),
+        outline=accent_color,
+        width=2
+    )
+    draw_teaser_text_with_shadow(draw, opt_letter.upper(), circle_cx, circle_cy, font_letter, text_color=(255, 255, 255), anchor="mm")
+    
+    # Text dynamically shrunk if necessary
+    opt_font = font_val
+    max_text_w = (x2 - x1) - (circle_r * 2 + 35)
+    font_path = getattr(font_val, 'path', None)
+    target_sz = getattr(font_val, 'size', 24)
+    while opt_font.getlength(opt_val) > max_text_w and target_sz > 14 and font_path:
+        target_sz -= 2
+        opt_font = ImageFont.truetype(str(font_path), target_sz)
+        
+    text_x = circle_cx + circle_r + 12
+    draw_teaser_text_with_shadow(draw, opt_val, text_x, circle_cy, opt_font, text_color=(243, 244, 246), anchor="lm")
+
 def create_teaser_plain_image(data: Dict[str, Any], font_path: pathlib.Path, font_bold_path: pathlib.Path, font_regular_path: pathlib.Path, output_path: pathlib.Path):
     W, H = 656, 656
     image = create_teaser_gradient(W, H)
@@ -568,44 +609,95 @@ def create_teaser_styled_image(data: Dict[str, Any], font_path: pathlib.Path, fo
         draw_teaser_text_with_shadow(draw, line, W / 2, current_y, f_sub, text_color=(229, 231, 235))
         current_y += line_h_q
         
+    archetype = data.get("archetype", "riddle")
     series_text = data.get("series", "")
-    wrapped_series = wrap_text(series_text, f_series, 460)
-    line_h_s = 44
-    series_content_h = len(wrapped_series) * line_h_s
-    
     card_x1, card_x2 = 78, 578
     card_y1 = current_y + 12
-    card_y2 = card_y1 + series_content_h + 30
     
-    draw.rounded_rectangle(
-        [(card_x1, card_y1), (card_x2, card_y2)],
-        radius=20,
-        fill=(15, 23, 42, 140),
-        outline=(255, 255, 255, 45),
-        width=2
-    )
-    
-    s_y = card_y1 + 15 + (line_h_s / 2)
-    for line in wrapped_series:
-        draw_teaser_text_with_shadow(draw, line, W / 2, s_y, f_series, text_color=(56, 189, 248))
-        s_y += line_h_s
+    # Archetype-Specific Hero Rendering
+    if archetype == "detective" and data.get("suspects"):
+        suspects = data.get("suspects", [])
+        suspect_box_h = 28
+        suspect_gap = 6
+        hero_h = len(suspects) * (suspect_box_h + suspect_gap) + 16
+        card_y2 = card_y1 + hero_h
+        draw.rounded_rectangle([(card_x1, card_y1), (card_x2, card_y2)], radius=18, fill=(15, 23, 42, 160), outline=(255, 255, 255, 45), width=2)
+        for s_idx, (s_name, s_claim) in enumerate(suspects[:3]):
+            sy = card_y1 + 8 + s_idx * (suspect_box_h + suspect_gap)
+            draw.rounded_rectangle([(card_x1 + 8, sy), (card_x2 - 8, sy + suspect_box_h)], radius=10, fill=(30, 41, 59, 180), outline=(255, 255, 255, 30), width=1)
+            draw_teaser_text_with_shadow(draw, f"{s_name}:", card_x1 + 16, sy + suspect_box_h/2, f_sub, text_color=(56, 189, 248), anchor="lm")
+            max_claim_w = (card_x2 - card_x1) - (f_sub.getlength(f"{s_name}:") + 35)
+            claim_text = f'"{s_claim}"'
+            claim_font = f_sub
+            if claim_font.getlength(claim_text) > max_claim_w:
+                target_sz = getattr(f_sub, 'size', 20)
+                font_path = getattr(f_sub, 'path', None)
+                while claim_font.getlength(claim_text) > max_claim_w and target_sz > 12 and font_path:
+                    target_sz -= 2
+                    claim_font = ImageFont.truetype(str(font_path), target_sz)
+            draw_teaser_text_with_shadow(draw, claim_text, card_x1 + 24 + f_sub.getlength(f"{s_name}:"), sy + suspect_box_h/2, claim_font, text_color=(229, 231, 235), anchor="lm")
+            
+    elif archetype == "grid" and data.get("grid"):
+        grid = data.get("grid")
+        c_w, c_h = 75, 42
+        gap_x, gap_y = 12, 8
+        tot_w = 3 * c_w + 2 * gap_x
+        start_gx = (W - tot_w) / 2
+        card_y2 = card_y1 + 3 * (c_h + gap_y) + 16
+        draw.rounded_rectangle([(card_x1, card_y1), (card_x2, card_y2)], radius=18, fill=(15, 23, 42, 160), outline=(255, 255, 255, 45), width=2)
+        for r_idx, row in enumerate(grid):
+            ry = card_y1 + 8 + r_idx * (c_h + gap_y)
+            for c_idx, val in enumerate(row):
+                cx = start_gx + c_idx * (c_w + gap_x)
+                is_target = "?" in val
+                draw.rounded_rectangle([(cx, ry), (cx + c_w, ry + c_h)], radius=10, fill=(56, 189, 248, 60) if is_target else (30, 41, 59, 180), outline=(56, 189, 248) if is_target else (255, 255, 255, 60), width=2)
+                draw_teaser_text_with_shadow(draw, val, cx + c_w/2, ry + c_h/2, f_series, text_color=(56, 189, 248) if is_target else (255, 255, 255), anchor="mm")
+                
+    else:
+        # Standard or Formula or Riddle hero card
+        wrapped_series = wrap_text(series_text, f_series, 460)
+        line_h_s = 44
+        series_content_h = max(44, len(wrapped_series) * line_h_s)
+        card_y2 = card_y1 + series_content_h + 30
+        draw.rounded_rectangle(
+            [(card_x1, card_y1), (card_x2, card_y2)],
+            radius=20,
+            fill=(15, 23, 42, 140),
+            outline=(255, 255, 255, 45),
+            width=2
+        )
+        s_y = card_y1 + 15 + (line_h_s / 2)
+        for line in wrapped_series:
+            draw_teaser_text_with_shadow(draw, line, W / 2, s_y, f_series, text_color=(56, 189, 248))
+            s_y += line_h_s
         
     options = data.get("options", [])
     max_opt_w = 0
-    for opt in options:
-        w = f_options.getlength(opt)
+    clean_opts = []
+    for idx, opt in enumerate(options):
+        # Extract letter and value
+        opt_letter = chr(65 + idx)
+        opt_val = opt
+        if len(opt) >= 2 and opt[1] in ['.', ')', ':', ']']:
+            opt_letter = opt[0].upper()
+            opt_val = opt[2:].strip().lstrip('.').strip()
+        elif opt.startswith(('a. ', 'b. ', 'c. ', 'd. ')):
+            opt_letter = opt[0].upper()
+            opt_val = opt[3:].strip()
+        clean_opts.append((opt_letter, opt_val))
+        w = f_options.getlength(opt_val)
         if w > max_opt_w:
             max_opt_w = w
             
-    use_vertical_stack = (max_opt_w > 200) or (len(options) != 4)
+    use_vertical_stack = (max_opt_w > 180) or (len(options) != 4)
     opt_y_start = card_y2 + 20
     
     if not use_vertical_stack:
         col1_x = W / 2 - 135
         col2_x = W / 2 + 135
         box_w = 240
-        box_h = 60
-        gap_y = 15
+        box_h = 56
+        gap_y = 14
         
         row1_y = opt_y_start + box_h/2
         row2_y = row1_y + box_h + gap_y
@@ -617,68 +709,33 @@ def create_teaser_styled_image(data: Dict[str, Any], font_path: pathlib.Path, fo
             (col2_x, row2_y),
         ]
         
-        for idx, opt in enumerate(options):
+        for idx, (opt_letter, opt_val) in enumerate(clean_opts[:4]):
             cx, cy = coords[idx]
             x1, y1 = cx - box_w/2, cy - box_h/2
             x2, y2 = cx + box_w/2, cy + box_h/2
-            
-            draw.rounded_rectangle(
-                [(x1, y1), (x2, y2)],
-                radius=15,
-                fill=(15, 23, 42, 120),
-                outline=(255, 255, 255, 35),
-                width=2
-            )
-            draw_teaser_text_with_shadow(draw, opt, cx, cy, f_options, text_color=(255, 255, 255))
+            draw_option_pill_button(draw, x1, y1, x2, y2, opt_letter, opt_val, f_options, f_options, accent_color=(56, 189, 248))
     else:
         box_w = 500
-        box_h = 48
+        box_h = 46
         gap_y = 8
-        total_h = len(options) * box_h + (len(options) - 1) * gap_y
-        max_allowed_y = 585  # Clean 30px clearance above watermark at 615
+        total_h = len(clean_opts) * box_h + (len(clean_opts) - 1) * gap_y
+        max_allowed_y = 585
         
         if opt_y_start + total_h > max_allowed_y:
             overflow = (opt_y_start + total_h) - max_allowed_y
-            box_h = max(34, box_h - int(overflow / max(len(options), 1)) - 2)
+            box_h = max(34, box_h - int(overflow / max(len(clean_opts), 1)) - 2)
             gap_y = max(4, gap_y - 2)
-            total_h = len(options) * box_h + (len(options) - 1) * gap_y
+            total_h = len(clean_opts) * box_h + (len(clean_opts) - 1) * gap_y
             if opt_y_start + total_h > max_allowed_y:
                 opt_y_start = max(180, max_allowed_y - total_h)
         
-        for idx, opt in enumerate(options):
+        for idx, (opt_letter, opt_val) in enumerate(clean_opts[:4]):
             cy = opt_y_start + box_h/2 + idx * (box_h + gap_y)
             x1 = W/2 - box_w/2
             y1 = cy - box_h/2
             x2 = W/2 + box_w/2
             y2 = cy + box_h/2
-            
-            draw.rounded_rectangle(
-                [(x1, y1), (x2, y2)],
-                radius=12,
-                fill=(15, 23, 42, 120),
-                outline=(255, 255, 255, 35),
-                width=2
-            )
-            
-            # Dynamic text shrink to ensure option text never spills outside the pill
-            opt_font = f_options
-            max_text_w = box_w - 45
-            if opt_font.getlength(opt) > max_text_w:
-                target_sz = 26
-                font_path = getattr(f_options, 'path', None)
-                while opt_font.getlength(opt) > max_text_w and target_sz > 14 and font_path:
-                    target_sz -= 2
-                    opt_font = ImageFont.truetype(str(font_path), target_sz)
-                    
-            draw_teaser_text_with_shadow(
-                draw, 
-                opt, 
-                x1 + 25, 
-                cy, 
-                opt_font, 
-                text_color=(255, 255, 255), 
-                anchor="lm"
-            )
+            draw_option_pill_button(draw, x1, y1, x2, y2, opt_letter, opt_val, f_options, f_options, accent_color=(56, 189, 248))
         
     draw_teaser_text_with_shadow(draw, "pulse-vector", W / 2, 615, f_watermark, shadow_color=None, text_color=(255, 255, 255, 140))
     
