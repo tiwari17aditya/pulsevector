@@ -169,7 +169,7 @@ def generate_playlist_description(title: str) -> str:
             "#CurrentAffairs #DailyCurrentAffairs #UPSC #SSCCGL #BankingExams #PulseVector #GeneralKnowledge"
         )
 
-def create_playlist(youtube, title, description=""):
+def create_playlist(youtube, title, description="", privacy_status="public"):
     try:
         if not description:
             description = generate_playlist_description(title)
@@ -181,7 +181,7 @@ def create_playlist(youtube, title, description=""):
                     "description": description
                 },
                 "status": {
-                    "privacyStatus": "public"
+                    "privacyStatus": privacy_status
                 }
             }
         )
@@ -191,7 +191,7 @@ def create_playlist(youtube, title, description=""):
         logging.error(f"Error creating playlist '{title}': {e}")
         return None
 
-def add_video_to_playlist(youtube, video_id, playlist_title):
+def add_video_to_playlist(youtube, video_id, playlist_title, playlist_privacy="public"):
     try:
         request = youtube.playlists().list(
             part="snippet",
@@ -206,9 +206,9 @@ def add_video_to_playlist(youtube, video_id, playlist_title):
                 break
                 
         if not playlist_id:
-            print(f"Playlist '{playlist_title}' not found. Creating it...")
+            print(f"Playlist '{playlist_title}' not found. Creating it (Privacy: {playlist_privacy})...")
             playlist_desc = generate_playlist_description(playlist_title)
-            playlist_id = create_playlist(youtube, playlist_title, playlist_desc)
+            playlist_id = create_playlist(youtube, playlist_title, playlist_desc, privacy_status=playlist_privacy)
             if playlist_id:
                 print(f"✅ Created new YouTube Playlist: '{playlist_title}'")
             else:
