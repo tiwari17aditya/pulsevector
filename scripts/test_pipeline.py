@@ -47,6 +47,14 @@ from mcp_server.tools.quotas import check_api_quotas
 from mcp_server.tools.deduplication import query_content_deduplication
 from mcp_server.tools.diagnostics import inspect_render_diagnostics
 from mcp_server.tools.broadcast import trigger_social_broadcast
+from mcp_server.tools.orchestration import (
+    trigger_pipeline_stage,
+    execute_autonomous_packup,
+    auto_heal_environment,
+    query_supabase_ledger,
+    audit_token_and_quota_ledgers,
+)
+from core.autonomous_orchestrator import AutonomousOrchestrator
 from mcp_server.server import app as mcp_app
 
 class TestContentParser(unittest.TestCase):
@@ -877,6 +885,49 @@ class TestMCPOperationalServer(unittest.TestCase):
 
     def test_mcp_server_tools_registered(self):
         self.assertIsNotNone(mcp_app)
+
+    def test_auto_heal_environment(self):
+        """Validates that auto_heal_environment purges temp caches and audits fonts/ffmpeg."""
+        res = auto_heal_environment()
+        self.assertIsInstance(res, dict)
+        self.assertIn("status", res)
+        self.assertIn("healed_actions", res)
+        self.assertIn("issues_detected", res)
+        self.assertIn(res["status"], ("HEALTHY", "WARNING"))
+
+    def test_audit_token_and_quota_ledgers(self):
+        """Validates that audit_token_and_quota_ledgers reads quota budgets and developer logs."""
+        res = audit_token_and_quota_ledgers()
+        self.assertIsInstance(res, dict)
+        self.assertIn("youtube_quota", res)
+        self.assertEqual(res["youtube_quota"]["daily_ceiling"], 10000)
+        self.assertIn("remaining_units", res["youtube_quota"])
+
+    def test_trigger_pipeline_stage_dry_run(self):
+        """Validates that trigger_pipeline_stage executes a dry-run without errors."""
+        res = trigger_pipeline_stage(content_type="daily", dry_run=True)
+        self.assertIsInstance(res, dict)
+        self.assertEqual(res["status"], "SUCCESS")
+        self.assertTrue(res["dry_run"])
+
+    def test_query_supabase_ledger_structure(self):
+        """Validates query_supabase_ledger schema validation and graceful client handling."""
+        res = query_supabase_ledger(table="video_uploads", limit=2)
+        self.assertIsInstance(res, dict)
+        self.assertIn(res["status"], ("SUCCESS", "DISABLED", "ERROR"))
+        
+        # Test invalid table rejection
+        invalid_res = query_supabase_ledger(table="forbidden_table")
+        self.assertEqual(invalid_res["status"], "ERROR")
+
+    def test_autonomous_orchestrator_initialization(self):
+        """Validates AutonomousOrchestrator preflight diagnostics."""
+        orchestrator = AutonomousOrchestrator(dry_run=True)
+        self.assertTrue(orchestrator.dry_run)
+        preflight = orchestrator.run_preflight_diagnostics()
+        self.assertIn("status", preflight)
+        self.assertIn("healing", preflight)
+        self.assertIn("quotas", preflight)
 
 
 class TestSecretSync(unittest.TestCase):

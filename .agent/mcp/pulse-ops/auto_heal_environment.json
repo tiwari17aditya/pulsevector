@@ -1,0 +1,9 @@
+{
+  "name": "auto_heal_environment",
+  "description": "Autonomously audits and self-heals workspace anomalies: purges temporary render frames, validates required typography assets (Roboto), ensures directory hierarchies, and tests FFmpeg binaries.",
+  "parameters": {
+    "properties": {},
+    "title": "auto_heal_environmentArguments",
+    "type": "object"
+  }
+}

@@ -5,6 +5,31 @@ All notable changes to the Pulse Vector project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.0] - 2026-11-10
+
+### Added
+- **Full Autonomous AI Handover Architecture & Orchestrator Control Plane**:
+  - Implemented `AutonomousOrchestrator` (`src/core/autonomous_orchestrator.py`) unifying the 6-phase autonomous cycle:
+    1. Operational pre-flight diagnostics and environment auto-healing.
+    2. 90-day archive similarity & deduplication screening.
+    3. Multi-stage execution (Daily Current Affairs, Brain Teasers, Weekly/Monthly Masterclasses).
+    4. Compliance verification (slide asset generation, audio alignment, 60s Shorts limit).
+    5. YouTube Data API publishing, pinned comment engagement, and multi-platform broadcasting (Telegram, Discord).
+    6. Supabase DB/Storage cloud backup, Google Drive sync, and master packup git remote synchronization.
+  - Built `scripts/run_autonomous_daemon.py` and `scripts/run_autonomous.bat` supporting `--run-now`, `--dry-run`, `--status`, and `--cron` operational modes.
+  - Added GitHub Actions autonomous cloud workflow `.github/workflows/pulse_autonomous_orchestrator.yml` (scheduled daily at 08:00 AM IST / 02:30 UTC).
+- **Expanded Operational MCP Server (`pulse-ops-mcp` v3.0.0)**:
+  - Added `trigger_pipeline_stage`: Autonomously execute daily, weekly, monthly, or brainteaser runs with granular stage controls.
+  - Added `execute_autonomous_packup`: Automated execution of the 6-phase master packup and remote Git sync.
+  - Added `auto_heal_environment`: Self-healing workspace cleaner (purges temp render frames, checks fonts and FFmpeg binaries).
+  - Added `query_supabase_ledger`: Read-only safe inspection of Supabase video, summary, and teaser tables.
+  - Added `audit_token_and_quota_ledgers`: Real-time YouTube quota ceiling (10,000 units) and developer token consumption auditing.
+  - Registered all new tools with standard JSON schemas in `.agent/mcp/pulse-ops/`.
+- **Domain Skills & Workflow Integration**:
+  - Added `autonomous-orchestrator` domain skill (`.agent/skills/autonomous-orchestrator/SKILL.md`).
+  - Added `/pulse_autonomous` slash workflow (`.agent/workflows/pulse_autonomous.md`).
+  - Updated `AGENTS.md` and `scripts/packup_pipeline.py` to audit all 7 domain skills.
+
 ## [2.11.0] - 2026-11-09
 
 ### Added

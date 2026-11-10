@@ -1,0 +1,9 @@
+{
+  "name": "execute_autonomous_packup",
+  "description": "Executes the unified 6-phase master packup and sign-off pipeline (/pulse_packup): diagnostics, asset structure, 63-point test suite, storage cleaner, domain skills audit, and Git remote push.",
+  "parameters": {
+    "properties": {},
+    "title": "execute_autonomous_packupArguments",
+    "type": "object"
+  }
+}

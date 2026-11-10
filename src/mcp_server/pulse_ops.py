@@ -22,6 +22,13 @@ from mcp_server.tools.quotas import check_api_quotas
 from mcp_server.tools.deduplication import query_content_deduplication
 from mcp_server.tools.diagnostics import inspect_render_diagnostics
 from mcp_server.tools.broadcast import trigger_social_broadcast
+from mcp_server.tools.orchestration import (
+    trigger_pipeline_stage,
+    execute_autonomous_packup,
+    auto_heal_environment,
+    query_supabase_ledger,
+    audit_token_and_quota_ledgers,
+)
 from mcp_server.tools.security import audit_and_sanitize_payload, protect_sensitive_data
 
 
@@ -124,5 +131,10 @@ __all__ = [
     "check_content_deduplication",
     "get_render_diagnostics",
     "dispatch_social_broadcast",
+    "trigger_pipeline_stage",
+    "execute_autonomous_packup",
+    "auto_heal_environment",
+    "query_supabase_ledger",
+    "audit_token_and_quota_ledgers",
     "sanitize_and_redact_sensitive_data",
 ]

@@ -1,0 +1,41 @@
+{
+  "name": "trigger_pipeline_stage",
+  "description": "Autonomously executes a specific Pulse Vector pipeline stage (daily, weekly, monthly, brainteaser) with options for stages, dry_run, target_date, force-regeneration, and disabling TTS.",
+  "parameters": {
+    "properties": {
+      "content_type": {
+        "description": "Content type to execute: 'daily', 'weekly', 'monthly', 'brainteaser', or 'all'",
+        "type": "string",
+        "default": "daily"
+      },
+      "target_date": {
+        "description": "Optional target date in YYYY-MM-DD format (e.g. '2026-11-10')",
+        "type": "string"
+      },
+      "stages": {
+        "description": "Optional granular stages list: ['text', 'slides', 'video', 'youtube', 'sync']",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "dry_run": {
+        "description": "If True, validates pipeline paths and dependencies without writing files or uploading",
+        "type": "boolean",
+        "default": false
+      },
+      "force": {
+        "description": "If True, force-regenerates existing slides and videos",
+        "type": "boolean",
+        "default": false
+      },
+      "no_tts": {
+        "description": "If True, disables voiceover synthesis",
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "title": "trigger_pipeline_stageArguments",
+    "type": "object"
+  }
+}

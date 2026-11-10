@@ -57,7 +57,8 @@ def audit_domain_skills() -> bool:
         "youtube-dist",
         "cloud-db",
         "pipeline-git",
-        "clean-optimizer"
+        "clean-optimizer",
+        "autonomous-orchestrator"
     ]
     
     all_ok = True

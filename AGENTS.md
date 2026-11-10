@@ -7,6 +7,7 @@
 | `src/core/youtube_utils.py`, `credentials/*` | YouTube API & Uploads | `.agent/skills/youtube-dist/SKILL.md` |
 | `src/core/database_utils.py`, `scripts/*supabase*` | Supabase Cloud & DB | `.agent/skills/cloud-db/SKILL.md` |
 | `src/pipeline.py`, `src/core/pipeline_engine.py`, `git_backup_utils.py` | Pipeline & Git Automation | `.agent/skills/pipeline-git/SKILL.md` |
+| `src/core/autonomous_orchestrator.py`, `scripts/run_autonomous*` | Autonomous AI Orchestration | `.agent/skills/autonomous-orchestrator/SKILL.md` |
 | `channel_branding/*` | Channel Branding & Visual Identity | `.agent/skills/channel-branding/SKILL.md` |
 | `scripts/test_pipeline.py`, `scripts/monitor_health.py` | Testing & Monitoring | `.agent/workflows/pulse_test.md` |
 | `scripts/packup_pipeline.py`, `.agent/workflows/pulse_packup.md` | Master Packup & Orchestration | `.agent/workflows/pulse_packup.md` |
@@ -26,7 +27,8 @@
 - **Git Push on Modification**: Whenever modifications to tracked files are completed and verified with tests, automatically stage, commit, and push the changes to the active branch (`git push origin <current-branch>`) to maintain remote synchronization safely.
 
 ## Available Slash Workflows
-- `/packup` (or `/pulse_packup`): **Unified Master Sign-Off Workflow** (Sequentially triggers `/pulse_monitor`, `/pulse_structure`, `/pulse_test`, `/pulse_clean`, all 6 domain skills audits, and remote git push).
+- `/packup` (or `/pulse_packup`): **Unified Master Sign-Off Workflow** (Sequentially triggers `/pulse_monitor`, `/pulse_structure`, `/pulse_test`, `/pulse_clean`, all 7 domain skills audits, and remote git push).
+- `/pulse_autonomous`: Autonomous AI Handover & Full-Cycle Execution.
 - `/pulse_branding`: YouTube channel branding review, Home Tab optimization & git sync.
 - `/pulse_test`: Run full component test suite & dry-runs (`test_pipeline.py`).
 - `/pulse_daily`: Generate Daily Current Affairs & Brain Teasers.

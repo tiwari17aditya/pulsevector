@@ -1,0 +1,9 @@
+{
+  "name": "audit_token_and_quota_ledgers",
+  "description": "Audits current YouTube Data API quota units (10k ceiling), upload limits, and recent developer token logs.",
+  "parameters": {
+    "properties": {},
+    "title": "audit_token_and_quota_ledgersArguments",
+    "type": "object"
+  }
+}
