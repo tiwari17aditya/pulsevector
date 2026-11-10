@@ -51,3 +51,4 @@ This skill enables the AI Agent to autonomously manage Pulse Vector without requ
 - **Zero Accidental Overwrite**: Never overwrite archived content without explicit `--force`.
 - **DLP Protection**: Ensure all external payloads pass through `sanitize_and_redact_sensitive_data`.
 - **Continuous Remote Sync**: Always push verified changes to the remote branch (`git push origin <current-branch>`).
+

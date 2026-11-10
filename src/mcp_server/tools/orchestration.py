@@ -77,7 +77,10 @@ def trigger_pipeline_stage(
     if dry_run:
         cmd.append("--dry-run")
     if force:
-        cmd.append("--force")
+        if content_type == "brainteaser":
+            cmd.append("--force-video")
+        else:
+            cmd.append("--force")
     if no_tts:
         cmd.append("--no-tts")
         

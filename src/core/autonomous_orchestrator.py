@@ -262,3 +262,4 @@ def execute_cycle_now(dry_run: bool = False, force: bool = False) -> Dict[str, A
     """Helper entry point for scripts and agents."""
     orchestrator = AutonomousOrchestrator(dry_run=dry_run)
     return orchestrator.run_full_autonomous_cycle(force=force)
+

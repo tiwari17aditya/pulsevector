@@ -10,3 +10,4 @@ if %ERRORLEVEL% EQU 0 (
 ) else (
     echo [%DATE% %TIME%] Autonomous Daily Pipeline failed with code %ERRORLEVEL%.
 )
+
