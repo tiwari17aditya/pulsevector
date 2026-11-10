@@ -1,0 +1,92 @@
+name: Pulse Autonomous Orchestrator
+
+on:
+  schedule:
+    # Trigger daily at 8:00 AM IST (02:30 AM UTC)
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run in Dry-Run mode without live YouTube uploads'
+        required: false
+        default: false
+        type: boolean
+      force:
+        description: 'Force regenerate existing slides and videos'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  TZ: Asia/Kolkata
+
+jobs:
+  autonomous-execution:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install System Dependencies (FFmpeg & Fonts)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-roboto fonts-dejavu
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Recreate YouTube and Google Drive Credentials
+        run: |
+          mkdir -p credentials
+          echo '${{ secrets.YOUTUBE_CLIENT_SECRETS }}' > credentials/client_secrets.json
+          echo '${{ secrets.YOUTUBE_TOKEN_JSON }}' > credentials/token.json
+          echo '${{ secrets.GDRIVE_TOKEN_JSON }}' > credentials/gdrive_token.json
+
+      - name: Configure Git Identity
+        run: |
+          git config --global user.name "pulsevector-ai[bot]"
+          git config --global user.email "autonomous-bot@pulsevector.internal"
+
+      - name: Run Pulse Autonomous AI Orchestrator
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          YOUTUBE_PRIVACY_STATUS: ${{ secrets.YOUTUBE_PRIVACY_STATUS }}
+          YOUTUBE_PLAYLIST_TAG: ${{ secrets.YOUTUBE_PLAYLIST_TAG }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FLAGS="--run-now"
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            FLAGS="--dry-run"
+          fi
+          if [ "${{ inputs.force }}" = "true" ]; then
+            FLAGS="$FLAGS --force"
+          fi
+          python scripts/run_autonomous_daemon.py $FLAGS --output-json reports/autonomous_run_latest.json
+
+      - name: Upload Autonomous Execution Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autonomous-execution-report
+          path: reports/autonomous_run_latest.json
+          retention-days: 14
+

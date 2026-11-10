@@ -1,0 +1,25 @@
+{
+  "name": "query_supabase_ledger",
+  "description": "Read-only safe query to inspect database records in Supabase ('video_uploads', 'daily_summaries', or 'brain_teasers') with optional date filtering and row limits.",
+  "parameters": {
+    "properties": {
+      "table": {
+        "description": "Target Supabase table: 'video_uploads', 'daily_summaries', or 'brain_teasers'",
+        "type": "string",
+        "default": "video_uploads"
+      },
+      "limit": {
+        "description": "Maximum number of rows to retrieve (1 to 50)",
+        "type": "integer",
+        "default": 10
+      },
+      "date_filter": {
+        "description": "Optional date filter substring (e.g. '2026-11-10')",
+        "type": "string"
+      }
+    },
+    "title": "query_supabase_ledgerArguments",
+    "type": "object"
+  }
+}
+

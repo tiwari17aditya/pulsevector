@@ -43,6 +43,8 @@
 *   **Cloud Database Backup**: Automatically integrates with Supabase to safely upload and log generated media (videos/images) without consuming local or GitHub Actions storage limits.
 *   **Animated YouTube Outro Engine**: Features 5 broadcast-quality animated YouTube End Credit archetypes (Vox, MrBeast, Think School, Kurzgesagt, Veritasium) with animated Like/Share/Subscribe triads, dynamic parameters, and random rotation to prevent viewer fatigue.
 *   **Single-Script Entrypoint**: Run the entire pipeline (including text generation, slide rendering, video compilation, YouTube upload, Git sync, and database backups) using a single command-line interface.
+*   **Autonomous AI Orchestrator & MCP Handover Engine**: Completely hands-free channel operations powered by the local `pulse-ops` MCP server (v3.0.0). Executes automated pre-flight health checks, 90-day content deduplication, Shorts compliance diagnostics, multi-platform social broadcasts (Telegram & Discord), Supabase cloud database queries, and master sign-off Git synchronization without manual prompting.
+*   **Cloud & Scheduled Daemon Runners**: Supports unattended execution via `scripts/run_autonomous_daemon.py`, Windows Task Scheduler (`scripts/run_autonomous.bat`), and cloud GitHub Actions (`.github/workflows/pulse_autonomous_orchestrator.yml` daily at 08:00 AM IST).
 
 ---
 

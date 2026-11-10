@@ -35,6 +35,13 @@ from mcp_server.tools.quotas import check_api_quotas
 from mcp_server.tools.deduplication import query_content_deduplication
 from mcp_server.tools.diagnostics import inspect_render_diagnostics
 from mcp_server.tools.broadcast import trigger_social_broadcast
+from mcp_server.tools.orchestration import (
+    trigger_pipeline_stage as _trigger_pipeline_stage,
+    execute_autonomous_packup as _execute_autonomous_packup,
+    auto_heal_environment as _auto_heal_environment,
+    query_supabase_ledger as _query_supabase_ledger,
+    audit_token_and_quota_ledgers as _audit_token_and_quota_ledgers,
+)
 from mcp_server.tools.security import (
     protect_sensitive_data,
     audit_and_sanitize_payload,
@@ -97,6 +104,67 @@ def sanitize_and_redact_sensitive_data(payload: Any) -> Dict[str, Any]:
     dictionaries, or nested diagnostic payloads before external exposure.
     """
     return audit_and_sanitize_payload(payload)
+
+@app.tool()
+@protect_sensitive_data
+def trigger_pipeline_stage(
+    content_type: str = "daily",
+    target_date: Optional[str] = None,
+    stages: Optional[list] = None,
+    dry_run: bool = False,
+    force: bool = False,
+    no_tts: bool = False
+) -> Dict[str, Any]:
+    """
+    Autonomously executes a specific Pulse Vector pipeline stage (daily, weekly, monthly, brainteaser).
+    Supports granular stages (text, slides, video, youtube, sync), dry-runs, and force-regeneration.
+    """
+    return _trigger_pipeline_stage(
+        content_type=content_type,
+        target_date=target_date,
+        stages=stages,
+        dry_run=dry_run,
+        force=force,
+        no_tts=no_tts
+    )
+
+@app.tool()
+@protect_sensitive_data
+def execute_autonomous_packup() -> Dict[str, Any]:
+    """
+    Executes the unified 6-phase master packup pipeline (/pulse_packup):
+    System diagnostics -> Asset hierarchy -> 63-point test suite -> Storage cleaner -> Domain skills audit -> Remote Git push.
+    """
+    return _execute_autonomous_packup()
+
+@app.tool()
+@protect_sensitive_data
+def auto_heal_environment() -> Dict[str, Any]:
+    """
+    Autonomously inspects and heals workspace environment anomalies:
+    purges temporary render frames, validates required fonts, and verifies FFmpeg binaries.
+    """
+    return _auto_heal_environment()
+
+@app.tool()
+@protect_sensitive_data
+def query_supabase_ledger(
+    table: str = "video_uploads",
+    limit: int = 10,
+    date_filter: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Read-only safe query to inspect database records in Supabase (video_uploads, daily_summaries, brain_teasers).
+    """
+    return _query_supabase_ledger(table=table, limit=limit, date_filter=date_filter)
+
+@app.tool()
+@protect_sensitive_data
+def audit_token_and_quota_ledgers() -> Dict[str, Any]:
+    """
+    Audits current YouTube Data API quota budget (10k ceiling) and recent developer token logs.
+    """
+    return _audit_token_and_quota_ledgers()
 
 if __name__ == "__main__":
     app.run(transport="stdio")

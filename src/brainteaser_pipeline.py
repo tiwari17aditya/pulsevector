@@ -1151,24 +1151,24 @@ def publish_teaser_to_youtube(video_path, data, target_date, privacy_status=None
         print(f"  > Error publishing to YouTube: {e}")
         return False
 
-def run_all(target_date=None, force_style=None, force_bg=None, teaser_type=None, privacy_status=None):
+def run_all(target_date=None, force_style=None, force_bg=None, teaser_type=None, privacy_status=None, force_video=False):
     now = datetime.datetime.now()
     is_evening = False
     if target_date is None:
-        if now.hour >= 12:
+        if now.hour >= 12 and not force_video:
             target_date = now + datetime.timedelta(days=1)
             is_evening = True
             print(f"Evening run detected. Scheduling for tomorrow: {target_date.strftime('%Y-%m-%d')}")
         else:
             target_date = now
-            print(f"Morning run detected. Scheduling for today: {target_date.strftime('%Y-%m-%d')}")
+            print(f"Morning/Active run detected. Scheduling for today: {target_date.strftime('%Y-%m-%d')}")
             
     client = configure_genai()
     
     bt_path = generate_brainteaser_content(client, target_date, teaser_type=teaser_type)
     generate_brainteaser_slides(target_date, style_idx=force_style, bg_idx=force_bg)
     
-    if is_evening:
+    if is_evening and not force_video:
         print("  > Evening run: Skipping video compilation and YouTube upload to prevent publishing 1 day in advance.")
         print("    Content text and image cards have been prepared and will be pushed to Git.")
         print("    YouTube upload will be executed in the morning run.")
@@ -1187,6 +1187,7 @@ def run_all(target_date=None, force_style=None, force_bg=None, teaser_type=None,
 def main():
     parser = argparse.ArgumentParser(description="Pulse Vector Daily Brain Teaser Autonomous Pipeline")
     parser.add_argument("--date", type=str, help="Target date in YYYY-MM-DD format")
+    parser.add_argument("--force-video", action="store_true", help="Force video compilation and upload regardless of time of day")
     parser.add_argument("--type", type=str, choices=list(BRAIN_TEASER_TYPES.keys()) + ["random"], help="Specify puzzle type (bodmas, cipher, grid, trap, sequence, oddone, paradox, detective, relations, weighing, spatial, matchstick, age_speed, random)")
 
     parser.add_argument("--privacy", type=str, choices=["public", "private", "unlisted"], default=None, help="Force YouTube privacy status")
@@ -1223,7 +1224,7 @@ def main():
             target_date = datetime.datetime.now()
         generate_brainteaser_video(target_date)
     else:
-        run_all(target_date, force_style=force_style_idx, force_bg=force_bg_idx, teaser_type=args.type, privacy_status=args.privacy)
+        run_all(target_date, force_style=force_style_idx, force_bg=force_bg_idx, teaser_type=args.type, privacy_status=args.privacy, force_video=args.force_video)
 
 if __name__ == "__main__":
     main()
