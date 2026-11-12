@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.12.1] - 2026-11-12
 
+### Added
+- **Multi-Slot Daily Brain Teaser Architecture & Same-Day Question Deduplication**:
+  - Engineered dual-slot execution (`slot=1` Morning Edition, `slot=2` Evening Edition) across `src/brainteaser_pipeline.py` and `src/core/genai_utils.py` so each daily trigger circulates a completely unique question.
+  - Implemented negative-constraint prompt engineering in `build_brainteaser_prompt` (Rule 9) when generating Slot 2, forbidding repetition of the Slot 1 puzzle statement and enforcing category divergence across the 13 teaser archetypes.
+  - Added dedicated asset segregation for Slot 2: `brainteaser-{date}_2.txt`, `poll-{date}_2.txt`, `brainteaser-{date}_2_styled.png`, and `brainteaser-{date}_2.mp4` with distinct curiosity titles (Part 2 / Evening Edition) and retention audio hooks.
+  - Added YouTube Upload Deduplication Guard in `publish_teaser_to_youtube` checking recent uploads to eliminate redundant duplicate postings of the same puzzle.
+  - Updated `.github/workflows/pulse_brainteaser.yml` with workflow dispatch inputs and slot-aware morning/evening execution flags.
+  - Added automated unit tests `test_build_brainteaser_prompt_slot_uniqueness` and `test_brainteaser_slot2_path_and_deduplication` in `scripts/test_pipeline.py`, expanding test suite to 71 tests (all passing).
+
 ### Fixed
 - **Brain Teaser Card Overflow & Options Clipping**:
   - Diagnosed root cause of clipped options in YouTube Short `_Oeqawy6ILM`: verbose 183-character riddle rendered with static 38pt font wrapped to 8 lines, causing the series box to end at Y=547 and forcing options to Y=642–702 (completely off-canvas on a 656px card).

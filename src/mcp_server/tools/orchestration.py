@@ -33,7 +33,8 @@ def trigger_pipeline_stage(
     stages: Optional[List[str]] = None,
     dry_run: bool = False,
     force: bool = False,
-    no_tts: bool = False
+    no_tts: bool = False,
+    slot: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Autonomously executes a specific Pulse Vector pipeline stage.
@@ -83,6 +84,8 @@ def trigger_pipeline_stage(
             cmd.append("--force")
     if no_tts:
         cmd.append("--no-tts")
+    if slot:
+        cmd.extend(["--slot", str(slot)])
         
     try:
         proc = subprocess.run(

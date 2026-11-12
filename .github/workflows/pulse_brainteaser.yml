@@ -7,7 +7,21 @@ on:
     # Evening run: 7:45 PM IST (which is 2:15 PM UTC)
     - cron: '15 14 * * *'
   workflow_dispatch:
-    # Allows manual triggering from the Actions tab on GitHub
+    inputs:
+      slot:
+        description: 'Brain Teaser slot (1 = Morning, 2 = Evening, auto = auto-detect)'
+        required: false
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - '1'
+          - '2'
+      force_video:
+        description: 'Force video compilation and upload'
+        required: false
+        default: false
+        type: boolean
 
 env:
   TZ: Asia/Kolkata
@@ -66,7 +80,13 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: python src/brainteaser_pipeline.py
+        run: |
+          SLOT_VAL="${{ inputs.slot || 'auto' }}"
+          FLAGS="--slot $SLOT_VAL"
+          if [ "${{ inputs.force_video }}" = "true" ]; then
+            FLAGS="$FLAGS --force-video"
+          fi
+          python src/brainteaser_pipeline.py $FLAGS
 
       - name: Commit and Push Generated Cards
         run: |

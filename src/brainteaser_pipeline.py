@@ -724,14 +724,16 @@ LAYOUTS = [
 
 # --- Standalone Pipeline API ---
 
-def generate_brainteaser_content(client, target_date, teaser_type=None, randomize=True):
-    print(f"\nProcessing standalone Daily Brain Teaser generation for: {target_date.strftime('%d %B %Y')}")
+def generate_brainteaser_content(client, target_date, teaser_type=None, slot=1, randomize=True):
+    slot_num = int(slot) if slot else 1
+    print(f"\nProcessing standalone Daily Brain Teaser generation for: {target_date.strftime('%d %B %Y')} (Slot {slot_num})")
     date_str = target_date.strftime("%d %B %Y")
     year = target_date.strftime("%Y")
     month_name = target_date.strftime("%B")
     
     processed_month_dir = ARCHIVE_DIR / year / month_name
-    bt_filename = f"brainteaser-{target_date.strftime(BT_DATE_FMT).lower()}.txt"
+    slot_suffix = f"_{slot_num}" if slot_num > 1 else ""
+    bt_filename = f"brainteaser-{target_date.strftime(BT_DATE_FMT).lower()}{slot_suffix}.txt"
     bt_path = processed_month_dir / "Brain_Teasers" / "Text" / bt_filename
     
     if bt_path.exists():
@@ -743,14 +745,35 @@ def generate_brainteaser_content(client, target_date, teaser_type=None, randomiz
         raise ValueError("Could not read prompts! Please make sure pulse_prompts.md is available.")
         
     effective_type = None if teaser_type == "random" else teaser_type
+    
+    exclude_categories = []
+    prev_puzzle_text = None
+    if slot_num > 1:
+        # Load Slot 1 puzzle to enforce strict uniqueness and category divergence
+        slot1_filename = f"brainteaser-{target_date.strftime(BT_DATE_FMT).lower()}.txt"
+        slot1_path = processed_month_dir / "Brain_Teasers" / "Text" / slot1_filename
+        if slot1_path.exists():
+            s1_data = parse_teaser_file(slot1_path)
+            if s1_data:
+                prev_puzzle_text = f"{s1_data.get('question_header', '')} {s1_data.get('series', '')}".strip()
+                # Exclude Slot 1's inferred category to guarantee category variety
+                for cat_key, cat_val in BRAIN_TEASER_TYPES.items():
+                    if (cat_val['name'].lower() in s1_data.get('title', '').lower() or 
+                        any(cat_key in t.lower() for t in s1_data.get('hashtags', [])) or
+                        cat_key in s1_data.get('question_header', '').lower()):
+                        exclude_categories.append(cat_key)
+
     prompt_text, selected_key = build_brainteaser_prompt(
         target_date=target_date,
         base_prompt=bt_prompt,
         teaser_type=effective_type,
-        randomize=(teaser_type == "random" or teaser_type is None)
+        randomize=(teaser_type == "random" or teaser_type is None),
+        slot=slot_num,
+        exclude_categories=exclude_categories,
+        previous_puzzle_text=prev_puzzle_text
     )
     type_name = BRAIN_TEASER_TYPES.get(selected_key, {}).get("name", selected_key)
-    print(f"  > Querying Gemini API for Daily Brain Teaser [{type_name}]...")
+    print(f"  > Querying Gemini API for Daily Brain Teaser Slot {slot_num} [{type_name}]...")
     bt_content = generate_content(client, 'gemini-2.5-flash', prompt_text)
     
     save_file(bt_content, bt_path)
@@ -760,7 +783,7 @@ def generate_brainteaser_content(client, target_date, teaser_type=None, randomiz
         data = parse_teaser_file(bt_path)
         if data:
             poll_text = format_community_poll_text(data)
-            poll_filename = f"poll-{target_date.strftime(BT_DATE_FMT).lower()}.txt"
+            poll_filename = f"poll-{target_date.strftime(BT_DATE_FMT).lower()}{slot_suffix}.txt"
             poll_path = processed_month_dir / "Brain_Teasers" / "Text" / poll_filename
             save_file(poll_text, poll_path)
             print(f"  > Generated 1-click Community Poll asset at: {poll_path.name}")
@@ -769,20 +792,22 @@ def generate_brainteaser_content(client, target_date, teaser_type=None, randomiz
         
     return bt_path
 
-def generate_brainteaser_slides(target_date, style_idx=None, bg_idx=None):
-    print(f"\n🚀 Rendering Daily Brain Teaser Images for: {target_date.strftime('%d %B %Y')}...")
+def generate_brainteaser_slides(target_date, style_idx=None, bg_idx=None, slot=1):
+    slot_num = int(slot) if slot else 1
+    print(f"\n🚀 Rendering Daily Brain Teaser Images for: {target_date.strftime('%d %B %Y')} (Slot {slot_num})...")
     year = target_date.strftime("%Y")
     month_name = target_date.strftime("%B")
     
     processed_month_dir = ARCHIVE_DIR / year / month_name
-    bt_filename = f"brainteaser-{target_date.strftime(BT_DATE_FMT).lower()}.txt"
+    slot_suffix = f"_{slot_num}" if slot_num > 1 else ""
+    bt_filename = f"brainteaser-{target_date.strftime(BT_DATE_FMT).lower()}{slot_suffix}.txt"
     bt_path = processed_month_dir / "Brain_Teasers" / "Text" / bt_filename
     
     if not bt_path.exists():
         raise FileNotFoundError(f"Missing brain teaser text file at {bt_path}. Please run text generation first.")
         
     images_dir = processed_month_dir / "Brain_Teasers" / "Images"
-    base_name = bt_path.slate if hasattr(bt_path, 'slate') else bt_path.stem
+    base_name = bt_path.stem
     styled_path = images_dir / f"{base_name}_styled.png"
     plain_path = images_dir / f"{base_name}_plain.png"
     
@@ -797,7 +822,7 @@ def generate_brainteaser_slides(target_date, style_idx=None, bg_idx=None):
     font_regular_path, font_bold_path = ensure_fonts(ARCHIVE_DIR)
     
     import hashlib
-    date_iso = target_date.strftime("%Y-%m-%d")
+    date_iso = f"{target_date.strftime('%Y-%m-%d')}_slot{slot_num}"
     
     if bg_idx is not None:
         selected_bg_idx = bg_idx
@@ -901,13 +926,15 @@ def create_countdown_bell_ring(draw, cx, cy, radius, progress, text, font_timer)
     angle = int(360 * progress)
     draw.arc([(cx - radius, cy - radius), (cx + radius, cy + radius)], start=-90, end=-90 + angle, fill=(56, 189, 248), width=8)
 
-def generate_brainteaser_video(target_date):
-    print(f"\n🚀 Compiling Shorts Video for: {target_date.strftime('%d %B %Y')}...")
+def generate_brainteaser_video(target_date, slot=1):
+    slot_num = int(slot) if slot else 1
+    print(f"\n🚀 Compiling Shorts Video for: {target_date.strftime('%d %B %Y')} (Slot {slot_num})...")
     year = target_date.strftime("%Y")
     month_name = target_date.strftime("%B")
     
     processed_month_dir = ARCHIVE_DIR / year / month_name
-    bt_filename = f"brainteaser-{target_date.strftime(BT_DATE_FMT).lower()}.txt"
+    slot_suffix = f"_{slot_num}" if slot_num > 1 else ""
+    bt_filename = f"brainteaser-{target_date.strftime(BT_DATE_FMT).lower()}{slot_suffix}.txt"
     bt_path = processed_month_dir / "Brain_Teasers" / "Text" / bt_filename
     
     if not bt_path.exists():
@@ -972,7 +999,8 @@ def generate_brainteaser_video(target_date):
             "speech": "Speed test! Can you beat ninety percent of viewers and solve this now?"
         }
     ]
-    hook_data = RETENTION_HOOKS[target_date.day % len(RETENTION_HOOKS)]
+    hook_idx = (target_date.day + (slot_num - 1) * 2) % len(RETENTION_HOOKS)
+    hook_data = RETENTION_HOOKS[hook_idx]
     intro_hook = hook_data["speech"]
     temp_vo_path = videos_dir / f"temp_{bt_path.stem}_vo.mp3"
     vo_timings = []
@@ -1115,8 +1143,9 @@ def generate_brainteaser_video(target_date):
     print(f"  > Generated H.264 Shorts video card with SFX & voiceover at: {final_video_path}")
     return final_video_path
 
-def publish_teaser_to_youtube(video_path, data, target_date, privacy_status=None):
-    print(f"\n🚀 Publishing Shorts Video to YouTube (Privacy: {privacy_status or 'default'})...")
+def publish_teaser_to_youtube(video_path, data, target_date, slot=1, privacy_status=None):
+    slot_num = int(slot) if slot else 1
+    print(f"\n🚀 Publishing Shorts Video to YouTube for Slot {slot_num} (Privacy: {privacy_status or 'default'})...")
     try:
         token_exists = os.path.exists('credentials/token.json') or os.path.exists('token.json')
         secrets_exists = os.path.exists('credentials/client_secrets.json') or os.path.exists('client_secrets.json')
@@ -1131,13 +1160,37 @@ def publish_teaser_to_youtube(video_path, data, target_date, privacy_status=None
         year_str = target_date.strftime("%Y")
         
         date_compact = target_date.strftime("%d %b")
-        CURIOSITY_TITLES = [
-            f"🧠 Can You Solve This in 8s? Daily Brain Teaser ({date_compact}) #Shorts",
-            f"🔥 95% Fail This Logic Test! Can You Beat It? ({date_compact}) #Shorts",
-            f"⚡ Spot the Pattern Challenge! Daily Brain Teaser ({date_compact}) #Shorts",
-            f"🧩 Genius IQ Puzzle: Find the Missing Value! ({date_compact}) #Shorts"
-        ]
-        title = CURIOSITY_TITLES[target_date.day % len(CURIOSITY_TITLES)]
+        if slot_num == 1:
+            CURIOSITY_TITLES = [
+                f"🧠 Can You Solve This in 8s? Daily Brain Teaser ({date_compact}) #Shorts",
+                f"🔥 95% Fail This Logic Test! Can You Beat It? ({date_compact}) #Shorts",
+                f"⚡ Spot the Pattern Challenge! Daily Brain Teaser ({date_compact}) #Shorts",
+                f"🧩 Genius IQ Puzzle: Find the Missing Value! ({date_compact}) #Shorts"
+            ]
+            title = CURIOSITY_TITLES[target_date.day % len(CURIOSITY_TITLES)]
+        else:
+            SLOT2_TITLES = [
+                f"⚡ Spot the Pattern Challenge! Daily Brain Teaser ({date_compact} Part 2) #Shorts",
+                f"🧠 Evening IQ Test: Can You Solve It? ({date_compact} Part 2) #Shorts",
+                f"🔥 95% Fail This Logic Riddle! Part 2 ({date_compact}) #Shorts",
+                f"🧩 Speed Reasoning Challenge! Daily Brain Teaser ({date_compact} Part 2) #Shorts"
+            ]
+            title = SLOT2_TITLES[target_date.day % len(SLOT2_TITLES)]
+            
+        # Upload Deduplication Guard: Check if a video with the exact same title was already uploaded
+        try:
+            ch_res = youtube.channels().list(part='contentDetails', mine=True).execute()
+            if ch_res.get('items'):
+                up_id = ch_res['items'][0]['contentDetails']['relatedPlaylists']['uploads']
+                recent_uploads = youtube.playlistItems().list(part='snippet', playlistId=up_id, maxResults=15).execute()
+                for item in recent_uploads.get('items', []):
+                    if item['snippet']['title'] == title:
+                        existing_id = item['snippet']['resourceId']['videoId']
+                        print(f"  > Duplicate Guard: Video '{title}' is ALREADY LIVE on YouTube (ID: {existing_id}).")
+                        print("  > Skipping duplicate upload to protect channel from repeating the same question.")
+                        return True
+        except Exception as dup_err:
+            print(f"  > Note on upload deduplication check: {dup_err}")
         
         # Get hashtags from parsed data or use rich default list
         file_hashtags = data.get("hashtags", [])
@@ -1199,8 +1252,9 @@ def publish_teaser_to_youtube(video_path, data, target_date, privacy_status=None
         comments_dir.mkdir(parents=True, exist_ok=True)
         
         # Save today's challenge comment asset
+        slot_suffix = f"_{slot_num}" if slot_num > 1 else ""
         challenge_comment = format_teaser_challenge_comment(data)
-        today_comment_file = comments_dir / f"challenge-comment-{date_file_str}.txt"
+        today_comment_file = comments_dir / f"challenge-comment-{date_file_str}{slot_suffix}.txt"
         today_comment_file.write_text(challenge_comment, encoding="utf-8")
         print(f"  > Saved challenge comment asset to: {today_comment_file}")
         
@@ -1226,13 +1280,15 @@ def publish_teaser_to_youtube(video_path, data, target_date, privacy_status=None
             
         # Feature 2: Community Auto-Broadcast (Telegram & Discord)
         try:
-            teaser_title = f"Daily Brain Teaser: {date_str} 🧠"
+            teaser_title = f"Daily Brain Teaser: {date_str} {'(Part 2)' if slot_num > 1 else ''} 🧠"
             teaser_summary = (
                 f"{data.get('question_header', '')}\n{data.get('series', '')}\n\n"
                 f"Options:\n" + "\n".join([f"• {opt}" for opt in data.get('options', [])]) +
                 f"\n\n🧠 Drop your answer in the comments! Solution revealed in 24 hours."
             )
-            img_path = ARCHIVE_DIR / year_str / target_date.strftime("%B") / "Brain_Teasers" / "Images" / f"brainteaser-{date_file_str}.png"
+            img_path = ARCHIVE_DIR / year_str / target_date.strftime("%B") / "Brain_Teasers" / "Images" / f"brainteaser-{date_file_str}{slot_suffix}_styled.png"
+            if not img_path.exists():
+                img_path = ARCHIVE_DIR / year_str / target_date.strftime("%B") / "Brain_Teasers" / "Images" / f"brainteaser-{date_file_str}.png"
             v_path = pathlib.Path(video_path) if video_path else None
             broadcast_daily_content(
                 content_type="Brain Teaser",
@@ -1252,42 +1308,50 @@ def publish_teaser_to_youtube(video_path, data, target_date, privacy_status=None
         print(f"  > Error publishing to YouTube: {e}")
         return False
 
-def run_all(target_date=None, force_style=None, force_bg=None, teaser_type=None, privacy_status=None, force_video=False):
+def run_all(target_date=None, force_style=None, force_bg=None, teaser_type=None, privacy_status=None, force_video=False, slot=None):
     now = datetime.datetime.now()
-    is_evening = False
     if target_date is None:
-        if now.hour >= 12 and not force_video:
-            target_date = now + datetime.timedelta(days=1)
-            is_evening = True
-            print(f"Evening run detected. Scheduling for tomorrow: {target_date.strftime('%Y-%m-%d')}")
+        target_date = now
+
+    # Determine effective slot
+    if slot is None or str(slot).lower() == "auto":
+        year = target_date.strftime("%Y")
+        month_name = target_date.strftime("%B")
+        slot1_txt = ARCHIVE_DIR / year / month_name / "Brain_Teasers" / "Text" / f"brainteaser-{target_date.strftime(BT_DATE_FMT).lower()}.txt"
+        slot1_vid = ARCHIVE_DIR / year / month_name / "Brain_Teasers" / "Videos" / f"brainteaser-{target_date.strftime(BT_DATE_FMT).lower()}.mp4"
+        
+        # If it's afternoon/evening (>= 14:00) and slot 1 already exists, run slot 2
+        if now.hour >= 14 and slot1_txt.exists():
+            effective_slot = 2
+            print(f"Evening/Afternoon run detected with Slot 1 present. Running Slot 2 (Evening Edition: unique puzzle).")
+        elif slot1_txt.exists() and slot1_vid.exists() and force_video:
+            effective_slot = 2
+            print(f"Slot 1 already completed for today. Running Slot 2 to generate a unique second puzzle.")
         else:
-            target_date = now
-            print(f"Morning/Active run detected. Scheduling for today: {target_date.strftime('%Y-%m-%d')}")
-            
+            effective_slot = 1
+            print(f"Running Slot 1 (Morning Edition) for {target_date.strftime('%Y-%m-%d')}.")
+    else:
+        effective_slot = int(slot)
+
     client = configure_genai()
     
-    bt_path = generate_brainteaser_content(client, target_date, teaser_type=teaser_type)
-    generate_brainteaser_slides(target_date, style_idx=force_style, bg_idx=force_bg)
+    bt_path = generate_brainteaser_content(client, target_date, teaser_type=teaser_type, slot=effective_slot)
+    generate_brainteaser_slides(target_date, style_idx=force_style, bg_idx=force_bg, slot=effective_slot)
     
-    if is_evening and not force_video:
-        print("  > Evening run: Skipping video compilation and YouTube upload to prevent publishing 1 day in advance.")
-        print("    Content text and image cards have been prepared and will be pushed to Git.")
-        print("    YouTube upload will be executed in the morning run.")
-        return
-        
-    video_path = generate_brainteaser_video(target_date)
+    video_path = generate_brainteaser_video(target_date, slot=effective_slot)
     
     data = parse_teaser_file(bt_path)
     if data:
-        publish_teaser_to_youtube(video_path, data, target_date, privacy_status=privacy_status)
+        publish_teaser_to_youtube(video_path, data, target_date, slot=effective_slot, privacy_status=privacy_status)
         
     run_database_upload()
         
-    print("\n[OK] Brain Teaser execution complete.")
+    print(f"\n[OK] Brain Teaser execution complete for Slot {effective_slot}.")
 
 def main():
     parser = argparse.ArgumentParser(description="Pulse Vector Daily Brain Teaser Autonomous Pipeline")
     parser.add_argument("--date", type=str, help="Target date in YYYY-MM-DD format")
+    parser.add_argument("--slot", type=str, choices=["1", "2", "auto"], default="auto", help="Specify brain teaser slot (1 for morning, 2 for evening, auto to detect)")
     parser.add_argument("--force-video", action="store_true", help="Force video compilation and upload regardless of time of day")
     parser.add_argument("--type", type=str, choices=list(BRAIN_TEASER_TYPES.keys()) + ["random"], help="Specify puzzle type (bodmas, cipher, grid, trap, sequence, oddone, paradox, detective, relations, weighing, spatial, matchstick, age_speed, random)")
 
@@ -1310,22 +1374,23 @@ def main():
             
     force_style_idx = (args.style - 1) if (args.style and 1 <= args.style <= 10) else None
     force_bg_idx = (args.bg - 1) if (args.bg and 1 <= args.bg <= 10) else None
+    eff_slot = 1 if args.slot == "1" else (2 if args.slot == "2" else 1)
     
     if args.generate_only:
         if target_date is None:
             target_date = datetime.datetime.now()
         client = configure_genai()
-        generate_brainteaser_content(client, target_date, teaser_type=args.type)
+        generate_brainteaser_content(client, target_date, teaser_type=args.type, slot=eff_slot)
     elif args.slides_only:
         if target_date is None:
             target_date = datetime.datetime.now()
-        generate_brainteaser_slides(target_date, style_idx=force_style_idx, bg_idx=force_bg_idx)
+        generate_brainteaser_slides(target_date, style_idx=force_style_idx, bg_idx=force_bg_idx, slot=eff_slot)
     elif args.video_only:
         if target_date is None:
             target_date = datetime.datetime.now()
-        generate_brainteaser_video(target_date)
+        generate_brainteaser_video(target_date, slot=eff_slot)
     else:
-        run_all(target_date, force_style=force_style_idx, force_bg=force_bg_idx, teaser_type=args.type, privacy_status=args.privacy, force_video=args.force_video)
+        run_all(target_date, force_style=force_style_idx, force_bg=force_bg_idx, teaser_type=args.type, privacy_status=args.privacy, force_video=args.force_video, slot=args.slot)
 
 if __name__ == "__main__":
     main()

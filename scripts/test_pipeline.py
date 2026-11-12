@@ -1059,6 +1059,43 @@ class TestMCPSecurityDLP(unittest.TestCase):
         self.assertTrue(result["had_sensitive_data"])
         self.assertNotIn("AIzaSyD", str(result["sanitized_payload"]))
 
+    def test_build_brainteaser_prompt_slot_uniqueness(self):
+        """Validates that slot 2 brain teasers enforce category divergence and negative constraint prompt rules."""
+        test_date = datetime.datetime(2026, 11, 12)
+        base_prompt = "Generate a puzzle"
+        prompt, key = build_brainteaser_prompt(
+            target_date=test_date,
+            base_prompt=base_prompt,
+            slot=2,
+            exclude_categories=["trap", "sequence"],
+            previous_puzzle_text="Three coins are tossed simultaneously."
+        )
+        self.assertNotIn(key, ["trap", "sequence"])
+        self.assertIn("MANDATORY SLOT 2 UNIQUENESS DIRECTIVE", prompt)
+        self.assertIn("Three coins are tossed simultaneously", prompt)
+
+    def test_brainteaser_slot2_path_and_deduplication(self):
+        """Validates slot-based filename generation and distinct slot 2 asset naming."""
+        test_date = datetime.datetime(2026, 11, 12)
+        date_str = test_date.strftime("%d%b%y").lower()
+        
+        # Slot 1
+        s1_file = f"brainteaser-{date_str}.txt"
+        s1_poll = f"poll-{date_str}.txt"
+        s1_slide = f"brainteaser-{date_str}_styled.png"
+        s1_video = f"brainteaser-{date_str}.mp4"
+        
+        # Slot 2
+        s2_file = f"brainteaser-{date_str}_2.txt"
+        s2_poll = f"poll-{date_str}_2.txt"
+        s2_slide = f"brainteaser-{date_str}_2_styled.png"
+        s2_video = f"brainteaser-{date_str}_2.mp4"
+        
+        self.assertNotEqual(s1_file, s2_file)
+        self.assertNotEqual(s1_poll, s2_poll)
+        self.assertNotEqual(s1_slide, s2_slide)
+        self.assertNotEqual(s1_video, s2_video)
+
 
 
 

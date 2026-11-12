@@ -174,10 +174,15 @@ def build_brainteaser_prompt(
     target_date: datetime.date,
     base_prompt: str,
     teaser_type: Optional[str] = None,
-    randomize: bool = True
+    randomize: bool = True,
+    slot: int = 1,
+    exclude_categories: Optional[List[str]] = None,
+    previous_puzzle_text: Optional[str] = None
 ) -> Tuple[str, str]:
     """
     Builds a category-specific prompt for Daily Brain Teaser generation.
+    Supports multi-trigger slot differentiation (slot 1 vs slot 2) to guarantee
+    that morning and evening runs on the same day circulate unique questions.
     Returns: (final_prompt_text, selected_category_key)
     """
     date_str = target_date.strftime("%d %B %Y")
@@ -188,10 +193,17 @@ def build_brainteaser_prompt(
     if teaser_type and str(teaser_type).lower() in BRAIN_TEASER_TYPES:
         selected_key = str(teaser_type).lower()
     elif randomize:
-        # Default to dynamic random selection across all 13 categories for maximum engagement
-        selected_key = random.choice(list(BRAIN_TEASER_TYPES.keys()))
+        candidate_keys = list(BRAIN_TEASER_TYPES.keys())
+        if exclude_categories:
+            filtered = [k for k in candidate_keys if k not in exclude_categories]
+            if filtered:
+                candidate_keys = filtered
+        selected_key = random.choice(candidate_keys)
     else:
         selected_key = WEEKDAY_THEME_MAP.get(weekday_idx, "sequence")
+        if exclude_categories and selected_key in exclude_categories:
+            alt = [k for k in BRAIN_TEASER_TYPES.keys() if k not in exclude_categories]
+            selected_key = random.choice(alt) if alt else selected_key
         
     type_info = BRAIN_TEASER_TYPES.get(selected_key, BRAIN_TEASER_TYPES["sequence"])
 
@@ -227,7 +239,8 @@ def build_brainteaser_prompt(
         f"   b. Option Text\n"
         f"   c. Option Text\n"
         f"   d. Option Text\n"
-        f"8. BREVITY & VISUAL FIT RULE: Keep the 'Series:' / puzzle statement strictly under 120 characters (maximum 2-3 short sentences) so that all 4 options fit comfortably on mobile screens without visual crowding.\n\n"
+        f"8. BREVITY & VISUAL FIT RULE: Keep the 'Series:' / puzzle statement strictly under 120 characters (maximum 2-3 short sentences) so that all 4 options fit comfortably on mobile screens without visual crowding.\n"
+        f"{f'9. MANDATORY SLOT {slot} UNIQUENESS DIRECTIVE: This is Run #{slot} for today. The earlier run already published: \"{previous_puzzle_text}\". You MUST generate a 100% DIFFERENT puzzle with entirely different numbers, logic, and theme. DO NOT repeat or recycle any element from the earlier puzzle.\n' if slot > 1 and previous_puzzle_text else ''}\n"
         f"{base_prompt}"
     )
     return prompt, selected_key
