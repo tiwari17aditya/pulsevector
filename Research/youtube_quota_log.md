@@ -246,4 +246,16 @@ This document tracks daily YouTube uploads and API quota consumption to ensure w
 *Total Query Quota Consumed Today*: ~3200 units  
 *Remaining YouTube Quota*: 98 uploads and ~6800 query units
 
+## 📊 Daily Quota Log (November 12, 2026)
+
+| Date | Category | Target / Video ID | Action taken | Video Count | Uploads Left | Query Cost (est) | Query Quota Left |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **12 Nov 2026** | Daily Current Affairs | `9TQWzCKOy0k` | Uploaded & Added to Playlist `Daily Current Affairs - ( Oct to Dec )- 2026` + Discussion Comment | 1 video | 99 left | ~1600 units | 8400 units |
+| **12 Nov 2026** | Daily Brain Teasers (Redeploy) | `KsDKzAYsKfg` | Uploaded corrected Short & Added to Playlist `Daily Brain Teasers - 2026` + Pinned Comment; permanently deleted old `_Oeqawy6ILM` | 2 videos | 98 left | ~1650 units | 6750 units |
+
+*Total Videos Uploaded Today*: 2 / 100  
+*Total Query Quota Consumed Today*: ~3250 units  
+*Remaining YouTube Quota*: 98 uploads and ~6750 query units
+
+
 
