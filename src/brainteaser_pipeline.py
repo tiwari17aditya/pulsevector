@@ -187,6 +187,31 @@ def draw_fitted_option_text(draw, opt_text, cx, cy, font_opt, max_w, anchor="lm"
         font = ImageFont.truetype(str(font_path), current_sz)
     draw_teaser_text_with_shadow(draw, opt_text, cx, cy, font, text_color=text_color, anchor=anchor)
 
+def compute_adaptive_series_layout(series_text, font_bold_path, max_w=460, max_h=210, base_sz=38, min_sz=18):
+    """
+    Dynamically finds the optimal font size and line height so that the puzzle series text
+    fits within max_w and max_h, guaranteeing sufficient clearance for options below.
+    Returns: (font, wrapped_lines, line_height, total_box_height)
+    """
+    if not font_bold_path:
+        font_bold_path = ARCHIVE_DIR.parent / "fonts" / "Roboto-Bold.ttf"
+    for sz in range(base_sz, min_sz - 1, -2):
+        try:
+            font = ImageFont.truetype(str(font_bold_path), sz)
+        except Exception:
+            font = ImageFont.load_default()
+            return font, [series_text], 24, min(max_h, 80)
+        wrapped = wrap_text(series_text, font, max_w)
+        lh = int(sz * 1.22) + 2
+        total_h = len(wrapped) * lh + 26
+        if total_h <= max_h or sz == min_sz:
+            return font, wrapped, lh, total_h
+    font = ImageFont.truetype(str(font_bold_path), min_sz)
+    wrapped = wrap_text(series_text, font, max_w)
+    lh = int(min_sz * 1.22) + 2
+    total_h = len(wrapped) * lh + 26
+    return font, wrapped, lh, total_h
+
 def draw_options_standard(draw, options, opt_y_start, font_opt, fill_color=(15, 23, 42, 120), outline_color=(255, 255, 255, 35)):
     max_opt_w = 0
     for opt in options:
@@ -195,12 +220,23 @@ def draw_options_standard(draw, options, opt_y_start, font_opt, fill_color=(15, 
             max_opt_w = w
             
     use_vertical = (max_opt_w > 200) or (len(options) != 4)
+    max_allowed_y = 585  # 35px clearance above watermark at 620
     
     if not use_vertical:
         col1_x = W / 2 - 135
         col2_x = W / 2 + 135
-        box_w, box_h = 240, 60
-        gap_y = 15
+        box_w, box_h = 240, 54
+        gap_y = 12
+        total_grid_h = box_h * 2 + gap_y
+        
+        # Absolute safety bounds clamping for 2x2 grid
+        if opt_y_start + total_grid_h > max_allowed_y:
+            overflow = (opt_y_start + total_grid_h) - max_allowed_y
+            box_h = max(38, box_h - int(overflow / 2) - 2)
+            gap_y = max(6, gap_y - 2)
+            total_grid_h = box_h * 2 + gap_y
+            if opt_y_start + total_grid_h > max_allowed_y:
+                opt_y_start = max(180, max_allowed_y - total_grid_h)
         
         row1_y = opt_y_start + box_h/2
         row2_y = row1_y + box_h + gap_y
@@ -233,14 +269,14 @@ def draw_options_standard(draw, options, opt_y_start, font_opt, fill_color=(15, 
             draw_teaser_text_with_shadow(draw, opt_letter, circle_cx, circle_cy, font_opt, text_color=(255, 255, 255), anchor="mm")
             
             draw_fitted_option_text(draw, opt_val, circle_cx + circle_r + 10, cy, font_opt, max_w=box_w - (circle_r * 2 + 25), anchor="lm")
+        return opt_y_start + total_grid_h
     else:
-        box_w, box_h = 500, 48
+        box_w, box_h = 500, 44
         gap_y = 8
         total_h = len(options) * box_h + (len(options) - 1) * gap_y
-        max_allowed_y = 585  # 35px clearance above watermark at 620
         if opt_y_start + total_h > max_allowed_y:
             overflow = (opt_y_start + total_h) - max_allowed_y
-            box_h = max(34, box_h - int(overflow / max(len(options), 1)) - 2)
+            box_h = max(32, box_h - int(overflow / max(len(options), 1)) - 2)
             gap_y = max(4, gap_y - 2)
             total_h = len(options) * box_h + (len(options) - 1) * gap_y
             if opt_y_start + total_h > max_allowed_y:
@@ -271,6 +307,7 @@ def draw_options_standard(draw, options, opt_y_start, font_opt, fill_color=(15, 
             draw_teaser_text_with_shadow(draw, opt_letter, circle_cx, circle_cy, font_opt, text_color=(255, 255, 255), anchor="mm")
             
             draw_fitted_option_text(draw, opt_val, circle_cx + circle_r + 12, cy, font_opt, max_w=box_w - (circle_r * 2 + 30), anchor="lm")
+        return opt_y_start + total_h
 
 def draw_options_capsule(draw, options, opt_y_start, font_opt):
     max_opt_w = 0
@@ -282,12 +319,22 @@ def draw_options_capsule(draw, options, opt_y_start, font_opt):
     use_vertical = (max_opt_w > 200) or (len(options) != 4)
     fill_color = (15, 23, 42, 120)
     outline_color = (255, 255, 255, 35)
+    max_allowed_y = 585
     
     if not use_vertical:
         col1_x = W / 2 - 135
         col2_x = W / 2 + 135
-        box_w, box_h = 240, 60
-        gap_y = 15
+        box_w, box_h = 240, 54
+        gap_y = 12
+        total_grid_h = box_h * 2 + gap_y
+        
+        if opt_y_start + total_grid_h > max_allowed_y:
+            overflow = (opt_y_start + total_grid_h) - max_allowed_y
+            box_h = max(38, box_h - int(overflow / 2) - 2)
+            gap_y = max(6, gap_y - 2)
+            total_grid_h = box_h * 2 + gap_y
+            if opt_y_start + total_grid_h > max_allowed_y:
+                opt_y_start = max(180, max_allowed_y - total_grid_h)
         
         row1_y = opt_y_start + box_h/2
         row2_y = row1_y + box_h + gap_y
@@ -297,27 +344,27 @@ def draw_options_capsule(draw, options, opt_y_start, font_opt):
             (col1_x, row2_y), (col2_x, row2_y)
         ]
         
-        for idx, opt in enumerate(options):
+        for idx, opt in enumerate(options[:4]):
             cx, cy = coords[idx]
             x1, y1 = cx - box_w/2, cy - box_h/2
             x2, y2 = cx + box_w/2, cy + box_h/2
             
             draw.rounded_rectangle([(x1, y1), (x2, y2)], radius=box_h/2, fill=fill_color, outline=outline_color, width=2)
             draw_fitted_option_text(draw, opt, cx, cy, font_opt, max_w=box_w - 20, anchor="mm")
+        return opt_y_start + total_grid_h
     else:
-        box_w, box_h = 500, 48
+        box_w, box_h = 500, 44
         gap_y = 8
         total_h = len(options) * box_h + (len(options) - 1) * gap_y
-        max_allowed_y = 585
         if opt_y_start + total_h > max_allowed_y:
             overflow = (opt_y_start + total_h) - max_allowed_y
-            box_h = max(34, box_h - int(overflow / max(len(options), 1)) - 2)
+            box_h = max(32, box_h - int(overflow / max(len(options), 1)) - 2)
             gap_y = max(4, gap_y - 2)
             total_h = len(options) * box_h + (len(options) - 1) * gap_y
             if opt_y_start + total_h > max_allowed_y:
                 opt_y_start = max(180, max_allowed_y - total_h)
                 
-        for idx, opt in enumerate(options):
+        for idx, opt in enumerate(options[:4]):
             cy = opt_y_start + box_h/2 + idx * (box_h + gap_y)
             x1 = W/2 - box_w/2
             y1 = cy - box_h/2
@@ -326,6 +373,7 @@ def draw_options_capsule(draw, options, opt_y_start, font_opt):
             
             draw.rounded_rectangle([(x1, y1), (x2, y2)], radius=box_h/2, fill=fill_color, outline=outline_color, width=2)
             draw_fitted_option_text(draw, opt, x1 + 25, cy, font_opt, max_w=box_w - 45, anchor="lm")
+        return opt_y_start + total_h
 
 def draw_options_cropped(draw, options, opt_y_start, font_opt):
     max_opt_w = 0
@@ -337,13 +385,23 @@ def draw_options_cropped(draw, options, opt_y_start, font_opt):
     use_vertical = (max_opt_w > 200) or (len(options) != 4)
     fill_color = (15, 23, 42, 120)
     outline_color = (14, 165, 233, 140)
+    max_allowed_y = 585
     
     if not use_vertical:
         col1_x = W / 2 - 135
         col2_x = W / 2 + 135
-        box_w, box_h = 240, 56
-        gap_y = 15
+        box_w, box_h = 240, 52
+        gap_y = 12
         c = 10
+        total_grid_h = box_h * 2 + gap_y
+        
+        if opt_y_start + total_grid_h > max_allowed_y:
+            overflow = (opt_y_start + total_grid_h) - max_allowed_y
+            box_h = max(38, box_h - int(overflow / 2) - 2)
+            gap_y = max(6, gap_y - 2)
+            total_grid_h = box_h * 2 + gap_y
+            if opt_y_start + total_grid_h > max_allowed_y:
+                opt_y_start = max(180, max_allowed_y - total_grid_h)
         
         row1_y = opt_y_start + box_h/2
         row2_y = row1_y + box_h + gap_y
@@ -353,7 +411,7 @@ def draw_options_cropped(draw, options, opt_y_start, font_opt):
             (col1_x, row2_y), (col2_x, row2_y)
         ]
         
-        for idx, opt in enumerate(options):
+        for idx, opt in enumerate(options[:4]):
             cx, cy = coords[idx]
             x1, y1 = cx - box_w/2, cy - box_h/2
             x2, y2 = cx + box_w/2, cy + box_h/2
@@ -364,21 +422,21 @@ def draw_options_cropped(draw, options, opt_y_start, font_opt):
             ]
             draw.polygon(points, fill=fill_color, outline=outline_color)
             draw_fitted_option_text(draw, opt, cx, cy, font_opt, max_w=box_w - 20, anchor="mm")
+        return opt_y_start + total_grid_h
     else:
-        box_w, box_h = 500, 46
+        box_w, box_h = 500, 44
         gap_y = 8
         c = 8
         total_h = len(options) * box_h + (len(options) - 1) * gap_y
-        max_allowed_y = 585
         if opt_y_start + total_h > max_allowed_y:
             overflow = (opt_y_start + total_h) - max_allowed_y
-            box_h = max(34, box_h - int(overflow / max(len(options), 1)) - 2)
+            box_h = max(32, box_h - int(overflow / max(len(options), 1)) - 2)
             gap_y = max(4, gap_y - 2)
             total_h = len(options) * box_h + (len(options) - 1) * gap_y
             if opt_y_start + total_h > max_allowed_y:
                 opt_y_start = max(180, max_allowed_y - total_h)
                 
-        for idx, opt in enumerate(options):
+        for idx, opt in enumerate(options[:4]):
             cy = opt_y_start + box_h/2 + idx * (box_h + gap_y)
             x1 = W/2 - box_w/2
             y1 = cy - box_h/2
@@ -391,6 +449,7 @@ def draw_options_cropped(draw, options, opt_y_start, font_opt):
             ]
             draw.polygon(points, fill=fill_color, outline=outline_color)
             draw_fitted_option_text(draw, opt, x1 + 25, cy, font_opt, max_w=box_w - 45, anchor="lm")
+        return opt_y_start + total_h
 
 
 # --- Layout Cards Drawing Engines ---
@@ -399,71 +458,83 @@ def draw_layout_1(draw, data, fonts):
     f_header, f_sub, f_series, f_options, f_watermark, f_date = fonts
     card_x1, card_x2 = 78, 578
     draw_teaser_text_with_shadow(draw, "Daily Brain Teaser:-", 328, 70, f_header, text_color=(251, 191, 36))
-    if data["date"]:
+    if data.get("date"):
         draw_teaser_text_with_shadow(draw, data["date"], 616, 35, f_date, text_color=(255, 255, 255, 160), anchor="rt")
     wrapped_q = wrap_text(data["question_header"], f_sub, 560)
     current_y = 125
     for line in wrapped_q:
         draw_teaser_text_with_shadow(draw, line, 328, current_y, f_sub, text_color=(229, 231, 235))
         current_y += 28
-    wrapped_series = wrap_text(data["series"], f_series, 460)
+    font_bold_path = getattr(f_series, 'path', ARCHIVE_DIR.parent / "fonts" / "Roboto-Bold.ttf")
+    max_series_h = min(210, 585 - current_y - 140 - 15)
+    f_series_adapt, wrapped_series, lh, box_h = compute_adaptive_series_layout(
+        data["series"], font_bold_path, max_w=460, max_h=max_series_h
+    )
     card_y1 = current_y + 12
-    card_y2 = card_y1 + len(wrapped_series) * 44 + 30
+    card_y2 = card_y1 + box_h
     draw.rounded_rectangle([(card_x1, card_y1), (card_x2, card_y2)], radius=20, fill=(15, 23, 42, 140), outline=(255, 255, 255, 45), width=2)
-    s_y = card_y1 + 15 + 22
+    s_y = card_y1 + 13 + lh // 2
     for line in wrapped_series:
-        draw_teaser_text_with_shadow(draw, line, 328, s_y, f_series, text_color=(56, 189, 248))
-        s_y += 44
-    draw_options_standard(draw, data["options"], card_y2 + 20, f_options)
+        draw_teaser_text_with_shadow(draw, line, 328, s_y, f_series_adapt, text_color=(56, 189, 248))
+        s_y += lh
+    draw_options_standard(draw, data["options"], card_y2 + 16, f_options)
 
 def draw_layout_2(draw, data, fonts):
     f_header, f_sub, f_series, f_options, f_watermark, f_date = fonts
     card_x1, card_x2 = 78, 578
     draw_teaser_text_with_shadow(draw, "Brain Teaser Daily", 328, 70, f_header, text_color=(56, 189, 248))
-    if data["date"]:
+    if data.get("date"):
         draw_teaser_text_with_shadow(draw, data["date"], 616, 35, f_date, text_color=(255, 255, 255, 160), anchor="rt")
     wrapped_q = wrap_text(data["question_header"], f_sub, 560)
     current_y = 125
     for line in wrapped_q:
         draw_teaser_text_with_shadow(draw, line, 328, current_y, f_sub, text_color=(255, 255, 255))
         current_y += 28
-    wrapped_series = wrap_text(data["series"], f_series, 460)
+    font_bold_path = getattr(f_series, 'path', ARCHIVE_DIR.parent / "fonts" / "Roboto-Bold.ttf")
+    max_series_h = min(210, 585 - current_y - 140 - 15)
+    f_series_adapt, wrapped_series, lh, box_h = compute_adaptive_series_layout(
+        data["series"], font_bold_path, max_w=460, max_h=max_series_h
+    )
     card_y1 = current_y + 12
-    card_y2 = card_y1 + len(wrapped_series) * 44 + 30
+    card_y2 = card_y1 + box_h
     draw.rounded_rectangle([(card_x1 - 3, card_y1 - 3), (card_x2 + 3, card_y2 + 3)], radius=23, outline=(34, 197, 94, 180), width=3)
     draw.rounded_rectangle([(card_x1, card_y1), (card_x2, card_y2)], radius=20, fill=(0, 0, 0, 220), outline=(255, 255, 255, 60), width=1)
-    s_y = card_y1 + 15 + 22
+    s_y = card_y1 + 13 + lh // 2
     for line in wrapped_series:
-        draw_teaser_text_with_shadow(draw, line, 328, s_y, f_series, text_color=(34, 197, 94))
-        s_y += 44
-    draw_options_standard(draw, data["options"], card_y2 + 20, f_options, fill_color=(0, 0, 0, 200), outline_color=(34, 197, 94, 80))
+        draw_teaser_text_with_shadow(draw, line, 328, s_y, f_series_adapt, text_color=(34, 197, 94))
+        s_y += lh
+    draw_options_standard(draw, data["options"], card_y2 + 16, f_options, fill_color=(0, 0, 0, 200), outline_color=(34, 197, 94, 80))
 
 def draw_layout_3(draw, data, fonts):
     f_header, f_sub, f_series, f_options, f_watermark, f_date = fonts
     card_x1, card_x2 = 78, 578
     draw_teaser_text_with_shadow(draw, "★ DAILY CHALLENGE ★", 328, 70, f_header, text_color=(245, 158, 11))
-    if data["date"]:
+    if data.get("date"):
         draw_teaser_text_with_shadow(draw, data["date"], 616, 35, f_date, text_color=(255, 255, 255, 140), anchor="rt")
     wrapped_q = wrap_text(data["question_header"], f_sub, 560)
     current_y = 125
     for line in wrapped_q:
         draw_teaser_text_with_shadow(draw, line, 328, current_y, f_sub, text_color=(254, 243, 199))
         current_y += 28
-    wrapped_series = wrap_text(data["series"], f_series, 460)
+    font_bold_path = getattr(f_series, 'path', ARCHIVE_DIR.parent / "fonts" / "Roboto-Bold.ttf")
+    max_series_h = min(210, 585 - current_y - 140 - 15)
+    f_series_adapt, wrapped_series, lh, box_h = compute_adaptive_series_layout(
+        data["series"], font_bold_path, max_w=460, max_h=max_series_h
+    )
     card_y1 = current_y + 12
-    card_y2 = card_y1 + len(wrapped_series) * 44 + 30
+    card_y2 = card_y1 + box_h
     draw.rounded_rectangle([(card_x1, card_y1), (card_x2, card_y2)], radius=20, fill=(30, 20, 10, 160), outline=(245, 158, 11, 200), width=2)
     draw.rounded_rectangle([(card_x1 + 6, card_y1 + 6), (card_x2 - 6, card_y2 - 6)], radius=14, outline=(245, 158, 11, 100), width=1)
-    s_y = card_y1 + 15 + 22
+    s_y = card_y1 + 13 + lh // 2
     for line in wrapped_series:
-        draw_teaser_text_with_shadow(draw, line, 328, s_y, f_series, text_color=(245, 158, 11))
-        s_y += 44
-    draw_options_standard(draw, data["options"], card_y2 + 20, f_options, fill_color=(30, 20, 10, 140), outline_color=(245, 158, 11, 120))
+        draw_teaser_text_with_shadow(draw, line, 328, s_y, f_series_adapt, text_color=(245, 158, 11))
+        s_y += lh
+    draw_options_standard(draw, data["options"], card_y2 + 16, f_options, fill_color=(30, 20, 10, 140), outline_color=(245, 158, 11, 120))
 
 def draw_layout_4(draw, data, fonts):
     f_header, f_sub, f_series, f_options, f_watermark, f_date = fonts
     draw_teaser_text_with_shadow(draw, "Brain Teaser", 328, 70, f_header, text_color=(236, 72, 153))
-    if data["date"]:
+    if data.get("date"):
         draw_teaser_text_with_shadow(draw, data["date"], 616, 35, f_date, text_color=(255, 255, 255, 160), anchor="rt")
     wrapped_q = wrap_text(data["question_header"], f_sub, 480)
     q_box_h = len(wrapped_q) * 26 + 20
@@ -472,152 +543,179 @@ def draw_layout_4(draw, data, fonts):
     draw.rounded_rectangle([(78, q_y1), (578, q_y2)], radius=15, fill=(15, 23, 42, 120), outline=(236, 72, 153, 60), width=1)
     for idx, line in enumerate(wrapped_q):
         draw_teaser_text_with_shadow(draw, line, 328, q_y1 + 10 + idx*26 + 13, f_sub, text_color=(229, 231, 235))
-    wrapped_series = wrap_text(data["series"], f_series, 460)
+    font_bold_path = getattr(f_series, 'path', ARCHIVE_DIR.parent / "fonts" / "Roboto-Bold.ttf")
+    max_series_h = min(200, 585 - q_y2 - 140 - 20)
+    f_series_adapt, wrapped_series, lh, box_h = compute_adaptive_series_layout(
+        data["series"], font_bold_path, max_w=460, max_h=max_series_h
+    )
     s_y1 = q_y2 + 15
-    s_y2 = s_y1 + len(wrapped_series) * 44 + 24
+    s_y2 = s_y1 + box_h
     draw.rounded_rectangle([(78, s_y1), (578, s_y2)], radius=15, fill=(15, 23, 42, 180), outline=(255, 255, 255, 50), width=2)
-    s_y = s_y1 + 12 + 22
+    s_y = s_y1 + 12 + lh // 2
     for line in wrapped_series:
-        draw_teaser_text_with_shadow(draw, line, 328, s_y, f_series, text_color=(236, 72, 153))
-        s_y += 44
-    draw_options_standard(draw, data["options"], s_y2 + 20, f_options)
+        draw_teaser_text_with_shadow(draw, line, 328, s_y, f_series_adapt, text_color=(236, 72, 153))
+        s_y += lh
+    draw_options_standard(draw, data["options"], s_y2 + 16, f_options)
 
 def draw_layout_5(draw, data, fonts):
     f_header, f_sub, f_series, f_options, f_watermark, f_date = fonts
     draw_teaser_text_with_shadow(draw, "Daily Brain Teaser", 328, 65, f_header, text_color=(99, 102, 241))
-    if data["date"]:
+    if data.get("date"):
         draw_teaser_text_with_shadow(draw, data["date"], 616, 35, f_date, text_color=(255, 255, 255, 160), anchor="rt")
     wrapped_q = wrap_text(data["question_header"], f_sub, 560)
     current_y = 115
     for line in wrapped_q:
         draw_teaser_text_with_shadow(draw, line, 328, current_y, f_sub, text_color=(229, 231, 235))
         current_y += 28
-    wrapped_series = wrap_text(data["series"], f_series, 460)
-    s_h = len(wrapped_series) * 44 + 20
+    font_bold_path = getattr(f_series, 'path', ARCHIVE_DIR.parent / "fonts" / "Roboto-Bold.ttf")
+    max_series_h = min(200, 585 - current_y - 140 - 20)
+    f_series_adapt, wrapped_series, lh, box_h = compute_adaptive_series_layout(
+        data["series"], font_bold_path, max_w=460, max_h=max_series_h
+    )
     s_y1 = current_y + 15
-    s_y2 = s_y1 + s_h
-    draw.rounded_rectangle([(78, s_y1), (578, s_y2)], radius=s_h/2, fill=(15, 23, 42, 150), outline=(99, 102, 241, 100), width=2)
-    s_y = s_y1 + 10 + 22
+    s_y2 = s_y1 + box_h
+    draw.rounded_rectangle([(78, s_y1), (578, s_y2)], radius=min(22, box_h/2), fill=(15, 23, 42, 150), outline=(99, 102, 241, 100), width=2)
+    s_y = s_y1 + 12 + lh // 2
     for line in wrapped_series:
-        draw_teaser_text_with_shadow(draw, line, 328, s_y, f_series, text_color=(99, 102, 241))
-        s_y += 44
-    draw_options_capsule(draw, data["options"], s_y2 + 20, f_options)
+        draw_teaser_text_with_shadow(draw, line, 328, s_y, f_series_adapt, text_color=(99, 102, 241))
+        s_y += lh
+    draw_options_capsule(draw, data["options"], s_y2 + 16, f_options)
 
 def draw_layout_6(draw, data, fonts):
     f_header, f_sub, f_series, f_options, f_watermark, f_date = fonts
     draw_teaser_text_with_shadow(draw, "BRAIN TEASER CHALLENGE", 328, 70, f_header, text_color=(14, 165, 233))
-    if data["date"]:
+    if data.get("date"):
         draw_teaser_text_with_shadow(draw, data["date"], 616, 35, f_date, text_color=(255, 255, 255, 140), anchor="rt")
     wrapped_q = wrap_text(data["question_header"], f_sub, 560)
     current_y = 125
     for line in wrapped_q:
         draw_teaser_text_with_shadow(draw, line, 328, current_y, f_sub, text_color=(229, 231, 235))
         current_y += 28
-    wrapped_series = wrap_text(data["series"], f_series, 440)
+    font_bold_path = getattr(f_series, 'path', ARCHIVE_DIR.parent / "fonts" / "Roboto-Bold.ttf")
+    max_series_h = min(200, 585 - current_y - 140 - 20)
+    f_series_adapt, wrapped_series, lh, box_h = compute_adaptive_series_layout(
+        data["series"], font_bold_path, max_w=440, max_h=max_series_h
+    )
     card_y1 = current_y + 12
-    card_y2 = card_y1 + len(wrapped_series) * 44 + 30
+    card_y2 = card_y1 + box_h
     x1, y1, x2, y2 = 78, card_y1, 578, card_y2
-    c = 20
+    c = min(20, box_h // 4)
     points = [
         (x1 + c, y1), (x2 - c, y1), (x2, y1 + c), (x2, y2 - c),
         (x2 - c, y2), (x1 + c, y2), (x1, y2 - c), (x1, y1 + c)
     ]
     draw.polygon(points, fill=(15, 23, 42, 140), outline=(14, 165, 233, 160))
-    s_y = card_y1 + 15 + 22
+    s_y = card_y1 + 12 + lh // 2
     for line in wrapped_series:
-        draw_teaser_text_with_shadow(draw, line, 328, s_y, f_series, text_color=(14, 165, 233))
-        s_y += 44
-    draw_options_cropped(draw, data["options"], card_y2 + 20, f_options)
+        draw_teaser_text_with_shadow(draw, line, 328, s_y, f_series_adapt, text_color=(14, 165, 233))
+        s_y += lh
+    draw_options_cropped(draw, data["options"], card_y2 + 16, f_options)
 
 def draw_layout_7(draw, data, fonts):
     f_header, f_sub, f_series, f_options, f_watermark, f_date = fonts
     card_x1, card_x2 = 78, 578
     draw_teaser_text_with_shadow(draw, "> DAILY CHALLENGE", 328, 70, f_header, text_color=(34, 197, 94))
-    if data["date"]:
+    if data.get("date"):
         draw_teaser_text_with_shadow(draw, f"DATE: {data['date']}", 616, 35, f_date, text_color=(34, 197, 94, 200), anchor="rt")
     wrapped_q = wrap_text(data["question_header"], f_sub, 560)
     current_y = 125
     for line in wrapped_q:
         draw_teaser_text_with_shadow(draw, f"> {line}", 328, current_y, f_sub, text_color=(74, 222, 128))
         current_y += 28
-    wrapped_series = wrap_text(data["series"], f_series, 460)
+    font_bold_path = getattr(f_series, 'path', ARCHIVE_DIR.parent / "fonts" / "Roboto-Bold.ttf")
+    max_series_h = min(200, 585 - current_y - 140 - 20)
+    f_series_adapt, wrapped_series, lh, box_h = compute_adaptive_series_layout(
+        data["series"], font_bold_path, max_w=460, max_h=max_series_h
+    )
     card_y1 = current_y + 12
-    card_y2 = card_y1 + len(wrapped_series) * 44 + 40
+    card_y2 = card_y1 + box_h + 12
     draw.rounded_rectangle([(card_x1, card_y1), (card_x2, card_y2)], radius=10, fill=(0, 0, 0, 240), outline=(34, 197, 94, 150), width=2)
     draw.rounded_rectangle([(card_x1, card_y1), (card_x2, card_y1 + 25)], radius=10, fill=(34, 197, 94, 40))
     draw.ellipse([(90, card_y1 + 8), (98, card_y1 + 16)], fill=(239, 68, 68))
     draw.ellipse([(105, card_y1 + 8), (113, card_y1 + 16)], fill=(245, 158, 11))
     draw.ellipse([(120, card_y1 + 8), (128, card_y1 + 16)], fill=(34, 197, 94))
-    s_y = card_y1 + 35 + 22
+    s_y = card_y1 + 30 + lh // 2
     for line in wrapped_series:
-        draw_teaser_text_with_shadow(draw, f"[ {line} ]", 328, s_y, f_series, text_color=(34, 197, 94))
-        s_y += 44
-    draw_options_standard(draw, data["options"], card_y2 + 20, f_options, fill_color=(0, 0, 0, 240), outline_color=(34, 197, 94, 100))
+        draw_teaser_text_with_shadow(draw, f"[ {line} ]", 328, s_y, f_series_adapt, text_color=(34, 197, 94))
+        s_y += lh
+    draw_options_standard(draw, data["options"], card_y2 + 16, f_options, fill_color=(0, 0, 0, 240), outline_color=(34, 197, 94, 100))
 
 def draw_layout_8(draw, data, fonts):
     f_header, f_sub, f_series, f_options, f_watermark, f_date = fonts
     card_x1, card_x2 = 78, 578
     draw_teaser_text_with_shadow(draw, "Brain Teaser Challenge", 328, 70, f_header, text_color=(255, 255, 255))
-    if data["date"]:
+    if data.get("date"):
         draw_teaser_text_with_shadow(draw, data["date"], 616, 35, f_date, text_color=(255, 255, 255, 140), anchor="rt")
     wrapped_q = wrap_text(data["question_header"], f_sub, 560)
     current_y = 125
     for line in wrapped_q:
         draw_teaser_text_with_shadow(draw, line, 328, current_y, f_sub, text_color=(229, 231, 235))
         current_y += 28
-    wrapped_series = wrap_text(data["series"], f_series, 440)
+    font_bold_path = getattr(f_series, 'path', ARCHIVE_DIR.parent / "fonts" / "Roboto-Bold.ttf")
+    max_series_h = min(200, 585 - current_y - 140 - 20)
+    f_series_adapt, wrapped_series, lh, box_h = compute_adaptive_series_layout(
+        data["series"], font_bold_path, max_w=440, max_h=max_series_h
+    )
     card_y1 = current_y + 12
-    card_y2 = card_y1 + len(wrapped_series) * 44 + 30
+    card_y2 = card_y1 + box_h
     draw.rounded_rectangle([(card_x1, card_y1), (card_x2, card_y2)], radius=8, fill=(15, 23, 42, 210), outline=(100, 116, 139, 100), width=1)
     draw.rectangle([(card_x1, card_y1 + 10), (card_x1 + 6, card_y2 - 10)], fill=(249, 115, 22))
-    s_y = card_y1 + 15 + 22
+    s_y = card_y1 + 13 + lh // 2
     for line in wrapped_series:
-        draw_teaser_text_with_shadow(draw, line, 328, s_y, f_series, text_color=(249, 115, 22))
-        s_y += 44
-    draw_options_standard(draw, data["options"], card_y2 + 20, f_options, fill_color=(15, 23, 42, 180), outline_color=(100, 116, 139, 80))
+        draw_teaser_text_with_shadow(draw, line, 328, s_y, f_series_adapt, text_color=(249, 115, 22))
+        s_y += lh
+    draw_options_standard(draw, data["options"], card_y2 + 16, f_options, fill_color=(15, 23, 42, 180), outline_color=(100, 116, 139, 80))
 
 def draw_layout_9(draw, data, fonts):
     f_header, f_sub, f_series, f_options, f_watermark, f_date = fonts
     card_x1, card_x2 = 78, 578
     draw_teaser_text_with_shadow(draw, "Mind Workout Daily", 328, 70, f_header, text_color=(253, 224, 71))
-    if data["date"]:
+    if data.get("date"):
         draw_teaser_text_with_shadow(draw, data["date"], 616, 35, f_date, text_color=(255, 255, 255, 140), anchor="rt")
     wrapped_q = wrap_text(data["question_header"], f_sub, 560)
     current_y = 125
     for line in wrapped_q:
         draw_teaser_text_with_shadow(draw, line, 328, current_y, f_sub, text_color=(229, 231, 235))
         current_y += 28
-    wrapped_series = wrap_text(data["series"], f_series, 460)
+    font_bold_path = getattr(f_series, 'path', ARCHIVE_DIR.parent / "fonts" / "Roboto-Bold.ttf")
+    max_series_h = min(200, 585 - current_y - 140 - 20)
+    f_series_adapt, wrapped_series, lh, box_h = compute_adaptive_series_layout(
+        data["series"], font_bold_path, max_w=460, max_h=max_series_h
+    )
     card_y1 = current_y + 12
-    card_y2 = card_y1 + len(wrapped_series) * 44 + 30
-    draw.rounded_rectangle([(card_x1, card_y1), (card_x2, card_y2)], radius=25, fill=(15, 23, 42, 100), outline=(217, 70, 239, 180), width=2)
-    draw.rounded_rectangle([(card_x1 + 3, card_y1 + 3), (card_x2 - 3, card_y2 - 3)], radius=22, outline=(6, 182, 212, 120), width=1)
-    s_y = card_y1 + 15 + 22
+    card_y2 = card_y1 + box_h
+    draw.rounded_rectangle([(card_x1, card_y1), (card_x2, card_y2)], radius=22, fill=(15, 23, 42, 100), outline=(217, 70, 239, 180), width=2)
+    draw.rounded_rectangle([(card_x1 + 3, card_y1 + 3), (card_x2 - 3, card_y2 - 3)], radius=19, outline=(6, 182, 212, 120), width=1)
+    s_y = card_y1 + 13 + lh // 2
     for line in wrapped_series:
-        draw_teaser_text_with_shadow(draw, line, 328, s_y, f_series, text_color=(253, 224, 71))
-        s_y += 44
-    draw_options_standard(draw, data["options"], card_y2 + 20, f_options)
+        draw_teaser_text_with_shadow(draw, line, 328, s_y, f_series_adapt, text_color=(253, 224, 71))
+        s_y += lh
+    draw_options_standard(draw, data["options"], card_y2 + 16, f_options)
 
 def draw_layout_10(draw, data, fonts):
     f_header, f_sub, f_series, f_options, f_watermark, f_date = fonts
     card_x1, card_x2 = 78, 578
     draw_teaser_text_with_shadow(draw, "Challenge of the Day", 328, 70, f_header, text_color=(255, 255, 255))
-    if data["date"]:
+    if data.get("date"):
         draw_teaser_text_with_shadow(draw, data["date"], 616, 35, f_date, text_color=(255, 255, 255, 140), anchor="rt")
     wrapped_q = wrap_text(data["question_header"], f_sub, 560)
     current_y = 125
     for line in wrapped_q:
         draw_teaser_text_with_shadow(draw, line, 328, current_y, f_sub, text_color=(229, 231, 235))
         current_y += 28
-    wrapped_series = wrap_text(data["series"], f_series, 460)
+    font_bold_path = getattr(f_series, 'path', ARCHIVE_DIR.parent / "fonts" / "Roboto-Bold.ttf")
+    max_series_h = min(200, 585 - current_y - 140 - 20)
+    f_series_adapt, wrapped_series, lh, box_h = compute_adaptive_series_layout(
+        data["series"], font_bold_path, max_w=460, max_h=max_series_h
+    )
     card_y1 = current_y + 12
-    card_y2 = card_y1 + len(wrapped_series) * 44 + 30
+    card_y2 = card_y1 + box_h
     draw.rounded_rectangle([(card_x1, card_y1), (card_x2, card_y2)], radius=15, fill=(15, 23, 42, 230), outline=(255, 255, 255, 20), width=1)
-    s_y = card_y1 + 15 + 22
+    s_y = card_y1 + 13 + lh // 2
     for line in wrapped_series:
-        draw_teaser_text_with_shadow(draw, line, 328, s_y, f_series, text_color=(56, 189, 248))
-        s_y += 44
-    draw_options_standard(draw, data["options"], card_y2 + 20, f_options, fill_color=(15, 23, 42, 200), outline_color=(255, 255, 255, 15))
+        draw_teaser_text_with_shadow(draw, line, 328, s_y, f_series_adapt, text_color=(56, 189, 248))
+        s_y += lh
+    draw_options_standard(draw, data["options"], card_y2 + 16, f_options, fill_color=(15, 23, 42, 200), outline_color=(255, 255, 255, 15))
 
 LAYOUTS = [
     draw_layout_1, draw_layout_2, draw_layout_3, draw_layout_4, draw_layout_5,
@@ -752,7 +850,6 @@ def generate_brainteaser_slides(target_date, style_idx=None, bg_idx=None):
     
     font_header = ImageFont.truetype(str(font_bold_path), 46)
     font_sub = ImageFont.truetype(str(font_regular_path), 28)
-    font_series = ImageFont.truetype(str(font_bold_path), 40)
     font_options = ImageFont.truetype(str(font_regular_path), 30)
     
     draw_teaser_text_with_shadow(plain_draw, "Daily Brain Teaser:-", W / 2, 80, font_header)
@@ -763,18 +860,22 @@ def generate_brainteaser_slides(target_date, style_idx=None, bg_idx=None):
         draw_teaser_text_with_shadow(plain_draw, line, W / 2, current_y, font_sub)
         current_y += 34
         
-    wrapped_series = wrap_text(data["series"], font_series, 540)
-    current_y += 15
-    for line in wrapped_series:
-        draw_teaser_text_with_shadow(plain_draw, line, W / 2, current_y, font_series, text_color=(56, 189, 248))
-        current_y += 48
-        
-    start_y = current_y + 25
-    gap = 42
-    total_opt_h = len(data["options"]) * gap
     max_allowed_plain_y = 585
+    min_opt_budget = 160
+    max_series_h = min(220, max_allowed_plain_y - current_y - min_opt_budget - 20)
+    font_series_adapt, wrapped_series, lh, box_h = compute_adaptive_series_layout(
+        data["series"], font_bold_path, max_w=540, max_h=max_series_h, base_sz=40, min_sz=20
+    )
+    current_y += 12
+    for line in wrapped_series:
+        draw_teaser_text_with_shadow(plain_draw, line, W / 2, current_y, font_series_adapt, text_color=(56, 189, 248))
+        current_y += lh
+        
+    start_y = current_y + 20
+    gap = 40
+    total_opt_h = len(data["options"]) * gap
     if start_y + total_opt_h > max_allowed_plain_y:
-        gap = max(28, int((max_allowed_plain_y - start_y) / max(len(data["options"]), 1)))
+        gap = max(26, int((max_allowed_plain_y - start_y) / max(len(data["options"]), 1)))
         if start_y + len(data["options"]) * gap > max_allowed_plain_y:
             start_y = max(180, max_allowed_plain_y - len(data["options"]) * gap)
             
@@ -851,22 +952,22 @@ def generate_brainteaser_video(target_date):
     # High-retention ego-challenge hooks that trigger immediate viewer engagement in the first 3 seconds
     RETENTION_HOOKS = [
         {
-            "badge": "🔥 95% FAIL THIS TEST!",
+            "badge": "95% FAIL THIS TEST!",
             "subtitle": "Can you solve it before zero?",
             "speech": "Ninety-five percent of people fail this puzzle! Can you solve it in eight seconds?"
         },
         {
-            "badge": "⚡ ONLY 5% SPOT THE RULE!",
+            "badge": "ONLY 5% SPOT THE RULE!",
             "subtitle": "Think fast! What is the answer?",
             "speech": "Only five percent of people spot the pattern! What is the missing answer?"
         },
         {
-            "badge": "🧠 GENIUS IQ CHALLENGE!",
+            "badge": "GENIUS IQ CHALLENGE!",
             "subtitle": "Beat the clock & solve it!",
             "speech": "Genius challenge! Find the correct answer before the timer hits zero!"
         },
         {
-            "badge": "⏱️ SPEED REASONING TEST!",
+            "badge": "SPEED REASONING TEST!",
             "subtitle": "Can you beat 90% of viewers?",
             "speech": "Speed test! Can you beat ninety percent of viewers and solve this now?"
         }

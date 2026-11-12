@@ -46,7 +46,7 @@ CRITICAL: You must format the output strictly as follows with exact labels and n
 
 Daily Brain Teaser - [DATE] 🧠
 Q. [CONCISE QUESTION STATEMENT, e.g., "Solve the equation:-" or "Find the missing value (?) in the grid:-" or "What number comes next in the sequence?:-"]
-Series: [THE PUZZLE / EQUATION / GRID / SEQUENCE, e.g., 6 ÷ 2(1 + 2) = ? OR multi-line 3x3 grid]
+Series: [THE PUZZLE / EQUATION / GRID / SEQUENCE strictly under 120 chars, e.g., 6 ÷ 2(1 + 2) = ? OR multi-line 3x3 grid]
 
 a. [Option A]
 b. [Option B]

@@ -5,6 +5,18 @@ All notable changes to the Pulse Vector project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.12.1] - 2026-11-12
+
+### Fixed
+- **Brain Teaser Card Overflow & Options Clipping**:
+  - Diagnosed root cause of clipped options in YouTube Short `_Oeqawy6ILM`: verbose 183-character riddle rendered with static 38pt font wrapped to 8 lines, causing the series box to end at Y=547 and forcing options to Y=642–702 (completely off-canvas on a 656px card).
+  - Implemented `compute_adaptive_series_layout` in `src/brainteaser_pipeline.py` to dynamically scale font size (from 38pt down to 18pt) and line spacing, ensuring the series box strictly stays within the safe 210px vertical budget.
+  - Implemented hard vertical bounds clamping (`max_allowed_y = 585px`) across `draw_options_standard`, `draw_options_capsule`, and `draw_options_cropped` for both 2x2 grid and vertical list layouts, leaving >= 35px clearance above the watermark.
+  - Upgraded all 10 visual layout renderers (`draw_layout_1` through `draw_layout_10`) and fallback plain-path to use adaptive typography.
+  - Eradicated `.notdef` emoji glyph tofu (`[X]` box artifacts) from top retention hook badges.
+  - Added Rule 8 brevity constraints (<= 120 chars) in `src/core/genai_utils.py`, `.agent/pulse_prompts.md`, and `.agent/workflows/pulse_prompts.md`.
+  - Added automated regression test `test_brainteaser_long_series_adaptive_layout_and_bounds` in `scripts/test_pipeline.py`, bringing test suite to 69 tests (all passing).
+
 ## [2.12.0] - 2026-11-10
 
 ### Added

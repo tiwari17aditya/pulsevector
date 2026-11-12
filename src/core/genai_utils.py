@@ -226,7 +226,8 @@ def build_brainteaser_prompt(
         f"   a. Option Text\n"
         f"   b. Option Text\n"
         f"   c. Option Text\n"
-        f"   d. Option Text\n\n"
+        f"   d. Option Text\n"
+        f"8. BREVITY & VISUAL FIT RULE: Keep the 'Series:' / puzzle statement strictly under 120 characters (maximum 2-3 short sentences) so that all 4 options fit comfortably on mobile screens without visual crowding.\n\n"
         f"{base_prompt}"
     )
     return prompt, selected_key

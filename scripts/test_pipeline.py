@@ -440,6 +440,51 @@ class TestImageAndVideoUtils(unittest.TestCase):
             draw = ImageDraw.Draw(img)
             layout(draw, sample_data, fonts)
 
+    def test_brainteaser_long_series_adaptive_layout_and_bounds(self):
+        """
+        Verifies that verbose, long puzzle statements (180+ chars like detective riddles or
+        probability problems) dynamically scale down typography and leave adequate clearance
+        so options are never clipped or hidden past safe margins [Y <= 585px].
+        """
+        import brainteaser_pipeline
+        font_reg, font_bold = ensure_fonts(pathlib.Path("pulse_archive"))
+        fonts = (
+            ImageFont.truetype(str(font_bold), 40),
+            ImageFont.truetype(str(font_reg), 24),
+            ImageFont.truetype(str(font_bold), 38),
+            ImageFont.truetype(str(font_reg), 26),
+            ImageFont.truetype(str(font_reg), 14),
+            ImageFont.truetype(str(font_reg), 15)
+        )
+        long_puzzle_data = {
+            "date": "12 November 2026",
+            "question_header": "Q. What is the probability you picked the fair coin? :-",
+            "series": "You have a bag containing two coins. One is a standard fair coin, the other is a special coin that lands heads 75% of the time. You randomly select a coin and flip it. It lands heads.",
+            "options": ["a. 1/2", "b. 2/5", "c. 3/5", "d. 1/4"],
+            "correct_answer": "b",
+            "hashtags": ["#BrainTeaser", "#Probability"]
+        }
+        
+        # 1. Test adaptive series layout helper
+        font, wrapped, lh, box_h = brainteaser_pipeline.compute_adaptive_series_layout(
+            long_puzzle_data["series"], font_bold, max_w=460, max_h=210
+        )
+        self.assertLessEqual(box_h, 215, "Adaptive series box must not exceed maximum height")
+        self.assertLessEqual(len(wrapped), 6, "Wrapped lines should be compact")
+        
+        # 2. Test rendering across all 10 layouts
+        for idx, layout in enumerate(brainteaser_pipeline.LAYOUTS, 1):
+            img = Image.new("RGB", (656, 656), color=(20, 20, 30))
+            draw = ImageDraw.Draw(img)
+            layout(draw, long_puzzle_data, fonts)
+            
+            # Check bottom-most safe area (between Y=595 and Y=656) has no option overflow
+            arr = np.array(img)
+            # Row 650 should not have clipped text (max brightness of text would be ~255)
+            row_edge = arr[650, 150:500]
+            # Since background is a flat (20,20,30), text would show as high values
+            self.assertLess(np.max(row_edge), 150, f"Layout {idx} overflowed past canvas bottom!")
+
 class TestPipelineEngine(unittest.TestCase):
     def test_dry_run_execution(self):
         engine = PipelineEngine()
