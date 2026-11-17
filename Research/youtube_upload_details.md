@@ -177,3 +177,4 @@ This log tracks all uploaded videos, their metadata, category, related video set
 | 2026-11-15 15:17 IST | 🔥 NCP Merger Shakeup & Top News (15 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | OcErCj5Wn2U |
 | 2026-11-15 15:36 IST | Weekly Current Affairs Masterclass (09 Nov - 15 Nov 2026) | Full Revision | Education (27) | Weekly Masterclass | Linked to Playlist | Interactive Comment Posted | 3CPyJIZJu3Q |
 | 2026-11-16 15:38 IST | 🔥 Prime Minister Narendra Modi is scheduled & Top News (16 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | TmyltljkyVQ |
+| 2026-11-17 16:24 IST | 🔥 AI Ethics Framework & Top News (17 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | b_x-l1f12Gc |
