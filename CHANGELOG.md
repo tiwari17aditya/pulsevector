@@ -8,13 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.13.0] - 2026-11-21
 
 ### Added
+- **Telegram Native Interactive Quiz Polls (`sendPoll`)**:
+  - Implemented `broadcast_telegram_quiz` in `src/core/broadcast_utils.py` utilizing Telegram Bot API `sendPoll` with `type="quiz"`.
+  - Configured anonymous voting, instant celebratory confetti animations, real-time answer verification, and educational step-by-step logic hints (`explanation`).
+  - Integrated into `src/brainteaser_pipeline.py` inside `publish_teaser_to_youtube`, automatically constructing clean quiz options and correct option indices for every daily brain teaser run.
+- **YouTube High-CTR Interactive Challenge Pinned Comments**:
+  - Upgraded `format_teaser_challenge_comment` in `src/core/content_parser.py` to automatically include multiple-choice voting options (`[A]`, `[B]`, `[C]`, `[D]`) and explicit community participation calls-to-action.
+  - Automatically pinned to every uploaded YouTube Short via `add_video_comment` to drive comment velocity and boost YouTube recommendation rank.
 - **Meta Developer Platform & Instagram Graph API Integration**:
-  - Implemented modular Meta Graph API client (`src/core/meta_utils.py`) supporting Instagram Reels publishing, single photo publishing, 60-day long-lived token exchange (`oauth/access_token`), and auto-discovery of linked Instagram Business Accounts from Facebook Pages (`/me/accounts`).
-  - Added interactive developer configuration CLI (`scripts/setup_meta_auth.py`) providing guided token exchange, auto-detection of `INSTAGRAM_ACCOUNT_ID`, connection health testing, and safe `.env` persistence.
+  - Implemented modular Meta Graph API client (`src/core/meta_utils.py`) supporting Instagram Reels publishing, single photo publishing, Facebook Page video/photo publishing, 60-day long-lived token exchange (`oauth/access_token`), and auto-discovery of linked Instagram Business Accounts and Page IDs from Facebook Pages (`/me/accounts`).
+  - Added interactive developer configuration CLI (`scripts/setup_meta_auth.py`) providing guided token exchange, auto-detection of `INSTAGRAM_ACCOUNT_ID` and `FACEBOOK_PAGE_ID`, connection health testing, and safe `.env` persistence.
   - Upgraded multi-platform community broadcast engine (`src/core/broadcast_utils.py`) with `broadcast_instagram()`, enabling automated distribution of 9:16 Shorts to Instagram Reels alongside Telegram, Discord, and YouTube with fail-open safety.
-  - Authored comprehensive documentation in `docs/META_DEVELOPER_SETUP.md` with step-by-step setup walkthrough for developers.facebook.com, permission scopes (`instagram_basic`, `instagram_content_publish`, `pages_show_list`, `pages_read_engagement`), and troubleshooting tips.
+  - Authored comprehensive documentation in `docs/META_DEVELOPER_SETUP.md` with step-by-step setup walkthrough for developers.facebook.com, permission scopes (`instagram_basic`, `instagram_content_publish`, `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`), and troubleshooting tips.
   - Added `.env.example` documenting all configuration keys.
-  - Added unit test suite `TestMetaDeveloperIntegration` in `scripts/test_pipeline.py` (9 tests), expanding the test suite to 80 tests (all 80 passing).
+  - Expanded automated test suite in `scripts/test_pipeline.py` to **83 unit tests** (all passing).
 
 ## [2.12.1] - 2026-11-12
 

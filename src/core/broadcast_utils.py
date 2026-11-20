@@ -137,6 +137,57 @@ def broadcast_telegram(
         logger.warning(f"Error broadcasting to Telegram: {e}")
         return False
 
+def broadcast_telegram_quiz(
+    question: str,
+    options: List[str],
+    correct_option_id: int,
+    explanation: Optional[str] = None
+) -> bool:
+    """
+    Broadcasts an interactive Quiz poll to a Telegram channel/group via Bot API sendPoll.
+    Features native celebratory confetti animations, instant validation, and explanation hints.
+    Requires TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID.
+    """
+    bot_token = get_env_var("TELEGRAM_BOT_TOKEN")
+    chat_id = get_env_var("TELEGRAM_CHAT_ID")
+    
+    if not bot_token or not chat_id:
+        logger.info("[Broadcast] Telegram credentials not configured; skipping quiz poll.")
+        return False
+
+    clean_options = [opt.strip()[:100] for opt in options if opt.strip()][:10]
+    if len(clean_options) < 2:
+        logger.warning("[Broadcast] Need at least 2 options for a Telegram quiz poll.")
+        return False
+
+    clean_question = question.strip()[:300]
+    safe_correct_id = max(0, min(correct_option_id, len(clean_options) - 1))
+
+    url = f"https://api.telegram.org/bot{bot_token}/sendPoll"
+    payload = {
+        "chat_id": chat_id,
+        "question": clean_question,
+        "options": requests.compat.json.dumps(clean_options),
+        "is_anonymous": True,
+        "type": "quiz",
+        "correct_option_id": safe_correct_id,
+    }
+    if explanation:
+        payload["explanation"] = explanation.strip()[:200]
+        payload["explanation_parse_mode"] = "HTML"
+
+    try:
+        resp = requests.post(url, data=payload, timeout=15)
+        if resp.status_code == 200:
+            logger.info("✅ Successfully broadcast interactive Quiz poll to Telegram.")
+            return True
+        else:
+            logger.warning(f"Telegram sendPoll failed ({resp.status_code}): {resp.text}")
+            return False
+    except Exception as e:
+        logger.warning(f"Error broadcasting Telegram quiz poll: {e}")
+        return False
+
 def broadcast_discord(
     title: str,
     description: str,
@@ -264,11 +315,13 @@ def broadcast_daily_content(
     image_path: Optional[pathlib.Path] = None,
     video_path: Optional[pathlib.Path] = None,
     video_url: Optional[str] = None,
-    public_media_url: Optional[str] = None
+    public_media_url: Optional[str] = None,
+    quiz_data: Optional[Dict[str, Any]] = None
 ) -> Dict[str, bool]:
     """
     Dispatches automated content to Telegram, Discord, and Instagram communities.
     Attaches native .mp4 video when available, with rich social footers.
+    If quiz_data is provided (e.g. for Brain Teasers), dispatches an interactive Telegram Quiz poll.
     """
     try:
         from .content_parser import get_social_links_block
@@ -313,4 +366,21 @@ def broadcast_daily_content(
     ig_caption = f"⚡ Pulse Vector | {content_type.upper()}: {date_str}\n\n{title}\n\n{summary_text}\n\n#pulsevector #currentaffairs #dailyupdate #shorts"
     ig_status = broadcast_instagram(caption=ig_caption, video_url=public_media_url if public_media_url and public_media_url.endswith('.mp4') else None, image_url=public_media_url if public_media_url and not public_media_url.endswith('.mp4') else None)
     
-    return {"telegram": tg_status, "discord": dc_status, "instagram": ig_status}
+    # 4. Telegram Interactive Quiz Poll (if quiz_data provided)
+    tg_quiz_status = False
+    if quiz_data and "options" in quiz_data and len(quiz_data["options"]) >= 2:
+        q_text = quiz_data.get("question", title)
+        q_opts = quiz_data.get("options", [])
+        q_correct = quiz_data.get("correct_option_id", 0)
+        q_exp = quiz_data.get("explanation")
+        tg_quiz_status = broadcast_telegram_quiz(
+            question=q_text,
+            options=q_opts,
+            correct_option_id=q_correct,
+            explanation=q_exp
+        )
+
+    res = {"telegram": tg_status, "discord": dc_status, "instagram": ig_status}
+    if quiz_data:
+        res["telegram_quiz"] = tg_quiz_status
+    return res

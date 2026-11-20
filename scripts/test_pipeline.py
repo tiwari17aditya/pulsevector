@@ -37,7 +37,8 @@ from core.video_utils import (
     compute_word_timings, render_karaoke_subtitle_overlay
 )
 from core.broadcast_utils import (
-    broadcast_daily_content, broadcast_telegram, broadcast_discord, broadcast_instagram, truncate_html_caption
+    broadcast_daily_content, broadcast_telegram, broadcast_discord, broadcast_instagram,
+    broadcast_telegram_quiz, truncate_html_caption
 )
 from core.meta_utils import (
     get_meta_credentials, exchange_for_long_lived_token, discover_instagram_account_id,
@@ -224,6 +225,9 @@ Correct Answer: c
         challenge = format_teaser_challenge_comment(sample)
         self.assertIn("04 September 2026", challenge)
         self.assertIn("24 hours", challenge)
+        self.assertIn("Cast your vote:", challenge)
+        self.assertIn("[A] 10", challenge)
+        self.assertIn("[C] 30", challenge)
         
         reveal = format_solution_reveal_comment(sample)
         self.assertIn("c. 30", reveal)
@@ -517,6 +521,65 @@ class TestPipelineEngine(unittest.TestCase):
             self.assertIsInstance(result, dict)
             self.assertIn("telegram", result)
             self.assertIn("discord", result)
+
+    @patch("core.broadcast_utils.requests.post")
+    @patch("core.broadcast_utils.get_env_var")
+    def test_broadcast_telegram_quiz_success(self, mock_env, mock_post):
+        """Verifies broadcast_telegram_quiz sends a valid sendPoll quiz payload."""
+        mock_env.side_effect = lambda k, default=None: "dummy_val" if k in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID") else default
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_post.return_value = mock_resp
+
+        status = broadcast_telegram_quiz(
+            question="What is 6 ÷ 2(1+2)?",
+            options=["A) 1", "B) 9", "C) 6", "D) 3"],
+            correct_option_id=1,
+            explanation="BODMAS/PEMDAS rule: brackets first (3), then 6 ÷ 2 * 3 = 9!"
+        )
+        self.assertTrue(status)
+        mock_post.assert_called_once()
+        call_kwargs = mock_post.call_args[1]
+        self.assertEqual(call_kwargs["data"]["type"], "quiz")
+        self.assertEqual(call_kwargs["data"]["correct_option_id"], 1)
+        self.assertTrue(call_kwargs["data"]["is_anonymous"])
+
+    @patch("core.broadcast_utils.get_env_var")
+    def test_broadcast_telegram_quiz_unconfigured(self, mock_env):
+        """Verifies broadcast_telegram_quiz skips gracefully when credentials missing."""
+        mock_env.return_value = None
+        status = broadcast_telegram_quiz(
+            question="Question?",
+            options=["A) 1", "B) 2"],
+            correct_option_id=0
+        )
+        self.assertFalse(status)
+
+    @patch("core.broadcast_utils.broadcast_telegram_quiz")
+    @patch("core.broadcast_utils.requests.post")
+    def test_broadcast_daily_content_with_quiz_data(self, mock_post, mock_quiz):
+        """Verifies broadcast_daily_content calls broadcast_telegram_quiz when quiz_data provided."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_post.return_value = mock_resp
+        mock_quiz.return_value = True
+
+        quiz_data = {
+            "question": "Solve sequence: 2, 4, 8, ?",
+            "options": ["A) 12", "B) 16", "C) 14", "D) 18"],
+            "correct_option_id": 1,
+            "explanation": "Powers of 2: 2^4 = 16"
+        }
+        res = broadcast_daily_content(
+            content_type="Brain Teaser",
+            date_obj=datetime.date(2026, 11, 21),
+            title="Brain Teaser",
+            summary_text="Sequence puzzle",
+            quiz_data=quiz_data
+        )
+        self.assertIn("telegram_quiz", res)
+        self.assertTrue(res["telegram_quiz"])
+        mock_quiz.assert_called_once()
 
     def test_truncate_html_caption(self):
         """Tests that HTML captions are safely truncated and tags are balanced."""

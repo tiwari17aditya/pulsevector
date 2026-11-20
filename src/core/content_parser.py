@@ -633,8 +633,23 @@ def format_community_poll_text(data: Dict[str, Any]) -> str:
 def format_teaser_challenge_comment(data: Dict[str, Any]) -> str:
     """Formats the initial challenge comment posted when a Brain Teaser Short is published."""
     date_str = data.get("date", "")
+    options = data.get("options", [])
+    
+    opts_lines = []
+    if options:
+        for opt in options:
+            opt_clean = re.sub(r'^[a-d][\.\)]\s*', '', opt, flags=re.IGNORECASE).strip()
+            letter_match = re.match(r'^([a-d])[\.\)]', opt, flags=re.IGNORECASE)
+            letter = letter_match.group(1).upper() if letter_match else chr(65 + len(opts_lines))
+            opts_lines.append(f"  [{letter}] {opt_clean}")
+            
+    opts_block = ""
+    if opts_lines:
+        opts_block = "Cast your vote:\n" + "\n".join(opts_lines) + "\n\n"
+
     return (
         f"🧠 Daily Brain Teaser Challenge ({date_str})!\n\n"
+        f"{opts_block}"
         "Can you solve it before time runs out? Drop your answer and reasoning in the comments below! 👇\n\n"
         "⏳ The verified step-by-step solution will be pinned right here in 24 hours. Turn on notifications so you don't miss it! 🔔"
     )

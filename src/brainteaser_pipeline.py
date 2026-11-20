@@ -1290,6 +1290,27 @@ def publish_teaser_to_youtube(video_path, data, target_date, slot=1, privacy_sta
             if not img_path.exists():
                 img_path = ARCHIVE_DIR / year_str / target_date.strftime("%B") / "Brain_Teasers" / "Images" / f"brainteaser-{date_file_str}.png"
             v_path = pathlib.Path(video_path) if video_path else None
+
+            # Prepare Quiz Data for Native Telegram Quiz Poll
+            clean_opts = []
+            for opt in data.get("options", []):
+                opt_str = re.sub(r'^[a-d][\.\)]\s*', '', opt, flags=re.IGNORECASE).strip()
+                clean_opts.append(opt_str)
+
+            correct_letter = (data.get("correct_answer") or "a").lower()
+            correct_idx = {"a": 0, "b": 1, "c": 2, "d": 3}.get(correct_letter, 0)
+            q_head = data.get("question_header", "Solve the puzzle").rstrip(":-").strip()
+            series_s = data.get("series", "").strip()
+            quiz_q = f"🧠 Brain Teaser ({date_str}): {q_head}\n{series_s}"[:290]
+            quiz_exp = f"💡 Correct Answer: Option {correct_letter.upper()}! Watch our YouTube video for the complete step-by-step logic."
+
+            quiz_data = {
+                "question": quiz_q,
+                "options": [f"{['A','B','C','D'][i]}) {opt}" for i, opt in enumerate(clean_opts[:4])] if len(clean_opts) >= 2 else [],
+                "correct_option_id": correct_idx,
+                "explanation": quiz_exp
+            }
+
             broadcast_daily_content(
                 content_type="Brain Teaser",
                 date_obj=target_date,
@@ -1297,7 +1318,8 @@ def publish_teaser_to_youtube(video_path, data, target_date, slot=1, privacy_sta
                 summary_text=teaser_summary,
                 image_path=img_path if img_path and img_path.exists() else None,
                 video_path=v_path if v_path and v_path.exists() else None,
-                video_url=f"https://youtu.be/{video_id}"
+                video_url=f"https://youtu.be/{video_id}",
+                quiz_data=quiz_data if quiz_data.get("options") else None
             )
         except Exception as b_err:
             print(f"  > Broadcast notice: {b_err}")
