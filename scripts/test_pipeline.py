@@ -37,7 +37,12 @@ from core.video_utils import (
     compute_word_timings, render_karaoke_subtitle_overlay
 )
 from core.broadcast_utils import (
-    broadcast_daily_content, broadcast_telegram, broadcast_discord, truncate_html_caption
+    broadcast_daily_content, broadcast_telegram, broadcast_discord, broadcast_instagram, truncate_html_caption
+)
+from core.meta_utils import (
+    get_meta_credentials, exchange_for_long_lived_token, discover_instagram_account_id,
+    create_reels_container, poll_container_status, publish_media_container,
+    publish_instagram_reel, publish_instagram_photo
 )
 from core.pipeline_engine import PipelineEngine, ContentPayload
 from core.gdrive_endcredits import resolve_gdrive_endcredits_dir, get_runtime_drive_endcredits, LOCAL_SAMPLES_DIR
@@ -1097,6 +1102,139 @@ class TestMCPSecurityDLP(unittest.TestCase):
         self.assertNotEqual(s1_video, s2_video)
 
 
+
+
+class TestMetaDeveloperIntegration(unittest.TestCase):
+    """
+    Unit tests for Meta Developer Platform & Instagram Graph API Engine (v21.0).
+    Verifies token exchange, account discovery, Reels/Photo publishing, and broadcast integration.
+    """
+
+    def test_get_meta_credentials_structure(self):
+        creds = get_meta_credentials()
+        self.assertIsInstance(creds, dict)
+        self.assertIn("access_token", creds)
+        self.assertIn("account_id", creds)
+        self.assertIn("app_id", creds)
+        self.assertIn("app_secret", creds)
+
+    @patch("core.meta_utils.requests.get")
+    def test_exchange_for_long_lived_token_success(self, mock_get):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "access_token": "EAAG_long_lived_token_60d",
+            "token_type": "bearer",
+            "expires_in": 5184000
+        }
+        mock_get.return_value = mock_resp
+
+        res = exchange_for_long_lived_token("short_token", "123456", "secret_abc")
+        self.assertIsNotNone(res)
+        self.assertEqual(res["access_token"], "EAAG_long_lived_token_60d")
+        self.assertEqual(res["expires_in"], 5184000)
+
+    @patch("core.meta_utils.requests.get")
+    def test_discover_instagram_account_id(self, mock_get):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "data": [
+                {
+                    "name": "Pulse Vector Official",
+                    "id": "100200300",
+                    "instagram_business_account": {
+                        "id": "17841400000000001",
+                        "username": "pulse_vector"
+                    }
+                }
+            ]
+        }
+        mock_get.return_value = mock_resp
+
+        acc = discover_instagram_account_id("EAAG_valid_token")
+        self.assertIsNotNone(acc)
+        self.assertEqual(acc["instagram_account_id"], "17841400000000001")
+        self.assertEqual(acc["instagram_username"], "pulse_vector")
+        self.assertEqual(acc["page_id"], "100200300")
+
+    @patch("core.meta_utils.requests.post")
+    def test_create_reels_container(self, mock_post):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"id": "180000111222333"}
+        mock_post.return_value = mock_resp
+
+        cid = create_reels_container(
+            video_url="https://supabase.co/storage/v1/object/public/videos/test.mp4",
+            caption="Test Daily Reel #Shorts",
+            access_token="test_token",
+            ig_user_id="17841400000000001"
+        )
+        self.assertEqual(cid, "180000111222333")
+
+    @patch("core.meta_utils.requests.get")
+    def test_poll_container_status_finished(self, mock_get):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"status_code": "FINISHED", "id": "180000111222333"}
+        mock_get.return_value = mock_resp
+
+        ready = poll_container_status("180000111222333", "test_token", max_wait_seconds=5)
+        self.assertTrue(ready)
+
+    @patch("core.meta_utils.requests.post")
+    def test_publish_media_container(self, mock_post):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"id": "179999888777"}
+        mock_post.return_value = mock_resp
+
+        mid = publish_media_container("180000111222333", "test_token", "17841400000000001")
+        self.assertEqual(mid, "179999888777")
+
+    @patch("core.meta_utils.create_reels_container")
+    @patch("core.meta_utils.poll_container_status")
+    @patch("core.meta_utils.publish_media_container")
+    def test_publish_instagram_reel_full_flow(self, mock_pub, mock_poll, mock_create):
+        mock_create.return_value = "cont_123"
+        mock_poll.return_value = True
+        mock_pub.return_value = "ig_media_999"
+
+        mid = publish_instagram_reel(
+            video_url="https://supabase.co/storage/v1/object/public/videos/reel.mp4",
+            caption="Test Caption",
+            access_token="tok_123",
+            ig_user_id="user_123"
+        )
+        self.assertEqual(mid, "ig_media_999")
+        mock_create.assert_called_once()
+        mock_poll.assert_called_once()
+        mock_pub.assert_called_once()
+
+    def test_broadcast_instagram_unconfigured_graceful(self):
+        """Verifies broadcast_instagram safely skips without error when unconfigured."""
+        with patch.dict(os.environ, {"META_ACCESS_TOKEN": "", "INSTAGRAM_ACCOUNT_ID": ""}, clear=True):
+            status = broadcast_instagram(caption="Test Caption", video_url="https://example.com/test.mp4")
+            self.assertFalse(status)
+
+    def test_broadcast_daily_content_includes_instagram(self):
+        """Verifies broadcast_daily_content returns status for telegram, discord, and instagram."""
+        with patch("core.broadcast_utils.requests.post") as mock_post:
+            mock_resp = MagicMock()
+            mock_resp.status_code = 200
+            mock_post.return_value = mock_resp
+            result = broadcast_daily_content(
+                content_type="daily",
+                date_obj=datetime.date(2026, 9, 4),
+                title="Test Title",
+                summary_text="• Point 1",
+                public_media_url="https://supabase.co/storage/v1/object/public/videos/daily.mp4"
+            )
+            self.assertIsInstance(result, dict)
+            self.assertIn("telegram", result)
+            self.assertIn("discord", result)
+            self.assertIn("instagram", result)
 
 
 def main():

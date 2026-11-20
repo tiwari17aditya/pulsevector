@@ -5,6 +5,17 @@ All notable changes to the Pulse Vector project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.13.0] - 2026-11-21
+
+### Added
+- **Meta Developer Platform & Instagram Graph API Integration**:
+  - Implemented modular Meta Graph API client (`src/core/meta_utils.py`) supporting Instagram Reels publishing, single photo publishing, 60-day long-lived token exchange (`oauth/access_token`), and auto-discovery of linked Instagram Business Accounts from Facebook Pages (`/me/accounts`).
+  - Added interactive developer configuration CLI (`scripts/setup_meta_auth.py`) providing guided token exchange, auto-detection of `INSTAGRAM_ACCOUNT_ID`, connection health testing, and safe `.env` persistence.
+  - Upgraded multi-platform community broadcast engine (`src/core/broadcast_utils.py`) with `broadcast_instagram()`, enabling automated distribution of 9:16 Shorts to Instagram Reels alongside Telegram, Discord, and YouTube with fail-open safety.
+  - Authored comprehensive documentation in `docs/META_DEVELOPER_SETUP.md` with step-by-step setup walkthrough for developers.facebook.com, permission scopes (`instagram_basic`, `instagram_content_publish`, `pages_show_list`, `pages_read_engagement`), and troubleshooting tips.
+  - Added `.env.example` documenting all configuration keys.
+  - Added unit test suite `TestMetaDeveloperIntegration` in `scripts/test_pipeline.py` (9 tests), expanding the test suite to 80 tests (all 80 passing).
+
 ## [2.12.1] - 2026-11-12
 
 ### Added

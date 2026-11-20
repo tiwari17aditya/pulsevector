@@ -224,6 +224,38 @@ def broadcast_discord(
         logger.warning(f"Error broadcasting to Discord: {e}")
         return False
 
+def broadcast_instagram(
+    caption: str,
+    video_url: Optional[str] = None,
+    image_url: Optional[str] = None
+) -> bool:
+    """
+    Broadcasts video (as Reel) or image (as Post) to Instagram via Meta Graph API v21.0.
+    Requires public HTTPS URL (e.g. from Supabase Storage).
+    Gracefully skips if META_ACCESS_TOKEN or INSTAGRAM_ACCOUNT_ID is not configured.
+    """
+    try:
+        from .meta_utils import publish_instagram_reel, publish_instagram_photo, get_meta_credentials
+    except ImportError:
+        from meta_utils import publish_instagram_reel, publish_instagram_photo, get_meta_credentials
+
+    creds = get_meta_credentials()
+    if not creds.get("access_token") or not creds.get("account_id"):
+        logger.info("[Broadcast] Meta/Instagram credentials not configured; skipping Instagram broadcast.")
+        return False
+
+    try:
+        if video_url:
+            media_id = publish_instagram_reel(video_url=video_url, caption=caption)
+            return media_id is not None
+        elif image_url:
+            media_id = publish_instagram_photo(image_url=image_url, caption=caption)
+            return media_id is not None
+        return False
+    except Exception as e:
+        logger.warning(f"[Broadcast] Error broadcasting to Instagram: {e}")
+        return False
+
 def broadcast_daily_content(
     content_type: str,
     date_obj: datetime.date,
@@ -231,10 +263,11 @@ def broadcast_daily_content(
     summary_text: str,
     image_path: Optional[pathlib.Path] = None,
     video_path: Optional[pathlib.Path] = None,
-    video_url: Optional[str] = None
+    video_url: Optional[str] = None,
+    public_media_url: Optional[str] = None
 ) -> Dict[str, bool]:
     """
-    Dispatches automated content to both Telegram and Discord communities.
+    Dispatches automated content to Telegram, Discord, and Instagram communities.
     Attaches native .mp4 video when available, with rich social footers.
     """
     try:
@@ -276,4 +309,8 @@ def broadcast_daily_content(
     tg_status = broadcast_telegram(tg_message, image_path=image_path, video_path=video_path)
     dc_status = broadcast_discord(dc_title, dc_desc, image_path=image_path, video_path=video_path, color=color, video_url=video_url)
     
-    return {"telegram": tg_status, "discord": dc_status}
+    # 3. Instagram Reels / Post Broadcast (if public media URL is available)
+    ig_caption = f"⚡ Pulse Vector | {content_type.upper()}: {date_str}\n\n{title}\n\n{summary_text}\n\n#pulsevector #currentaffairs #dailyupdate #shorts"
+    ig_status = broadcast_instagram(caption=ig_caption, video_url=public_media_url if public_media_url and public_media_url.endswith('.mp4') else None, image_url=public_media_url if public_media_url and not public_media_url.endswith('.mp4') else None)
+    
+    return {"telegram": tg_status, "discord": dc_status, "instagram": ig_status}
