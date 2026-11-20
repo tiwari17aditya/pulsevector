@@ -171,3 +171,15 @@ This log tracks all uploaded videos, their metadata, category, related video set
 | 2026-11-11 15:08 IST | 🔥 AI Industrial Revolution & Top News (Nov 11, 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | aeUfVF3AGQQ |
 | 2026-11-12 15:31 IST | 🔥 AI Ethics Accord & Top News (12 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | 9TQWzCKOy0k |
 | 2026-11-12 22:23 IST | 🧠 Can You Solve This in 8s? Daily Brain Teaser (12 Nov) #Shorts | Education (27) | Short (9:16) | Linked to Playlist (`Daily Brain Teasers - 2026`) | Interactive Comment Posted | KsDKzAYsKfg |
+| 2026-11-13 15:18 IST | 🔥 Iran-Israel Tensions Escalate & Top News (Nov 13, 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | MPanSOXlvLY |
+| 2026-11-14 14:40 IST | 🔥 Global Tech Meltdown & Top News (14 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | WHnwenUFIZo |
+| 2026-11-15 07:26 IST | Weekly Current Affairs Masterclass (09 Nov - 15 Nov 2026) | Full Revision | Education (27) | Weekly Masterclass | Linked to Playlist | Interactive Comment Posted | raBU9gdbzKc |
+| 2026-11-15 15:17 IST | 🔥 NCP Merger Shakeup & Top News (15 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | OcErCj5Wn2U |
+| 2026-11-15 15:36 IST | Weekly Current Affairs Masterclass (09 Nov - 15 Nov 2026) | Full Revision | Education (27) | Weekly Masterclass | Linked to Playlist | Interactive Comment Posted | 3CPyJIZJu3Q |
+| 2026-11-16 15:38 IST | 🔥 Prime Minister Narendra Modi is scheduled & Top News (16 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | TmyltljkyVQ |
+| 2026-11-17 16:24 IST | 🔥 AI Ethics Framework & Top News (17 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | b_x-l1f12Gc |
+| 2026-11-18 15:55 IST | 🔥 SBI Clerk Prelims Result 2026 declared & Top News (18 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | LR9YJRnds84 |
+| 2026-11-18 16:01 IST | 🔥 SBI Clerk Prelims Result 2026 declared & Top News (18 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | 5-fYH90NJ-k |
+| 2026-11-19 16:03 IST | 🔥 Trump, Xi, Putin Talks & Top News (Nov 19, 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | BIF7qmKKtiw |
+| 2026-11-19 16:13 IST | 🔥 Trump, Xi, Putin Talks & Top News (Nov 19, 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | JfR639qKuQs |
+| 2026-11-20 16:05 IST | 🔥 ISRO's Quantum Leap & Top News (20 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | A7zPykBFNvg |
