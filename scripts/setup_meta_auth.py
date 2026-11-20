@@ -128,12 +128,14 @@ def run_interactive_wizard():
 
     print("\n🔍 Discovering linked Instagram Business Account...")
     acc_info = discover_instagram_account_id(long_lived_token)
+    page_id = None
     if acc_info:
         ig_id = acc_info["instagram_account_id"]
         ig_user = acc_info.get("instagram_username", "Unknown")
         page_name = acc_info.get("page_name", "Unknown")
+        page_id = acc_info.get("page_id")
         print(f"🎉 Found Instagram Business Account: @{ig_user} (ID: {ig_id})")
-        print(f"   Linked via Facebook Page: '{page_name}'")
+        print(f"   Linked via Facebook Page: '{page_name}' (Page ID: {page_id})")
     else:
         print("⚠️ Could not auto-detect Instagram Account ID from Facebook Page.")
         ig_id = input("Please manually enter your numeric Instagram Business Account ID: ").strip()
@@ -148,6 +150,8 @@ def run_interactive_wizard():
         "META_ACCESS_TOKEN": long_lived_token,
         "INSTAGRAM_ACCOUNT_ID": ig_id,
     }
+    if page_id:
+        updates["FACEBOOK_PAGE_ID"] = page_id
 
     confirm = input("\nSave these credentials to .env? (y/n) [y]: ").strip().lower()
     if confirm in ("", "y", "yes"):

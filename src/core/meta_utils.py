@@ -47,6 +47,7 @@ def get_meta_credentials() -> Dict[str, Optional[str]]:
         "account_id": _read_env("INSTAGRAM_ACCOUNT_ID"),
         "app_id": _read_env("META_APP_ID"),
         "app_secret": _read_env("META_APP_SECRET"),
+        "page_id": _read_env("FACEBOOK_PAGE_ID"),
     }
 
 
@@ -364,3 +365,98 @@ def publish_instagram_photo(
         ig_user_id=user_id,
         timeout=timeout
     )
+
+
+def publish_facebook_video(
+    video_url: str,
+    title: str,
+    description: str,
+    page_id: Optional[str] = None,
+    access_token: Optional[str] = None,
+    timeout: int = 60
+) -> Optional[str]:
+    """
+    Publishes a video directly to a connected Facebook Page.
+    Endpoint: POST /{page-id}/videos
+    Requires: pages_manage_posts and pages_read_engagement permissions.
+    """
+    creds = get_meta_credentials()
+    token = access_token or creds["access_token"]
+    pid = page_id or creds.get("page_id")
+
+    if not token or not pid:
+        logger.info("[Meta Graph API] Missing META_ACCESS_TOKEN or FACEBOOK_PAGE_ID. Skipping Facebook Page video upload.")
+        return None
+
+    if not video_url or not video_url.startswith("http"):
+        logger.warning(f"[Meta Graph API] Invalid public video_url for Facebook: '{video_url}'.")
+        return None
+
+    url = f"{GRAPH_API_BASE}/{pid}/videos"
+    payload = {
+        "file_url": video_url,
+        "title": title[:255],
+        "description": description[:5000],
+        "access_token": token,
+    }
+
+    try:
+        res = requests.post(url, data=payload, timeout=timeout)
+        data = res.json()
+        if res.status_code == 200 and "id" in data:
+            fb_video_id = data["id"]
+            logger.info(f"[Meta Graph API] Successfully published Facebook Page video ID: {fb_video_id}")
+            return fb_video_id
+        else:
+            err = data.get("error", {})
+            logger.error(f"[Meta Graph API] Facebook Page video failed: {err.get('message', 'Unknown')}")
+            return None
+    except Exception as e:
+        logger.error(f"[Meta Graph API] Exception publishing Facebook Page video: {e}")
+        return None
+
+
+def publish_facebook_photo(
+    image_url: str,
+    caption: str,
+    page_id: Optional[str] = None,
+    access_token: Optional[str] = None,
+    timeout: int = 30
+) -> Optional[str]:
+    """
+    Publishes a photo post directly to a connected Facebook Page.
+    Endpoint: POST /{page-id}/photos
+    """
+    creds = get_meta_credentials()
+    token = access_token or creds["access_token"]
+    pid = page_id or creds.get("page_id")
+
+    if not token or not pid:
+        logger.info("[Meta Graph API] Missing credentials. Skipping Facebook photo upload.")
+        return None
+
+    if not image_url or not image_url.startswith("http"):
+        logger.warning(f"[Meta Graph API] Invalid public image_url for Facebook: '{image_url}'.")
+        return None
+
+    url = f"{GRAPH_API_BASE}/{pid}/photos"
+    payload = {
+        "url": image_url,
+        "message": caption[:5000],
+        "access_token": token,
+    }
+
+    try:
+        res = requests.post(url, data=payload, timeout=timeout)
+        data = res.json()
+        if res.status_code == 200 and "id" in data:
+            fb_photo_id = data["id"]
+            logger.info(f"[Meta Graph API] Successfully published Facebook photo post ID: {fb_photo_id}")
+            return fb_photo_id
+        else:
+            err = data.get("error", {})
+            logger.error(f"[Meta Graph API] Facebook photo failed: {err.get('message')}")
+            return None
+    except Exception as e:
+        logger.error(f"[Meta Graph API] Exception publishing Facebook photo: {e}")
+        return None

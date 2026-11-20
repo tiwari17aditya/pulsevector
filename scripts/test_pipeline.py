@@ -42,7 +42,8 @@ from core.broadcast_utils import (
 from core.meta_utils import (
     get_meta_credentials, exchange_for_long_lived_token, discover_instagram_account_id,
     create_reels_container, poll_container_status, publish_media_container,
-    publish_instagram_reel, publish_instagram_photo
+    publish_instagram_reel, publish_instagram_photo,
+    publish_facebook_video, publish_facebook_photo
 )
 from core.pipeline_engine import PipelineEngine, ContentPayload
 from core.gdrive_endcredits import resolve_gdrive_endcredits_dir, get_runtime_drive_endcredits, LOCAL_SAMPLES_DIR
@@ -1235,6 +1236,37 @@ class TestMetaDeveloperIntegration(unittest.TestCase):
             self.assertIn("telegram", result)
             self.assertIn("discord", result)
             self.assertIn("instagram", result)
+
+    @patch("core.meta_utils.requests.post")
+    def test_publish_facebook_video(self, mock_post):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"id": "fb_vid_123456"}
+        mock_post.return_value = mock_resp
+
+        vid = publish_facebook_video(
+            video_url="https://supabase.co/storage/v1/object/public/videos/daily.mp4",
+            title="Daily Video",
+            description="Daily summary",
+            page_id="100200300",
+            access_token="tok_123"
+        )
+        self.assertEqual(vid, "fb_vid_123456")
+
+    @patch("core.meta_utils.requests.post")
+    def test_publish_facebook_photo(self, mock_post):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"id": "fb_photo_654321"}
+        mock_post.return_value = mock_resp
+
+        pid = publish_facebook_photo(
+            image_url="https://supabase.co/storage/v1/object/public/images/slide.png",
+            caption="Slide Photo",
+            page_id="100200300",
+            access_token="tok_123"
+        )
+        self.assertEqual(pid, "fb_photo_654321")
 
 
 def main():
