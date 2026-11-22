@@ -23,25 +23,139 @@ def clean_markdown_decorations(text: str) -> str:
     text = re.sub(r"`", "", text)
     return text.strip()
 
+# -------------------------------------------------------------
+# QUALITY GATE & VALIDATION RULES
+# -------------------------------------------------------------
+class ContentValidationError(ValueError):
+    """Raised when generated content fails strict quality, point count, or safety gates."""
+    pass
+
+MIN_REQUIRED_POINTS = {
+    "daily": 15,
+    "weekly": 15,
+    "monthly": 50,
+}
+
+FORBIDDEN_CONTENT_PHRASES = [
+    "please note",
+    "due to the limited",
+    "cannot generate",
+    "customary 15 points",
+    "customary 50 points",
+    "as an ai",
+    "i apologize",
+    "apologies for",
+    "limited verified news",
+    "only 3 current affairs",
+    "only 3 points",
+    "unable to generate",
+    "insufficient information",
+    "no verified news",
+    "limited news context",
+]
+
+def validate_content_payload(payload: ContentPayload, strict_point_count: bool = True) -> List[str]:
+    """
+    Validates a ContentPayload against strict quality, safety, and point-count gates.
+    Returns a list of validation failure strings (empty if valid).
+    """
+    errors = []
+    c_type = (payload.content_type or "").lower()
+    min_points = MIN_REQUIRED_POINTS.get(c_type, 15)
+    
+    # 1. Point count gate
+    actual_points = len(payload.points) if payload.points else 0
+    if strict_point_count and actual_points < min_points:
+        errors.append(
+            f"Insufficient points for {c_type.upper()}: got {actual_points}, strictly require at least {min_points}"
+        )
+        
+    # 2. Forbidden conversational phrases in news points
+    if payload.points:
+        for item in payload.points:
+            if isinstance(item, (list, tuple)):
+                idx = item[0] if len(item) > 0 else 0
+                pt_text = str(item[1]) if len(item) > 1 else ""
+            else:
+                idx = 0
+                pt_text = str(item)
+            pt_lower = pt_text.lower()
+            for phrase in FORBIDDEN_CONTENT_PHRASES:
+                if phrase in pt_lower:
+                    errors.append(f"Point {idx} contains forbidden conversational phrase: '{phrase}'")
+                    
+    # 3. Forbidden conversational phrases in title & description
+    title_lower = (payload.title or "").lower()
+    for phrase in FORBIDDEN_CONTENT_PHRASES:
+        if phrase in title_lower:
+            errors.append(f"Title contains forbidden conversational phrase: '{phrase}'")
+            
+    desc_lower = (payload.description or "").lower()
+    for phrase in FORBIDDEN_CONTENT_PHRASES:
+        if phrase in desc_lower:
+            errors.append(f"Description contains forbidden conversational phrase: '{phrase}'")
+            
+    # 4. Mandatory non-empty fields
+    if not (payload.title and payload.title.strip()):
+        errors.append("Title is empty")
+    if not (payload.description and payload.description.strip()):
+        errors.append("Description is empty")
+        
+    return errors
+
+def assert_content_valid_for_upload(payload: ContentPayload, strict_point_count: bool = True):
+    """
+    Asserts that content passes all quality gates.
+    Raises ContentValidationError if any check fails, strictly blocking slide gen, video compile, and YouTube upload.
+    """
+    errors = validate_content_payload(payload, strict_point_count=strict_point_count)
+    if errors:
+        summary = "; ".join(errors)
+        raise ContentValidationError(f"Content quality gate failed: {summary}")
+
 def strip_metadata_section(content: str) -> str:
-    """Returns the text content with YouTube metadata stripped out for clean point parsing."""
+    """
+    Returns the text content with YouTube metadata, horizontal rules,
+    disclaimers, apology notes, and conversational preambles stripped out
+    for clean news point parsing.
+    """
     markers = [
-        r"(?i)^#*\s*YouTube\s+Metadata",
-        r"(?i)^#*\s*Title\s*:",
-        r"(?i)^#*\s*(?:Reel\s+)?Description\s*:",
-        r"(?i)^#*\s*Hashtags\s*:",
-        r"(?i)^#*\s*Source\s+URLs\s*:"
+        # Metadata headers with optional markdown styling (#, **, _, `, etc.)
+        r"(?i)^[\s#*_`-]*YouTube\s+Metadata\b",
+        r"(?i)^[\s#*_`-]*Metadata\s*:",
+        r"(?i)^[\s#*_`-]*Title\s*:",
+        r"(?i)^[\s#*_`-]*Reel\s+Description\s*:",
+        r"(?i)^[\s#*_`-]*Description\s*:",
+        r"(?i)^[\s#*_`-]*Hashtags\s*:",
+        r"(?i)^[\s#*_`-]*Source\s+URLs\s*:",
+        # Separator rules
+        r"(?m)^\s*[-*_]{3,}\s*$",
+        # Disclaimers, notes, and LLM apology preambles
+        r"(?i)^\s*[*_#`\s]*(?:Please\s+)?Note\s*:",
+        r"(?i)^\s*[*_#`\s]*Disclaimer\s*:",
+        r"(?i)^\s*[*_#`\s]*Due to (?:the )?limited\b",
+        r"(?i)^\s*[*_#`\s]*As an AI\b",
+        r"(?i)^\s*[*_#`\s]*Apolog(?:y|ize|ies)\b",
     ]
+    
+    first_cut = len(content)
+    found_marker = False
+    
     for pattern in markers:
         match = re.search(pattern, content, re.MULTILINE)
-        if match:
-            return content[:match.start()].strip()
+        if match and match.start() < first_cut:
+            first_cut = match.start()
+            found_marker = True
+            
+    if found_marker:
+        return content[:first_cut].strip()
     return content.strip()
 
 def extract_news_points(content: str) -> List[Tuple[int, str, Optional[str]]]:
     """
     Extracts numbered news points.
     Returns list of tuples: (point_number, clean_text, source_name)
+    Guarantees zero metadata bleed, disclaimer bleed, or trailing artifacts.
     """
     clean_body = strip_metadata_section(content)
     # Match numbered items e.g., 1. text or 1) text
@@ -60,7 +174,11 @@ def extract_news_points(content: str) -> List[Tuple[int, str, Optional[str]]]:
         source_name = None
         if source_match:
             source_name = source_match.group(1).strip()
-            # Keep flat_text with or without source tag based on usage
+            # Truncate at source_match.end() to guarantee zero conversational/metadata bleed
+            flat_text = flat_text[:source_match.end()].strip()
+        else:
+            # Secondary defense: strip any trailing horizontal rules, disclaimers or notes
+            flat_text = re.split(r"(?i)\s*(?:---|___|\*\*\*|Please Note|Disclaimer|Due to the limited)\b", flat_text)[0].strip()
         
         points.append((num, flat_text, source_name))
         

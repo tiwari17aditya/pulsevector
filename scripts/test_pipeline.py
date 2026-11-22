@@ -27,7 +27,8 @@ from core.content_parser import (
     extract_metadata_fields, extract_date_str, parse_news_content, parse_teaser_content,
     format_community_poll_text, classify_news_category, format_teaser_challenge_comment,
     format_solution_reveal_comment, format_brainteaser_description, get_social_links_block,
-    optimize_youtube_title
+    optimize_youtube_title, ContentValidationError, validate_content_payload,
+    assert_content_valid_for_upload
 )
 from core.youtube_utils import sanitize_youtube_tags
 from core.tts_utils import sanitize_text_for_speech, verify_speech_points_alignment, get_ffmpeg_executable
@@ -1330,6 +1331,106 @@ class TestMetaDeveloperIntegration(unittest.TestCase):
             access_token="tok_123"
         )
         self.assertEqual(pid, "fb_photo_654321")
+
+
+class TestQualityGateAndParserBleedPrevention(unittest.TestCase):
+    """
+    Critical tests for pre-upload quality gates and prevention of LLM apology/metadata bleed.
+    Ensures defective or conversational content can NEVER be compiled or uploaded to YouTube.
+    """
+    
+    def test_strip_metadata_with_apology_and_hr(self):
+        """Verifies that LLM apology notes, disclaimers, and horizontal rules are cleanly stripped."""
+        raw_text = (
+            "Daily Current Affairs 22 November 2026\n\n"
+            "1. Headline one [Source: Pub A]\n"
+            "2. Headline two [Source: Pub B]\n"
+            "3. Headline three [Source: Pub C]\n\n"
+            "*Please Note: Due to the limited verified news context provided specifically for 22 November 2026, "
+            "only 3 current affairs points could be generated. We cannot generate the customary 15 points for today.*\n\n"
+            "---\n"
+            "Title: Test Title\n"
+            "Reel Description: Test Desc\n"
+            "Hashtags: #Test\n"
+        )
+        points = extract_news_points(raw_text)
+        self.assertEqual(len(points), 3)
+        self.assertEqual(points[2][1], "Headline three [Source: Pub C]")
+        self.assertNotIn("Please Note", points[2][1])
+        self.assertNotIn("customary 15 points", points[2][1])
+        self.assertNotIn("---", points[2][1])
+
+    def test_weekly_metadata_bleed_prevention(self):
+        """Verifies that **YouTube Metadata:** and --- do not bleed into the last weekly point."""
+        raw_text = (
+            "Weekly Current Affairs\n\n"
+            "14. Point 14 [Source: Pub 14]\n"
+            "15. Point 15 [Source: Pub 15]\n\n"
+            "---\n\n"
+            "**YouTube Metadata:**\n\n"
+            "Title: Weekly Masterclass\n"
+        )
+        points = extract_news_points(raw_text)
+        self.assertEqual(len(points), 2)
+        self.assertEqual(points[1][1], "Point 15 [Source: Pub 15]")
+        self.assertNotIn("YouTube Metadata", points[1][1])
+        self.assertNotIn("---", points[1][1])
+
+    def test_source_truncation_discards_trailing_junk(self):
+        """Verifies that text after [Source: ...] is cleanly truncated."""
+        raw = "1. Major economic announcement made by ministry. [Source: Reuters] Trailing conversational explanation."
+        points = extract_news_points(raw)
+        self.assertEqual(len(points), 1)
+        self.assertEqual(points[0][1], "Major economic announcement made by ministry. [Source: Reuters]")
+
+    def test_quality_gate_point_count_validation(self):
+        """Verifies that Daily content with fewer than 15 points fails the quality gate."""
+        payload_3pts = ContentPayload(
+            content_type="daily",
+            target_date=datetime.datetime(2026, 11, 22),
+            raw_text="...",
+            points=[(i, f"Point {i}") for i in range(1, 4)],
+            title="🔥 India Dominates #Shorts",
+            description="Valid Description",
+            hashtags=["News"]
+        )
+        errors = validate_content_payload(payload_3pts, strict_point_count=True)
+        self.assertTrue(any("Insufficient points" in e for e in errors))
+
+    def test_quality_gate_forbidden_phrases(self):
+        """Verifies that points containing conversational apology phrases are rejected."""
+        payload_forbidden = ContentPayload(
+            content_type="daily",
+            target_date=datetime.datetime(2026, 11, 22),
+            raw_text="...",
+            points=[(1, "Please note that due to the limited news context we only have this point.")] + [(i, f"Point {i}") for i in range(2, 16)],
+            title="🔥 Top News #Shorts",
+            description="Valid Description",
+            hashtags=["News"]
+        )
+        errors = validate_content_payload(payload_forbidden, strict_point_count=True)
+        self.assertTrue(any("forbidden conversational phrase" in e for e in errors))
+
+    def test_quality_gate_blocks_youtube_upload(self):
+        """Verifies that stage_youtube_publish strictly raises ContentValidationError and never uploads if invalid."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_root = pathlib.Path(tmp_dir)
+            engine = PipelineEngine(archive_dir=tmp_root)
+            test_date = datetime.datetime(2026, 11, 22)
+            paths = engine.get_paths("daily", test_date)
+            paths["text_file"].parent.mkdir(parents=True, exist_ok=True)
+            paths["video_file"].parent.mkdir(parents=True, exist_ok=True)
+            # Create a 3-point defective text file and a dummy video file
+            paths["text_file"].write_text(
+                "Daily Current Affairs 22 November 2026\n\n1. Pt 1 [Source: A]\n2. Pt 2 [Source: B]\n3. Pt 3 [Source: C]\n\nTitle: Title\nReel Description: Desc\nHashtags: #Tag",
+                encoding="utf-8"
+            )
+            paths["video_file"].write_bytes(b"dummy_video_bytes")
+            
+            with patch("core.pipeline_engine.get_authenticated_service") as mock_yt:
+                with self.assertRaises(ContentValidationError):
+                    engine.stage_youtube_publish("daily", test_date)
+                mock_yt.assert_not_called()
 
 
 def main():

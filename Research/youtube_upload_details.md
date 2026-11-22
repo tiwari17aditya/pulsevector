@@ -186,6 +186,7 @@ This log tracks all uploaded videos, their metadata, category, related video set
 | 2026-11-21 15:30 IST | 🔥 Cyclonic Storm Akvan & Top News (21 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | 9q2wm2McvLs |
 | 2026-11-21 15:34 IST | 🔥 Cyclonic Storm Akvan & Top News (21 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | 4kK-CGkgTV4 |
 | 2026-11-22 07:46 IST | Weekly Current Affairs Masterclass (16 Nov - 22 Nov 2026) | Full Revision | Education (27) | Weekly Masterclass | Linked to Playlist | Interactive Comment Posted | tuYgKU2wFuA |
-| 2026-11-22 15:29 IST | 🔥 India Dominates Test & Top News (22 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | -OZHguB2JlU |
-| 2026-11-22 15:36 IST | 🔥 India Dominates Test & Top News (22 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | MU2TSmm_Hy0 |
+| 2026-11-22 15:29 IST | 🔥 India Dominates Test & Top News (22 Nov 2026) #Shorts [DELETED - Defective 3-point LLM bleed] | Education (27) | Short (9:16) | DELETED from YouTube via Data API | Purged | -OZHguB2JlU |
+| 2026-11-22 15:36 IST | 🔥 India Dominates Test & Top News (22 Nov 2026) #Shorts [DELETED - Defective 3-point LLM bleed] | Education (27) | Short (9:16) | DELETED from YouTube via Data API | Purged | MU2TSmm_Hy0 |
 | 2026-11-22 15:43 IST | Weekly Current Affairs Masterclass (16 Nov - 22 Nov 2026) | Full Revision | Education (27) | Weekly Masterclass | Linked to Playlist | Interactive Comment Posted | XUSrf4lEAF0 |
+| 2026-11-23 00:43 IST | 🔥 India Dominates Wellington Test & Top News (22 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | -_GGbkjjBjk |

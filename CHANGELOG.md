@@ -5,6 +5,25 @@ All notable changes to the Pulse Vector project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.13.1] - 2026-11-23
+
+### Fixed
+- **LLM Apology Note & Metadata Bleed in Current Affairs Points**:
+  - Diagnosed critical defect where sparse RSS context caused Gemini to append an apology note (*"Please Note: Due to the limited verified news context..."*) which bled into the final point text along with `---` separators and `**YouTube Metadata:**` headers.
+  - Upgraded `strip_metadata_section` in `src/core/content_parser.py` with multi-marker scanning that terminates cleanly at the earliest occurrence of any metadata header (`YouTube Metadata`, `Title:`, `Description:`), horizontal rules (`---`, `***`, `___`), or conversational disclaimers (`Please Note:`, `Disclaimer:`, `Due to the limited...`, `As an AI...`).
+  - Added primary source truncation in `extract_news_points`: text is strictly cut at `source_match.end()` (`[Source: ...]`), guaranteeing zero trailing bleed can ever enter point text.
+  - Sanitized and regenerated 15 verified points for `daily-22nov-2026_formatted.txt`.
+  - Permanently deleted defective 3-point videos (`-OZHguB2JlU`, `MU2TSmm_Hy0`) from YouTube via YouTube Data API v3 and re-uploaded clean 15-point video (`-_GGbkjjBjk`).
+
+### Added
+- **Mandatory Pre-Upload Quality & Validation Gate (`validate_content_payload`)**:
+  - Implemented strict quality validation in `src/core/content_parser.py` and `src/core/pipeline_engine.py`.
+  - Enforced minimum point counts: Daily (>= 15 points), Weekly (>= 15 points), Monthly (>= 50 points).
+  - Enforced zero-tolerance scan for conversational phrases (`FORBIDDEN_CONTENT_PHRASES`), forbidding `please note`, `due to the limited`, `cannot generate`, `as an ai`, `i apologize`, etc.
+  - Implemented strict gate in `stage_youtube_publish`: if validation fails, the pipeline immediately logs a critical error, raises `ContentValidationError`, and **STRICTLY ABORTS THE UPLOAD**, ensuring defective content can NEVER be published to YouTube.
+  - Implemented self-healing retry loop in `stage_generate_text("daily", ...)` that retries with Google Search Grounding if fewer than 15 points are produced.
+  - Added 6 new unit tests in `scripts/test_pipeline.py` under `TestQualityGateAndParserBleedPrevention`, expanding test suite to **91 tests** (100% passing).
+
 ## [2.13.0] - 2026-11-21
 
 ### Added

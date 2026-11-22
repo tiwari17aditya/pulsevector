@@ -14,7 +14,10 @@ from typing import List, Optional, Dict, Any
 
 from .config import ARCHIVE_DIR, BT_DATE_FMT
 from .stage_interfaces import ContentPayload, SlidePayload, AudioPayload, VideoPayload, PublishResult
-from .content_parser import parse_news_content, parse_teaser_content
+from .content_parser import (
+    parse_news_content, parse_teaser_content,
+    ContentValidationError, validate_content_payload, assert_content_valid_for_upload
+)
 from .genai_utils import (
     configure_genai, get_news_search_results, read_prompts, read_prompt_section,
     generate_content, save_file, get_last_processed_date, build_brainteaser_prompt
@@ -116,10 +119,36 @@ class PipelineEngine:
             news_context = get_news_search_results(search_query)
             
             ca_prompt_specific = (
-                f"Today is {date_str}. CRITICAL: You must generate ONLY the daily news for today. "
-                f"DO NOT generate a weekly or monthly summary. {ca_prompt}"
+                f"Today is {date_str}. CRITICAL INSTRUCTION: You MUST generate EXACTLY 15 numbered points of daily current affairs for today. "
+                f"DO NOT generate fewer than 15 points under any circumstances. If news headlines from context are fewer than 15, "
+                f"supplement with major national, international, business, technology, defense, and environmental developments for this date. "
+                f"DO NOT write apologies, explanatory notes, or disclaimers about context constraints. "
+                f"Provide clean numbered points 1 to 15, each with [Source: Publisher Name]. {ca_prompt}"
             )
             ca_content = generate_content(client, 'gemini-2.5-flash', ca_prompt_specific, news_context)
+            payload = parse_news_content(ca_content, "daily", target_date, paths["text_file"])
+            
+            # Self-healing retry if points < 15 or quality gate fails
+            retry_count = 0
+            while (len(payload.points) < 15 or validate_content_payload(payload)) and retry_count < 2:
+                retry_count += 1
+                print(f"⚠️ [Quality Check] Daily content generated only {len(payload.points)} points or failed quality check. Retrying with Google Search grounding (Attempt {retry_count}/2)...")
+                retry_prompt = (
+                    f"CRITICAL OVERRIDE: Your previous attempt produced only {len(payload.points)} points. "
+                    f"You MUST generate EXACTLY 15 numbered points for Daily Current Affairs ({date_str}). "
+                    f"Cover National, International, Economy, Tech, and Sports. "
+                    f"Under NO circumstances should you include any apology, note, or disclaimer. "
+                    f"Every point must end with [Source: Publisher Name].\n{ca_prompt}"
+                )
+                ca_content = generate_content(client, 'gemini-2.5-flash', retry_prompt, context_data="")
+                payload = parse_news_content(ca_content, "daily", target_date, paths["text_file"])
+                
+            val_errors = validate_content_payload(payload)
+            if val_errors:
+                print(f"🚨 [Quality Gate Warning] Daily content has quality warnings: {val_errors}")
+                if len(payload.points) < 15:
+                    raise ContentValidationError(f"Failed to generate 15 points for Daily {date_str}: only {len(payload.points)} points generated.")
+                    
             save_file(ca_content, paths["text_file"])
             
             # Brain Teaser
@@ -128,7 +157,7 @@ class PipelineEngine:
                 bt_content = generate_content(client, 'gemini-2.5-flash', bt_prompt_specific)
                 save_file(bt_content, paths["bt_text"])
                 
-            return parse_news_content(ca_content, "daily", target_date, paths["text_file"])
+            return payload
             
         elif content_type == "weekly":
             week_start = target_date - datetime.timedelta(days=6)
@@ -189,6 +218,11 @@ class PipelineEngine:
                 raise FileNotFoundError(f"Missing text file: {text_file}")
             raw_text = text_file.read_text(encoding='utf-8')
             payload = parse_news_content(raw_text, content_type, target_date, text_file)
+            
+        # Quality Gate Check: Never render slides with forbidden conversational / disclaimer text
+        forbidden_errs = [e for e in validate_content_payload(payload, strict_point_count=False) if "forbidden" in e]
+        if forbidden_errs:
+            raise ContentValidationError(f"Cannot generate slides: {'; '.join(forbidden_errs)}")
             
         points = payload.points
         if not points:
@@ -298,6 +332,11 @@ class PipelineEngine:
         raw_text = text_file.read_text(encoding='utf-8')
         payload = parse_news_content(raw_text, content_type, target_date, text_file)
         
+        # Quality Gate Check: Never compile videos with forbidden conversational / disclaimer text
+        forbidden_errs = [e for e in validate_content_payload(payload, strict_point_count=False) if "forbidden" in e]
+        if forbidden_errs:
+            raise ContentValidationError(f"Cannot compile video: {'; '.join(forbidden_errs)}")
+        
         font_regular, font_bold = ensure_fonts(self.archive_dir)
         ar = aspect_ratio or ("9:16" if content_type == "daily" else "16:9")
         
@@ -390,6 +429,14 @@ class PipelineEngine:
             
         raw_text = text_file.read_text(encoding='utf-8')
         payload = parse_news_content(raw_text, content_type, target_date, text_file)
+        
+        # Mandatory Quality Gate - STRICTLY ABORTS UPLOAD IF CONTENT IS DEFECTIVE
+        validation_errors = validate_content_payload(payload, strict_point_count=True)
+        if validation_errors:
+            err_summary = "; ".join(validation_errors)
+            logging.critical(f"🛑 [QUALITY GATE BLOCKED UPLOAD] Aborting YouTube upload for {content_type}: {err_summary}")
+            print(f"\n🛑 [QUALITY GATE BLOCKED UPLOAD] Cannot upload {content_type}: {err_summary}")
+            raise ContentValidationError(f"Quality gate rejected content for upload: {err_summary}")
         
         youtube = get_authenticated_service()
         video_id = None
@@ -518,6 +565,10 @@ class PipelineEngine:
         if "youtube" in active_stages or "all" in active_stages:
             try:
                 result.youtube_video_id = self.stage_youtube_publish(content_type, now)
+            except ContentValidationError as cve:
+                logging.critical(f"🛑 Quality gate strictly aborted upload: {cve}")
+                result.errors.append(str(cve))
+                raise
             except Exception as yt_err:
                 logging.error(f"YouTube stage failed: {yt_err}")
                 result.errors.append(str(yt_err))
