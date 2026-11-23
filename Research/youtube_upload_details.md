@@ -190,3 +190,4 @@ This log tracks all uploaded videos, their metadata, category, related video set
 | 2026-11-22 15:36 IST | 🔥 India Dominates Test & Top News (22 Nov 2026) #Shorts [DELETED - Defective 3-point LLM bleed] | Education (27) | Short (9:16) | DELETED from YouTube via Data API | Purged | MU2TSmm_Hy0 |
 | 2026-11-22 15:43 IST | Weekly Current Affairs Masterclass (16 Nov - 22 Nov 2026) | Full Revision | Education (27) | Weekly Masterclass | Linked to Playlist | Interactive Comment Posted | XUSrf4lEAF0 |
 | 2026-11-23 00:43 IST | 🔥 India Dominates Wellington Test & Top News (22 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | -_GGbkjjBjk |
+| 2026-11-23 16:28 IST | 🔥 ISRO's New Rocket & Top News (23 Nov 2026) #Shorts | Education (27) | Short (9:16) | Linked to Playlist | Interactive Comment Posted | LxD1EZ1OsOs |
