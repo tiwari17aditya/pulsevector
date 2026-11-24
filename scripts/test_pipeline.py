@@ -39,7 +39,9 @@ from core.video_utils import (
 )
 from core.broadcast_utils import (
     broadcast_daily_content, broadcast_telegram, broadcast_discord, broadcast_instagram,
-    broadcast_telegram_quiz, truncate_html_caption
+    broadcast_telegram_quiz, truncate_html_caption, is_already_broadcast,
+    record_broadcast_event, load_broadcast_ledger, save_broadcast_ledger,
+    normalize_broadcast_key, get_broadcast_ledger_path
 )
 from core.meta_utils import (
     get_meta_credentials, exchange_for_long_lived_token, discover_instagram_account_id,
@@ -1431,6 +1433,190 @@ class TestQualityGateAndParserBleedPrevention(unittest.TestCase):
                 with self.assertRaises(ContentValidationError):
                     engine.stage_youtube_publish("daily", test_date)
                 mock_yt.assert_not_called()
+
+
+class TestBroadcastDeduplicationLedger(unittest.TestCase):
+    """
+    Validates the persistent Broadcast Deduplication Ledger.
+    Strictly guarantees that daily current affairs are posted only once per day
+    to Telegram and Discord, eliminating redundant cross-platform dispatches.
+    """
+
+    def test_normalize_broadcast_key(self):
+        """Verifies canonical key normalization for ledger queries."""
+        self.assertEqual(normalize_broadcast_key("daily"), "daily")
+        self.assertEqual(normalize_broadcast_key("Daily Current Affairs"), "daily")
+        self.assertEqual(normalize_broadcast_key("daily_news"), "daily")
+        self.assertEqual(normalize_broadcast_key("weekly"), "weekly")
+        self.assertEqual(normalize_broadcast_key("monthly"), "monthly")
+        self.assertEqual(normalize_broadcast_key("brainteaser", slot=1), "brainteaser")
+        self.assertEqual(normalize_broadcast_key("brainteaser", slot=2), "brainteaser_slot2")
+
+    def test_ledger_save_load_lifecycle(self):
+        """Verifies saving and loading ledger state to disk."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ledger_file = pathlib.Path(tmp_dir) / "broadcast_ledger.json"
+            self.assertFalse(ledger_file.exists())
+            
+            # Initial load should be empty
+            data = load_broadcast_ledger(ledger_file)
+            self.assertEqual(data, {})
+            
+            # Record an event
+            record_broadcast_event("daily", datetime.date(2026, 11, 25), "telegram", title="Test 1", ledger_path=ledger_file)
+            self.assertTrue(ledger_file.exists())
+            
+            # Reload
+            reloaded = load_broadcast_ledger(ledger_file)
+            self.assertIn("2026-11-25", reloaded)
+            self.assertEqual(reloaded["2026-11-25"]["daily"]["telegram"]["status"], "SENT")
+            self.assertEqual(reloaded["2026-11-25"]["daily"]["telegram"]["title"], "Test 1")
+
+    def test_is_already_broadcast_check(self):
+        """Verifies is_already_broadcast accurately reflects ledger status."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ledger_file = pathlib.Path(tmp_dir) / "broadcast_ledger.json"
+            target_date = datetime.date(2026, 11, 25)
+            
+            # Initially not broadcast
+            self.assertFalse(is_already_broadcast("daily", target_date, "telegram", ledger_path=ledger_file))
+            self.assertFalse(is_already_broadcast("daily", target_date, "discord", ledger_path=ledger_file))
+            
+            # Record telegram
+            record_broadcast_event("daily", target_date, "telegram", ledger_path=ledger_file)
+            self.assertTrue(is_already_broadcast("daily", target_date, "telegram", ledger_path=ledger_file))
+            self.assertFalse(is_already_broadcast("daily", target_date, "discord", ledger_path=ledger_file))
+            
+            # Record discord
+            record_broadcast_event("daily", target_date, "discord", ledger_path=ledger_file)
+            self.assertTrue(is_already_broadcast("daily", target_date, "discord", ledger_path=ledger_file))
+            
+            # Different date should still be False
+            tomorrow = target_date + datetime.timedelta(days=1)
+            self.assertFalse(is_already_broadcast("daily", tomorrow, "telegram", ledger_path=ledger_file))
+
+    def test_broadcast_daily_content_strictly_once_a_day(self):
+        """Verifies broadcast_daily_content skips redundant sends on the same date."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ledger_file = pathlib.Path(tmp_dir) / "broadcast_ledger.json"
+            target_date = datetime.date(2026, 11, 25)
+            
+            with patch("core.broadcast_utils.requests.post") as mock_post, \
+                 patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "bot_token", "TELEGRAM_CHAT_ID": "chat_123", "DISCORD_WEBHOOK_URL": "https://discord.com/webhook"}):
+                mock_resp = MagicMock()
+                mock_resp.status_code = 200
+                mock_post.return_value = mock_resp
+                
+                # First dispatch: Should send to both platforms
+                res1 = broadcast_daily_content(
+                    content_type="daily",
+                    date_obj=target_date,
+                    title="🔥 Daily News Highlights",
+                    summary_text="• Point 1",
+                    ledger_path=ledger_file
+                )
+                self.assertTrue(res1["telegram"])
+                self.assertTrue(res1["discord"])
+                self.assertFalse(res1.get("telegram_skipped", False))
+                self.assertFalse(res1.get("discord_skipped", False))
+                call_count_first = mock_post.call_count
+                self.assertGreaterEqual(call_count_first, 2)
+                
+                # Second dispatch for the SAME DAY: Should be deduplicated and skipped!
+                res2 = broadcast_daily_content(
+                    content_type="daily",
+                    date_obj=target_date,
+                    title="🔥 Daily News Highlights",
+                    summary_text="• Point 1",
+                    ledger_path=ledger_file
+                )
+                self.assertTrue(res2["telegram"])
+                self.assertTrue(res2["discord"])
+                self.assertTrue(res2.get("telegram_skipped"))
+                self.assertTrue(res2.get("discord_skipped"))
+                # No additional network requests made!
+                self.assertEqual(mock_post.call_count, call_count_first)
+
+    def test_broadcast_daily_content_force_override(self):
+        """Verifies that force=True bypasses the deduplication gate."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ledger_file = pathlib.Path(tmp_dir) / "broadcast_ledger.json"
+            target_date = datetime.date(2026, 11, 25)
+            
+            with patch("core.broadcast_utils.requests.post") as mock_post, \
+                 patch.dict(os.environ, {"TELEGRAM_BOT_TOKEN": "bot_token", "TELEGRAM_CHAT_ID": "chat_123", "DISCORD_WEBHOOK_URL": "https://discord.com/webhook"}):
+                mock_resp = MagicMock()
+                mock_resp.status_code = 200
+                mock_post.return_value = mock_resp
+                
+                # Run first broadcast
+                broadcast_daily_content(
+                    content_type="daily",
+                    date_obj=target_date,
+                    title="Daily News",
+                    summary_text="• Point 1",
+                    ledger_path=ledger_file
+                )
+                initial_calls = mock_post.call_count
+                
+                # Run with force=True: Must re-send
+                res_force = broadcast_daily_content(
+                    content_type="daily",
+                    date_obj=target_date,
+                    title="Daily News Updated",
+                    summary_text="• Point 1",
+                    force=True,
+                    ledger_path=ledger_file
+                )
+                self.assertFalse(res_force.get("telegram_skipped", False))
+                self.assertFalse(res_force.get("discord_skipped", False))
+                self.assertGreater(mock_post.call_count, initial_calls)
+
+    def test_youtube_upload_deduplication_guard(self):
+        """Verifies stage_youtube_publish skips duplicate upload if title is already live on YouTube."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_root = pathlib.Path(tmp_dir)
+            engine = PipelineEngine(archive_dir=tmp_root)
+            test_date = datetime.datetime(2026, 11, 25)
+            paths = engine.get_paths("daily", test_date)
+            paths["text_file"].parent.mkdir(parents=True, exist_ok=True)
+            paths["video_file"].parent.mkdir(parents=True, exist_ok=True)
+            
+            points_15 = "\n".join([f"{i}. Point {i} text summary. [Source: Source {i}]" for i in range(1, 16)])
+            title_str = "🔥 India Test Victory & Top News (25 Nov 2026) #Shorts"
+            paths["text_file"].write_text(
+                f"Daily Current Affairs 25 November 2026\n\n{points_15}\n\nTitle: {title_str}\nReel Description: Summary text\nHashtags: #News #Daily",
+                encoding="utf-8"
+            )
+            paths["video_file"].write_bytes(b"dummy_video_bytes")
+            
+            mock_yt = MagicMock()
+            # Mock channels().list().execute()
+            mock_yt.channels().list().execute.return_value = {
+                "items": [{
+                    "contentDetails": {
+                        "relatedPlaylists": {"uploads": "UPLOADS_LIST_ID"}
+                    }
+                }]
+            }
+            # Mock playlistItems().list().execute() returning matching title
+            mock_yt.playlistItems().list().execute.return_value = {
+                "items": [{
+                    "snippet": {
+                        "title": title_str,
+                        "resourceId": {"videoId": "existing_yt_id_999"}
+                    }
+                }]
+            }
+            
+            with patch("core.pipeline_engine.get_authenticated_service", return_value=mock_yt), \
+                 patch("core.pipeline_engine.upload_video_to_youtube") as mock_upload, \
+                 patch("core.pipeline_engine.broadcast_daily_content"):
+                
+                vid_id = engine.stage_youtube_publish("daily", test_date, force=False)
+                # Must return existing video ID without calling upload_video_to_youtube!
+                self.assertEqual(vid_id, "existing_yt_id_999")
+                mock_upload.assert_not_called()
 
 
 def main():

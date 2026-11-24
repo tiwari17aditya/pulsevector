@@ -11,13 +11,14 @@ from typing import Dict, Any, Optional
 
 from core.config import ARCHIVE_DIR, BT_DATE_FMT
 from core.content_parser import parse_news_content, parse_teaser_content, get_social_links_block
-from core.broadcast_utils import broadcast_daily_content, truncate_html_caption
+from core.broadcast_utils import broadcast_daily_content, truncate_html_caption, is_already_broadcast
 from core.pipeline_engine import PipelineEngine
 
 def trigger_social_broadcast(
     target_date: Optional[str] = None,
     content_type: str = "daily",
-    dry_run: bool = True
+    dry_run: bool = True,
+    force: bool = False
 ) -> Dict[str, Any]:
     """
     Triggers or previews a multi-platform broadcast (Telegram & Discord) for a given date.
@@ -116,6 +117,10 @@ def trigger_social_broadcast(
         "previews": {
             "telegram_caption_html": tg_caption,
             "discord_description_md": dc_desc
+        },
+        "already_broadcast": {
+            "telegram": is_already_broadcast(ctype, d_obj, "telegram"),
+            "discord": is_already_broadcast(ctype, d_obj, "discord")
         }
     }
 
@@ -126,7 +131,8 @@ def trigger_social_broadcast(
             title=title,
             summary_text=summary_text,
             image_path=image_path,
-            video_path=video_path
+            video_path=video_path,
+            force=force
         )
         result["dispatch_result"] = dispatch_status
     else:

@@ -162,23 +162,26 @@ class AutonomousOrchestrator:
         self.report["phases"]["diagnostics"] = render_data
         return render_data
 
-    def dispatch_broadcasts(self, target_date: Optional[datetime.datetime] = None) -> Dict[str, Any]:
+    def dispatch_broadcasts(self, target_date: Optional[datetime.datetime] = None, force: bool = False) -> Dict[str, Any]:
         """
         Phase 5: Broadcasts to Telegram and Discord channels.
+        Enforces once-a-day deduplication so redundant daily messages are not sent.
         """
         dt = target_date or datetime.datetime.now()
         dt_str = dt.strftime("%Y-%m-%d")
-        logger.info(f"Executing Phase 5: Social Broadcasts for {dt_str} (dry_run={self.dry_run})...")
+        logger.info(f"Executing Phase 5: Social Broadcasts for {dt_str} (dry_run={self.dry_run}, force={force})...")
         
         broadcast_daily = trigger_social_broadcast(
             target_date=dt_str,
             content_type="daily",
-            dry_run=self.dry_run
+            dry_run=self.dry_run,
+            force=force
         )
         broadcast_teaser = trigger_social_broadcast(
             target_date=dt_str,
             content_type="brainteaser",
-            dry_run=self.dry_run
+            dry_run=self.dry_run,
+            force=force
         )
         
         broadcast_data = {
@@ -236,7 +239,7 @@ class AutonomousOrchestrator:
             diagnostics = self.verify_render_diagnostics(target_date=target_date)
             
             # 4. Social Broadcast
-            broadcasts = self.dispatch_broadcasts(target_date=target_date)
+            broadcasts = self.dispatch_broadcasts(target_date=target_date, force=force)
             
             # 5. Postflight & Packup
             postflight = self.execute_postflight_and_packup()

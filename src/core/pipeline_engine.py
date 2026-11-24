@@ -418,7 +418,7 @@ class PipelineEngine:
     # -------------------------------------------------------------
     # STAGE 4: YouTube Upload & Playlist Distribution
     # -------------------------------------------------------------
-    def stage_youtube_publish(self, content_type: str, target_date: datetime.datetime) -> Optional[str]:
+    def stage_youtube_publish(self, content_type: str, target_date: datetime.datetime, force: bool = False) -> Optional[str]:
         print(f"\n🚀 [Stage: YouTube Upload] Uploading {content_type.title()} ({target_date.strftime('%d %B %Y')})...")
         paths = self.get_paths(content_type, target_date)
         video_path = paths["video_file"]
@@ -444,46 +444,62 @@ class PipelineEngine:
             print("⚠️ YouTube authentication failed. Skipping YouTube upload; proceeding to backup & broadcast.")
         else:
             try:
-                print(f"Uploading '{payload.title}' to YouTube...")
-                video_id = upload_video_to_youtube(
-                    youtube, str(video_path), payload.title, payload.description, payload.hashtags
-                )
-                print(f"✅ Upload Complete! Video ID: {video_id}")
-                
-                # Playlist Assignment
-                year_str = target_date.strftime("%Y")
-                if content_type == "daily":
-                    _, playlist_title = get_quarter_info(target_date)
-                    video_type = "Short (9:16)"
-                elif content_type == "weekly":
-                    playlist_title = f"Weekly Current Affairs - {year_str}"
-                    video_type = "Weekly Masterclass"
-                elif content_type == "monthly":
-                    playlist_title = f"Monthly Current Affairs - {year_str}"
-                    video_type = "Monthly Masterclass"
-                else:
-                    playlist_title = "Pulse Vector News"
-                    video_type = "Video"
-                    
-                add_video_to_playlist(youtube, video_id, playlist_title)
-                
-                # Pillar 2: High-Engagement Interactive Discussion Comment
-                try:
-                    h1 = payload.points[0][1] if payload.points else "Global Events"
-                    date_display = target_date.strftime("%d %B %Y")
-                    interactive_comment = format_daily_interactive_comment(h1, date_display) if content_type == "daily" else get_pinned_comment()
-                    add_video_comment(youtube, video_id, interactive_comment)
-                except Exception as c_err:
-                    print(f"  > Note on video comment: {c_err}")
+                # YouTube Upload Deduplication Guard: Check if video with exact title is already live
+                if not force:
+                    try:
+                        ch_res = youtube.channels().list(part='contentDetails', mine=True).execute()
+                        if ch_res.get('items'):
+                            up_id = ch_res['items'][0]['contentDetails']['relatedPlaylists']['uploads']
+                            recent_uploads = youtube.playlistItems().list(part='snippet', playlistId=up_id, maxResults=20).execute()
+                            for item in recent_uploads.get('items', []):
+                                if item['snippet']['title'] == payload.title:
+                                    video_id = item['snippet']['resourceId']['videoId']
+                                    print(f"  > Duplicate Guard: Video '{payload.title}' is ALREADY LIVE on YouTube (ID: {video_id}). Skipping duplicate upload.")
+                                    break
+                    except Exception as dup_err:
+                        print(f"  > Note on upload deduplication check: {dup_err}")
 
-                log_upload_details(
-                    title=payload.title,
-                    category_name="Education (27)",
-                    video_type=video_type,
-                    related_video_setting="Linked to Playlist",
-                    pinned_comment_status="Interactive Comment Posted",
-                    video_id=video_id
-                )
+                if not video_id:
+                    print(f"Uploading '{payload.title}' to YouTube...")
+                    video_id = upload_video_to_youtube(
+                        youtube, str(video_path), payload.title, payload.description, payload.hashtags
+                    )
+                    print(f"✅ Upload Complete! Video ID: {video_id}")
+                    
+                    # Playlist Assignment
+                    year_str = target_date.strftime("%Y")
+                    if content_type == "daily":
+                        _, playlist_title = get_quarter_info(target_date)
+                        video_type = "Short (9:16)"
+                    elif content_type == "weekly":
+                        playlist_title = f"Weekly Current Affairs - {year_str}"
+                        video_type = "Weekly Masterclass"
+                    elif content_type == "monthly":
+                        playlist_title = f"Monthly Current Affairs - {year_str}"
+                        video_type = "Monthly Masterclass"
+                    else:
+                        playlist_title = "Pulse Vector News"
+                        video_type = "Video"
+                        
+                    add_video_to_playlist(youtube, video_id, playlist_title)
+                    
+                    # Pillar 2: High-Engagement Interactive Discussion Comment
+                    try:
+                        h1 = payload.points[0][1] if payload.points else "Global Events"
+                        date_display = target_date.strftime("%d %B %Y")
+                        interactive_comment = format_daily_interactive_comment(h1, date_display) if content_type == "daily" else get_pinned_comment()
+                        add_video_comment(youtube, video_id, interactive_comment)
+                    except Exception as c_err:
+                        print(f"  > Note on video comment: {c_err}")
+
+                    log_upload_details(
+                        title=payload.title,
+                        category_name="Education (27)",
+                        video_type=video_type,
+                        related_video_setting="Linked to Playlist",
+                        pinned_comment_status="Interactive Comment Posted",
+                        video_id=video_id
+                    )
                 self.last_youtube_error = None
             except Exception as yt_err:
                 self.last_youtube_error = yt_err
@@ -503,7 +519,8 @@ class PipelineEngine:
                 summary_text=summary_points,
                 image_path=thumb_path if thumb_path.exists() else None,
                 video_path=video_path if video_path and video_path.exists() else None,
-                video_url=f"https://youtu.be/{video_id}" if video_id else None
+                video_url=f"https://youtu.be/{video_id}" if video_id else None,
+                force=force
             )
         except Exception as b_err:
             print(f"  > Broadcast notice: {b_err}")
@@ -564,7 +581,7 @@ class PipelineEngine:
             
         if "youtube" in active_stages or "all" in active_stages:
             try:
-                result.youtube_video_id = self.stage_youtube_publish(content_type, now)
+                result.youtube_video_id = self.stage_youtube_publish(content_type, now, force=force)
             except ContentValidationError as cve:
                 logging.critical(f"🛑 Quality gate strictly aborted upload: {cve}")
                 result.errors.append(str(cve))

@@ -73,10 +73,10 @@ def generate_teaser_images(target_date=None):
     engine.stage_generate_teasers(target_date)
     print("Brain Teaser Card Generation Complete!")
 
-def run_daily_youtube(target_date=None, enable_tts=True):
+def run_daily_youtube(target_date=None, enable_tts=True, force=False):
     now = target_date or datetime.datetime.now()
-    engine.stage_compile_video("daily", now, enable_tts=enable_tts)
-    engine.stage_youtube_publish("daily", now)
+    engine.stage_compile_video("daily", now, enable_tts=enable_tts, force=force)
+    engine.stage_youtube_publish("daily", now, force=force)
 
 def run_all(target_date=None, enable_tts=True, stages=None, dry_run=False, force=False):
     now = target_date or datetime.datetime.now()
@@ -86,7 +86,7 @@ def run_all(target_date=None, enable_tts=True, stages=None, dry_run=False, force
         run_daily_generation(now)
         generate_daily_slides(now)
         generate_teaser_images(now)
-        run_daily_youtube(now, enable_tts=enable_tts)
+        run_daily_youtube(now, enable_tts=enable_tts, force=force)
         run_git_operations("Auto-update: Daily Pulse Vector Pipeline Run")
         run_backup_operations()
         run_database_upload()

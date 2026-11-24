@@ -5,6 +5,17 @@ All notable changes to the Pulse Vector project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.14.0] - 2026-11-25
+
+### Fixed
+- **Redundant Daily Current Affairs Broadcasts on Telegram & Discord**:
+  - Diagnosed root cause of duplicate/triplicate daily messages: `pulse_daily.yml` (02:25 UTC) and `pulse_autonomous_orchestrator.yml` (02:30 UTC) firing 5 minutes apart, combined with `AutonomousOrchestrator` calling both `trigger_pipeline_stage("daily")` (which uploads and broadcasts) and `trigger_social_broadcast("daily")` (which broadcasts again).
+  - Implemented persistent atomic Broadcast Deduplication Ledger (`pulse_archive/broadcast_ledger.json`) tracking sent content types, dates, and target platforms.
+  - Implemented strict deduplication gates in `broadcast_daily_content()` (`src/core/broadcast_utils.py`): checks whether Telegram, Discord, Instagram, and Telegram Quiz polls have already been broadcast for the target date before making network calls. If already sent, logs an info message, skips the network request, and marks platform as skipped unless explicit `force=True` is provided.
+  - Added YouTube Upload Deduplication Guard to `stage_youtube_publish()` in `src/core/pipeline_engine.py`: queries recent uploads playlist for matching title; reuses existing video ID and skips redundant re-upload when a video is already live.
+  - Propagated `force: bool = False` flag across `src/daily_pipeline.py`, `src/mcp_server/tools/broadcast.py`, and `src/core/autonomous_orchestrator.py`.
+  - Added 6 new unit tests in `scripts/test_pipeline.py` under `TestBroadcastDeduplicationLedger`, expanding the test suite to **97 tests** (100% passing).
+
 ## [2.13.1] - 2026-11-23
 
 ### Fixed

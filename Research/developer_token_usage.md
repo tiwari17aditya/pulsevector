@@ -363,6 +363,12 @@ This document tracks the input and output token consumption for each developer c
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Turn 1** | 00:45 | 22 Nov Short RCA, YouTube Deletion, Parser Bleed Fix & Mandatory Pre-Upload Quality Gate (v2.13.1) | 48,000 | 4,500 | 52,500 | Diagnosed defective 22 Nov Short containing LLM apology bleed and only 3 points; deleted both defective videos (`-OZHguB2JlU`, `MU2TSmm_Hy0`) from YouTube via Data API; patched `strip_metadata_section` and `extract_news_points` with multi-marker scanning and source-tag truncation; implemented strict Pre-Upload Quality Gate (`validate_content_payload`, `assert_content_valid_for_upload`) strictly aborting slide gen, video compilation, and YouTube uploads if points < 15 or conversational phrases exist; regenerated verified 15-point 22 Nov content; rendered clean slides and video; successfully published verified video (`-_GGbkjjBjk`) to YouTube; expanded test suite to 91 tests (all 91 PASS). |
 
+## 📊 Interaction Token Log (November 25, 2026)
+
+| Turn ID | Timestamp | Topic / User Request | Est. Input Tokens | Est. Output Tokens | Total Tokens | Notes / Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Turn 1** | 00:25 | Telegram & Discord Broadcast Deduplication & Idempotency Ledger (v2.14.0) | 46,000 | 4,200 | 50,200 | Diagnosed root cause of 2-3x daily message spam on Telegram and Discord (overlapping cron schedules between `pulse_daily.yml` and `pulse_autonomous_orchestrator.yml` + multi-phase dispatches). Built atomic Broadcast Deduplication Ledger (`pulse_archive/broadcast_ledger.json`) and once-a-day gates in `broadcast_daily_content()`; added YouTube upload deduplication guard in `stage_youtube_publish()`; propagated `force` override flags; expanded test suite to 97 unit tests (all 97 PASS). |
+
 *Note: Token counts are estimated based on context window load (included libraries, workspace codebase context, active logs, and previous turns history).*
 
 

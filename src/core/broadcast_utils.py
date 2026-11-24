@@ -6,6 +6,7 @@ Supports native .mp4 video broadcasting and rich social media blocks.
 
 import os
 import re
+import json
 import datetime
 import pathlib
 import logging
@@ -13,6 +14,121 @@ import requests
 from typing import Optional, List, Dict, Any
 
 logger = logging.getLogger(__name__)
+
+# -------------------------------------------------------------
+# BROADCAST DEDUPLICATION LEDGER (Idempotency Engine)
+# -------------------------------------------------------------
+def get_broadcast_ledger_path(archive_dir: Optional[pathlib.Path] = None) -> pathlib.Path:
+    """Returns the persistent broadcast ledger file path within the archive."""
+    if archive_dir:
+        return pathlib.Path(archive_dir) / "broadcast_ledger.json"
+    try:
+        from .config import ARCHIVE_DIR
+    except ImportError:
+        try:
+            from core.config import ARCHIVE_DIR
+        except ImportError:
+            ARCHIVE_DIR = pathlib.Path("pulse_archive")
+    return ARCHIVE_DIR / "broadcast_ledger.json"
+
+def normalize_broadcast_key(content_type: str, slot: Optional[int] = None) -> str:
+    """
+    Normalizes content_type to a canonical key for ledger tracking.
+    'daily' (or 'daily current affairs') -> 'daily'
+    'weekly' -> 'weekly'
+    'monthly' -> 'monthly'
+    'brainteaser' -> 'brainteaser' (or 'brainteaser_slot2' if slot == 2)
+    """
+    ct = (content_type or "").lower().strip()
+    if "teaser" in ct or "brain" in ct:
+        if slot and int(slot) == 2:
+            return "brainteaser_slot2"
+        return "brainteaser"
+    elif "weekly" in ct:
+        return "weekly"
+    elif "monthly" in ct:
+        return "monthly"
+    elif "daily" in ct or "current" in ct or "news" in ct:
+        return "daily"
+    return ct or "daily"
+
+def load_broadcast_ledger(ledger_path: Optional[pathlib.Path] = None) -> Dict[str, Any]:
+    """Loads the broadcast deduplication ledger safely."""
+    path = ledger_path or get_broadcast_ledger_path()
+    if path.exists():
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception as e:
+            logger.warning(f"[Broadcast Dedup] Could not parse broadcast ledger: {e}")
+    return {}
+
+def save_broadcast_ledger(data: Dict[str, Any], ledger_path: Optional[pathlib.Path] = None) -> bool:
+    """Saves the broadcast deduplication ledger atomically."""
+    path = ledger_path or get_broadcast_ledger_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = path.with_suffix(".tmp")
+        temp_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        temp_path.replace(path)
+        return True
+    except Exception as e:
+        logger.warning(f"[Broadcast Dedup] Could not write broadcast ledger: {e}")
+        return False
+
+def is_already_broadcast(
+    content_type: str,
+    date_obj: Any,
+    platform: str,
+    slot: Optional[int] = None,
+    ledger_path: Optional[pathlib.Path] = None
+) -> bool:
+    """
+    Checks if a given content type for a specific date has already been broadcast
+    to the target platform ('telegram', 'discord', 'instagram').
+    Strictly prevents duplicate/redundant daily posts.
+    """
+    date_str = date_obj.strftime("%Y-%m-%d") if hasattr(date_obj, "strftime") else str(date_obj)[:10]
+    c_key = normalize_broadcast_key(content_type, slot=slot)
+    p_key = platform.lower().strip()
+    
+    ledger = load_broadcast_ledger(ledger_path)
+    day_record = ledger.get(date_str, {})
+    content_record = day_record.get(c_key, {})
+    plat_record = content_record.get(p_key, {})
+    
+    return plat_record.get("status") == "SENT"
+
+def record_broadcast_event(
+    content_type: str,
+    date_obj: Any,
+    platform: str,
+    status: str = "SENT",
+    title: str = "",
+    video_url: Optional[str] = None,
+    slot: Optional[int] = None,
+    ledger_path: Optional[pathlib.Path] = None
+) -> None:
+    """
+    Records a completed broadcast event to the persistent ledger.
+    """
+    date_str = date_obj.strftime("%Y-%m-%d") if hasattr(date_obj, "strftime") else str(date_obj)[:10]
+    c_key = normalize_broadcast_key(content_type, slot=slot)
+    p_key = platform.lower().strip()
+    
+    ledger = load_broadcast_ledger(ledger_path)
+    if date_str not in ledger:
+        ledger[date_str] = {}
+    if c_key not in ledger[date_str]:
+        ledger[date_str][c_key] = {}
+        
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    ledger[date_str][c_key][p_key] = {
+        "status": status,
+        "timestamp": now_iso,
+        "title": title[:200] if title else "",
+        "video_url": video_url or ""
+    }
+    save_broadcast_ledger(ledger, ledger_path)
 
 def get_env_var(key: str, default: Optional[str] = None) -> Optional[str]:
     """Retrieves environment variable with fallback from os.environ or .env file."""
@@ -316,12 +432,16 @@ def broadcast_daily_content(
     video_path: Optional[pathlib.Path] = None,
     video_url: Optional[str] = None,
     public_media_url: Optional[str] = None,
-    quiz_data: Optional[Dict[str, Any]] = None
-) -> Dict[str, bool]:
+    quiz_data: Optional[Dict[str, Any]] = None,
+    force: bool = False,
+    slot: Optional[int] = None,
+    ledger_path: Optional[pathlib.Path] = None
+) -> Dict[str, Any]:
     """
     Dispatches automated content to Telegram, Discord, and Instagram communities.
     Attaches native .mp4 video when available, with rich social footers.
     If quiz_data is provided (e.g. for Brain Teasers), dispatches an interactive Telegram Quiz poll.
+    Enforces strict once-a-day deduplication across Telegram and Discord unless force=True.
     """
     try:
         from .content_parser import get_social_links_block
@@ -329,6 +449,7 @@ def broadcast_daily_content(
         from content_parser import get_social_links_block
 
     date_str = date_obj.strftime("%d %B %Y")
+    c_key = normalize_broadcast_key(content_type, slot=slot)
     
     # 1. Format Telegram Message
     tg_lines = [
@@ -359,28 +480,79 @@ def broadcast_daily_content(
     
     color = 0xf59e0b if "teaser" in content_type.lower() else 0x38bdf8
     
-    tg_status = broadcast_telegram(tg_message, image_path=image_path, video_path=video_path)
-    dc_status = broadcast_discord(dc_title, dc_desc, image_path=image_path, video_path=video_path, color=color, video_url=video_url)
+    # -------------------------------------------------------------
+    # DEDUPLICATION GATES (Strict Once-A-Day Enforcement)
+    # -------------------------------------------------------------
+    # Telegram Deduplication Gate
+    tg_already = not force and is_already_broadcast(c_key, date_obj, "telegram", slot=slot, ledger_path=ledger_path)
+    if tg_already:
+        logger.info(f"ℹ️ [Broadcast Dedup] '{c_key.upper()}' for {date_str} already broadcast to Telegram today. Skipping redundant post.")
+        print(f"ℹ️ [Broadcast Dedup] '{c_key.upper()}' for {date_str} already broadcast to Telegram today. Skipping redundant post.")
+        tg_status = True
+        tg_skipped = True
+    else:
+        tg_status = broadcast_telegram(tg_message, image_path=image_path, video_path=video_path)
+        tg_skipped = False
+        if tg_status:
+            record_broadcast_event(c_key, date_obj, "telegram", status="SENT", title=title, video_url=video_url, slot=slot, ledger_path=ledger_path)
+            
+    # Discord Deduplication Gate
+    dc_already = not force and is_already_broadcast(c_key, date_obj, "discord", slot=slot, ledger_path=ledger_path)
+    if dc_already:
+        logger.info(f"ℹ️ [Broadcast Dedup] '{c_key.upper()}' for {date_str} already broadcast to Discord today. Skipping redundant post.")
+        print(f"ℹ️ [Broadcast Dedup] '{c_key.upper()}' for {date_str} already broadcast to Discord today. Skipping redundant post.")
+        dc_status = True
+        dc_skipped = True
+    else:
+        dc_status = broadcast_discord(dc_title, dc_desc, image_path=image_path, video_path=video_path, color=color, video_url=video_url)
+        dc_skipped = False
+        if dc_status:
+            record_broadcast_event(c_key, date_obj, "discord", status="SENT", title=title, video_url=video_url, slot=slot, ledger_path=ledger_path)
     
-    # 3. Instagram Reels / Post Broadcast (if public media URL is available)
-    ig_caption = f"⚡ Pulse Vector | {content_type.upper()}: {date_str}\n\n{title}\n\n{summary_text}\n\n#pulsevector #currentaffairs #dailyupdate #shorts"
-    ig_status = broadcast_instagram(caption=ig_caption, video_url=public_media_url if public_media_url and public_media_url.endswith('.mp4') else None, image_url=public_media_url if public_media_url and not public_media_url.endswith('.mp4') else None)
+    # 3. Instagram Reels / Post Broadcast
+    ig_already = not force and is_already_broadcast(c_key, date_obj, "instagram", slot=slot, ledger_path=ledger_path)
+    if ig_already:
+        logger.info(f"ℹ️ [Broadcast Dedup] '{c_key.upper()}' for {date_str} already broadcast to Instagram today. Skipping redundant post.")
+        ig_status = True
+        ig_skipped = True
+    else:
+        ig_caption = f"⚡ Pulse Vector | {content_type.upper()}: {date_str}\n\n{title}\n\n{summary_text}\n\n#pulsevector #currentaffairs #dailyupdate #shorts"
+        ig_status = broadcast_instagram(caption=ig_caption, video_url=public_media_url if public_media_url and public_media_url.endswith('.mp4') else None, image_url=public_media_url if public_media_url and not public_media_url.endswith('.mp4') else None)
+        ig_skipped = False
+        if ig_status:
+            record_broadcast_event(c_key, date_obj, "instagram", status="SENT", title=title, video_url=video_url, slot=slot, ledger_path=ledger_path)
     
     # 4. Telegram Interactive Quiz Poll (if quiz_data provided)
     tg_quiz_status = False
+    tg_quiz_skipped = False
     if quiz_data and "options" in quiz_data and len(quiz_data["options"]) >= 2:
-        q_text = quiz_data.get("question", title)
-        q_opts = quiz_data.get("options", [])
-        q_correct = quiz_data.get("correct_option_id", 0)
-        q_exp = quiz_data.get("explanation")
-        tg_quiz_status = broadcast_telegram_quiz(
-            question=q_text,
-            options=q_opts,
-            correct_option_id=q_correct,
-            explanation=q_exp
-        )
+        quiz_already = not force and is_already_broadcast(c_key, date_obj, "telegram_quiz", slot=slot, ledger_path=ledger_path)
+        if quiz_already:
+            logger.info(f"ℹ️ [Broadcast Dedup] Quiz poll for {date_str} already broadcast to Telegram today. Skipping redundant poll.")
+            tg_quiz_status = True
+            tg_quiz_skipped = True
+        else:
+            q_text = quiz_data.get("question", title)
+            q_opts = quiz_data.get("options", [])
+            q_correct = quiz_data.get("correct_option_id", 0)
+            q_exp = quiz_data.get("explanation")
+            tg_quiz_status = broadcast_telegram_quiz(
+                question=q_text,
+                options=q_opts,
+                correct_option_id=q_correct,
+                explanation=q_exp
+            )
+            if tg_quiz_status:
+                record_broadcast_event(c_key, date_obj, "telegram_quiz", status="SENT", title=title, slot=slot, ledger_path=ledger_path)
 
-    res = {"telegram": tg_status, "discord": dc_status, "instagram": ig_status}
+    res = {
+        "telegram": tg_status,
+        "discord": dc_status,
+        "instagram": ig_status,
+        "telegram_skipped": tg_skipped,
+        "discord_skipped": dc_skipped
+    }
     if quiz_data:
         res["telegram_quiz"] = tg_quiz_status
+        res["telegram_quiz_skipped"] = tg_quiz_skipped
     return res
