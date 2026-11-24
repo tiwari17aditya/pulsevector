@@ -1,1 +1,56 @@
-{}
+{
+  "2026-09-04": {
+    "daily": {
+      "telegram": {
+        "status": "SENT",
+        "timestamp": "2026-11-24T19:00:35.225506+00:00",
+        "title": "Test Title",
+        "video_url": ""
+      },
+      "discord": {
+        "status": "SENT",
+        "timestamp": "2026-11-24T19:00:35.233586+00:00",
+        "title": "Test Title",
+        "video_url": ""
+      }
+    }
+  },
+  "2026-11-21": {
+    "brainteaser": {
+      "telegram": {
+        "status": "SENT",
+        "timestamp": "2026-11-24T19:00:35.263839+00:00",
+        "title": "Brain Teaser",
+        "video_url": ""
+      },
+      "discord": {
+        "status": "SENT",
+        "timestamp": "2026-11-24T19:00:35.273038+00:00",
+        "title": "Brain Teaser",
+        "video_url": ""
+      },
+      "telegram_quiz": {
+        "status": "SENT",
+        "timestamp": "2026-11-24T19:00:35.285874+00:00",
+        "title": "Brain Teaser",
+        "video_url": ""
+      }
+    }
+  },
+  "2026-09-26": {
+    "daily": {
+      "telegram": {
+        "status": "SENT",
+        "timestamp": "2026-11-24T19:00:35.300127+00:00",
+        "title": "Daily Current Affairs",
+        "video_url": "https://youtu.be/dummy123"
+      },
+      "discord": {
+        "status": "SENT",
+        "timestamp": "2026-11-24T19:00:35.311334+00:00",
+        "title": "Daily Current Affairs",
+        "video_url": "https://youtu.be/dummy123"
+      }
+    }
+  }
+}
