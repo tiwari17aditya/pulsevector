@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns='http://www.w3.org/2005/Atom' xmlns:apps='http://schemas.google.com/apps/2006'>
+  <title>Pulse Vector Mail Filters</title>
+  <id>tag:mail.google.com,2008:filters:</id>
+  <updated>2026-11-25T16:28:57Z</updated>
+  <entry>
+    <category term='filter'></category>
+    <title>Pulse Vector Weekly Executive Reports</title>
+    <id>tag:mail.google.com,2008:filter:pv_weekly_report</id>
+    <updated>2026-11-25T16:28:57Z</updated>
+    <content></content>
+    <apps:property name='subject' value='[Pulse Vector] Weekly Executive Report'/>
+    <apps:property name='label' value='Pulse Vector/Weekly Reports'/>
+    <apps:property name='shouldArchive' value='true'/>
+    <apps:property name='shouldNeverMarkAsImportant' value='true'/>
+    <apps:property name='shouldNeverSpam' value='true'/>
+  </entry>
+  <entry>
+    <category term='filter'></category>
+    <title>Pulse Vector Monthly Executive Reports</title>
+    <id>tag:mail.google.com,2008:filter:pv_monthly_report</id>
+    <updated>2026-11-25T16:28:57Z</updated>
+    <content></content>
+    <apps:property name='subject' value='[Pulse Vector] Monthly Executive Report'/>
+    <apps:property name='label' value='Pulse Vector/Monthly Reports'/>
+    <apps:property name='shouldArchive' value='true'/>
+    <apps:property name='shouldNeverMarkAsImportant' value='true'/>
+    <apps:property name='shouldNeverSpam' value='true'/>
+  </entry>
+  <entry>
+    <category term='filter'></category>
+    <title>All Pulse Vector General Reports and Logs</title>
+    <id>tag:mail.google.com,2008:filter:pv_general_reports</id>
+    <updated>2026-11-25T16:28:57Z</updated>
+    <content></content>
+    <apps:property name='subject' value='[Pulse Vector]'/>
+    <apps:property name='label' value='Pulse Vector'/>
+    <apps:property name='shouldArchive' value='true'/>
+    <apps:property name='shouldNeverMarkAsImportant' value='true'/>
+    <apps:property name='shouldNeverSpam' value='true'/>
+  </entry>
+  <entry>
+    <category term='filter'></category>
+    <title>Pulse Vector GitHub Actions Notifications</title>
+    <id>tag:mail.google.com,2008:filter:pv_github_actions</id>
+    <updated>2026-11-25T16:28:57Z</updated>
+    <content></content>
+    <apps:property name='from' value='notifications@github.com'/>
+    <apps:property name='hasTheWord' value='pulsevector'/>
+    <apps:property name='label' value='Pulse Vector/GitHub Actions'/>
+    <apps:property name='shouldArchive' value='true'/>
+    <apps:property name='shouldNeverMarkAsImportant' value='true'/>
+    <apps:property name='shouldNeverSpam' value='true'/>
+  </entry>
+  <entry>
+    <category term='filter'></category>
+    <title>Pulse Vector Security and Pipeline Alerts</title>
+    <id>tag:mail.google.com,2008:filter:pv_security_alerts</id>
+    <updated>2026-11-25T16:28:57Z</updated>
+    <content></content>
+    <apps:property name='subject' value='[tiwari17aditya/pulsevector]'/>
+    <apps:property name='label' value='Pulse Vector/Alerts'/>
+    <apps:property name='shouldArchive' value='true'/>
+    <apps:property name='shouldNeverMarkAsImportant' value='true'/>
+    <apps:property name='shouldNeverSpam' value='true'/>
+  </entry>
+</feed>

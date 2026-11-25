@@ -578,7 +578,8 @@ class TestPipelineEngine(unittest.TestCase):
             date_obj=datetime.date(2026, 11, 21),
             title="Brain Teaser",
             summary_text="Sequence puzzle",
-            quiz_data=quiz_data
+            quiz_data=quiz_data,
+            force=True
         )
         self.assertIn("telegram_quiz", res)
         self.assertTrue(res["telegram_quiz"])

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.14.0] - 2026-11-25
 
+### Added
+- **Gmail Automated Rules, Hierarchical Labels & 1-Click Filter XML**:
+  - Audited mailbox via IMAP across 49 folders; uncovered 16 Pulse Vector automated emails sitting raw in the inbox.
+  - Implemented hierarchical Gmail labels under `Pulse Vector`: `Pulse Vector/Weekly Reports`, `Pulse Vector/Monthly Reports`, `Pulse Vector/Alerts`, and `Pulse Vector/GitHub Actions`.
+  - Built `scripts/organize_gmail_labels.py` to retroactively organize and label all existing and future emails via IMAP.
+  - Enforced inbox hygiene by automatically stripping `\Inbox` (Skip Inbox / Archive it) and `\Important` (Never mark as important) from all Pulse Vector automated emails.
+  - Generated standard, validated 1-click import XML file `pulse_vector_gmail_filters.xml` configured with `shouldArchive="true"`, `shouldNeverMarkAsImportant="true"`, and `shouldNeverSpam="true"`.
+  - Documented setup instructions and maintenance in `docs/GMAIL_FILTER_SETUP.md`.
+
 ### Fixed
 - **Redundant Daily Current Affairs Broadcasts on Telegram & Discord**:
   - Diagnosed root cause of duplicate/triplicate daily messages: `pulse_daily.yml` (02:25 UTC) and `pulse_autonomous_orchestrator.yml` (02:30 UTC) firing 5 minutes apart, combined with `AutonomousOrchestrator` calling both `trigger_pipeline_stage("daily")` (which uploads and broadcasts) and `trigger_social_broadcast("daily")` (which broadcasts again).
