@@ -73,6 +73,20 @@
         "title": "Daily Brain Teaser: November 25, 2026  🧠",
         "video_url": ""
       }
+    },
+    "daily": {
+      "telegram": {
+        "status": "SENT",
+        "timestamp": "2026-11-25T11:31:58.334857+00:00",
+        "title": "🔥 AI Ethics Breakthrough & Top News (Nov 25, 2026) #Shorts",
+        "video_url": "https://youtu.be/Z4s02kBaYzs"
+      },
+      "discord": {
+        "status": "SENT",
+        "timestamp": "2026-11-25T11:31:59.458504+00:00",
+        "title": "🔥 AI Ethics Breakthrough & Top News (Nov 25, 2026) #Shorts",
+        "video_url": "https://youtu.be/Z4s02kBaYzs"
+      }
     }
   }
 }
