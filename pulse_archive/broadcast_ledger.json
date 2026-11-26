@@ -124,5 +124,27 @@
         "video_url": "https://youtu.be/du_veaNOZqc"
       }
     }
+  },
+  "2026-11-27": {
+    "brainteaser": {
+      "telegram": {
+        "status": "SENT",
+        "timestamp": "2026-11-26T23:01:24.651752+00:00",
+        "title": "Daily Brain Teaser: November 27, 2026  🧠",
+        "video_url": "https://youtu.be/9qLY5cvNvr8"
+      },
+      "discord": {
+        "status": "SENT",
+        "timestamp": "2026-11-26T23:01:25.342371+00:00",
+        "title": "Daily Brain Teaser: November 27, 2026  🧠",
+        "video_url": "https://youtu.be/9qLY5cvNvr8"
+      },
+      "telegram_quiz": {
+        "status": "SENT",
+        "timestamp": "2026-11-26T23:01:25.898935+00:00",
+        "title": "Daily Brain Teaser: November 27, 2026  🧠",
+        "video_url": ""
+      }
+    }
   }
 }
