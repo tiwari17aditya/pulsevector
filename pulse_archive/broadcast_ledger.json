@@ -145,6 +145,20 @@
         "title": "Daily Brain Teaser: November 27, 2026  🧠",
         "video_url": ""
       }
+    },
+    "daily": {
+      "telegram": {
+        "status": "SENT",
+        "timestamp": "2026-11-27T11:04:29.925393+00:00",
+        "title": "🔥 AI Breakthrough: Claude Opus 5.6 #Shorts",
+        "video_url": ""
+      },
+      "discord": {
+        "status": "SENT",
+        "timestamp": "2026-11-27T11:04:31.913797+00:00",
+        "title": "🔥 AI Breakthrough: Claude Opus 5.6 #Shorts",
+        "video_url": ""
+      }
     }
   }
 }
