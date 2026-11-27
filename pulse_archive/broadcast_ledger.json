@@ -19,19 +19,19 @@
     "brainteaser": {
       "telegram": {
         "status": "SENT",
-        "timestamp": "2026-11-25T16:35:58.101048+00:00",
+        "timestamp": "2026-11-26T11:32:26.515067+00:00",
         "title": "Brain Teaser",
         "video_url": ""
       },
       "discord": {
         "status": "SENT",
-        "timestamp": "2026-11-25T16:35:58.127614+00:00",
+        "timestamp": "2026-11-26T11:32:26.515638+00:00",
         "title": "Brain Teaser",
         "video_url": ""
       },
       "telegram_quiz": {
         "status": "SENT",
-        "timestamp": "2026-11-25T16:35:58.152614+00:00",
+        "timestamp": "2026-11-26T11:32:26.516194+00:00",
         "title": "Brain Teaser",
         "video_url": ""
       }
@@ -86,6 +86,64 @@
         "timestamp": "2026-11-25T11:37:03.421665+00:00",
         "title": "🔥 GTA 6 Breaks Records & Top News (Nov 25, 2026) #Shorts",
         "video_url": "https://youtu.be/xzrYdgzq3xM"
+      }
+    }
+  },
+  "2026-11-26": {
+    "brainteaser": {
+      "telegram": {
+        "status": "SENT",
+        "timestamp": "2026-11-25T23:08:05.484004+00:00",
+        "title": "Daily Brain Teaser: November 26, 2026  🧠",
+        "video_url": "https://youtu.be/cTX-N9cBxzM"
+      },
+      "discord": {
+        "status": "SENT",
+        "timestamp": "2026-11-25T23:08:07.040330+00:00",
+        "title": "Daily Brain Teaser: November 26, 2026  🧠",
+        "video_url": "https://youtu.be/cTX-N9cBxzM"
+      },
+      "telegram_quiz": {
+        "status": "SENT",
+        "timestamp": "2026-11-25T23:08:07.649433+00:00",
+        "title": "Daily Brain Teaser: November 26, 2026  🧠",
+        "video_url": ""
+      }
+    },
+    "daily": {
+      "telegram": {
+        "status": "SENT",
+        "timestamp": "2026-11-26T11:26:31.312460+00:00",
+        "title": "🔥 Global AI Pact & Flipkart CEO Resigns! Top News (26 Nov 2026) #Shorts",
+        "video_url": "https://youtu.be/du_veaNOZqc"
+      },
+      "discord": {
+        "status": "SENT",
+        "timestamp": "2026-11-26T11:26:32.515898+00:00",
+        "title": "🔥 Global AI Pact & Flipkart CEO Resigns! Top News (26 Nov 2026) #Shorts",
+        "video_url": "https://youtu.be/du_veaNOZqc"
+      }
+    }
+  },
+  "2026-11-27": {
+    "brainteaser": {
+      "telegram": {
+        "status": "SENT",
+        "timestamp": "2026-11-26T23:01:24.651752+00:00",
+        "title": "Daily Brain Teaser: November 27, 2026  🧠",
+        "video_url": "https://youtu.be/9qLY5cvNvr8"
+      },
+      "discord": {
+        "status": "SENT",
+        "timestamp": "2026-11-26T23:01:25.342371+00:00",
+        "title": "Daily Brain Teaser: November 27, 2026  🧠",
+        "video_url": "https://youtu.be/9qLY5cvNvr8"
+      },
+      "telegram_quiz": {
+        "status": "SENT",
+        "timestamp": "2026-11-26T23:01:25.898935+00:00",
+        "title": "Daily Brain Teaser: November 27, 2026  🧠",
+        "video_url": ""
       }
     }
   }
