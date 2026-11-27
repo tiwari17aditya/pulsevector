@@ -945,3 +945,102 @@ def format_brainteaser_description(
         description = description[:4947] + "..."
     return description
 
+
+def generate_dynamic_teaser_title(
+    data: Dict[str, Any],
+    target_date: Optional[datetime.datetime] = None,
+    slot_num: int = 1
+) -> str:
+    """
+    Generates dynamic, archetype-driven, mobile-optimized (< 52 chars) YouTube Shorts titles.
+    Strictly eliminates repetitive static title templates (such as '🧩 Genius IQ Puzzle: Find the Missing Value!')
+    by tailoring the curiosity hook to the specific puzzle archetype (grid, detective, formula, sequence, etc.).
+    """
+    if target_date is None:
+        target_date = datetime.datetime.now()
+        
+    archetype = data.get("archetype") or classify_teaser_archetype(data)
+    day = target_date.day
+    
+    # Archetype-specific title pools (all designed strictly <= 43 chars before #Shorts)
+    ARCHETYPE_TITLES: Dict[str, List[str]] = {
+        "grid": [
+            "🧩 Find The Missing Matrix Number!",
+            "⚡ Can You Solve This 3x3 Grid?",
+            "🧠 95% Miss The Grid Pattern! Can You?",
+            "🔥 Tough Number Matrix: Spot The Value!"
+        ],
+        "detective": [
+            "🕵️ Who Is Lying? Spot The Impostor!",
+            "🔍 Can You Catch The Liar In 8s?",
+            "🧠 Whodunnit? Spot The Flaw Fast!",
+            "⚡ One Statement Is A Lie: Find It!"
+        ],
+        "formula": [
+            "🔥 90% Fail This Simple Math Rule!",
+            "⚡ Quick BODMAS Test: Can You Solve?",
+            "🧠 Only Geniuses Balance This Equation!",
+            "🔢 What Is The Missing Math Value?"
+        ],
+        "scale": [
+            "⚖️ Balance The Scale: What Is Missing?",
+            "🧠 Can You Balance This In 8 Seconds?",
+            "⚡ Tricky Weight Puzzle: Spot The Value!"
+        ],
+        "sequence": [
+            "🔢 What Number Comes Next? (8s Test)",
+            "⚡ Spot The Pattern In 8 Seconds!",
+            "🧠 95% Miss The Pattern! Can You?",
+            "🔥 Fast Sequence Test: What Replaces '?'"
+        ],
+        "oddone": [
+            "🎯 Spot The Odd One Out In 8s!",
+            "⚡ Which One Doesn't Belong Here?",
+            "🧠 90% Pick The Wrong Impostor!",
+            "🔥 Quick Brain Test: Spot The Outlier!"
+        ],
+        "cipher": [
+            "🔐 Crack This Secret Code In 8s!",
+            "⚡ Can You Decode The Word Pattern?",
+            "🧠 Only 5% Decode This In Time!",
+            "🔍 Alphanumeric Cipher: Find The Word!"
+        ],
+        "relations": [
+            "🧠 Family Logic Riddle: Who Is He?",
+            "⚡ Blood Relation Puzzle: Can You Solve?",
+            "🔍 Tricky Relation Test: Spot The Answer!"
+        ],
+        "riddle": [
+            "🧠 Lateral Thinking Riddle (In 8s)!",
+            "⚡ Think You're A Genius? Solve This!",
+            "🔥 95% Get This Wrong! Can You Win?",
+            "🧩 Fast Logic Riddle: What Am I?"
+        ]
+    }
+    
+    pool = ARCHETYPE_TITLES.get(archetype, ARCHETYPE_TITLES["riddle"])
+    
+    if slot_num > 1:
+        # Slot 2 Evening variant: pick offset index and add evening emoji/hook
+        alt_idx = (day + 1) % len(pool)
+        raw_hook = pool[alt_idx]
+        clean_text = re.sub(r'^[^\w\s]+\s*', '', raw_hook)
+        candidate = f"🌙 {clean_text} #Shorts"
+    else:
+        base_hook = pool[day % len(pool)]
+        candidate = f"{base_hook} #Shorts"
+        
+    # Strict Mobile Clamp: <= 52 characters
+    if len(candidate) > 52:
+        max_hook_len = 52 - len(" #Shorts")
+        words = candidate[:-len(" #Shorts")].split()
+        trimmed = ""
+        for w in words:
+            if len(f"{trimmed} {w}".strip()) <= max_hook_len:
+                trimmed = f"{trimmed} {w}".strip()
+            else:
+                break
+        candidate = f"{trimmed} #Shorts"
+        
+    return candidate
+

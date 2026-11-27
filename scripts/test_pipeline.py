@@ -28,7 +28,7 @@ from core.content_parser import (
     format_community_poll_text, classify_news_category, format_teaser_challenge_comment,
     format_solution_reveal_comment, format_brainteaser_description, get_social_links_block,
     optimize_youtube_title, ContentValidationError, validate_content_payload,
-    assert_content_valid_for_upload
+    assert_content_valid_for_upload, generate_dynamic_teaser_title
 )
 from core.youtube_utils import sanitize_youtube_tags
 from core.tts_utils import sanitize_text_for_speech, verify_speech_points_alignment, get_ffmpeg_executable
@@ -334,6 +334,31 @@ Correct Answer: c
         opt_weekly = optimize_youtube_title("Weekly Current Affairs", "weekly", target_d, points)
         self.assertIn("Weekly Current Affairs Masterclass", opt_weekly)
         self.assertIn("Full Revision", opt_weekly)
+
+    def test_generate_dynamic_teaser_title_archetypes(self):
+        """Item 1: Verifies dynamic archetype title generation strictly under 52 chars."""
+        target_d = datetime.datetime(2026, 11, 27)
+        archetypes = ["grid", "detective", "formula", "scale", "sequence", "oddone", "cipher", "relations", "riddle"]
+        
+        for arch in archetypes:
+            sample_data = {"archetype": arch, "question_header": f"Sample {arch}", "series": "test"}
+            title = generate_dynamic_teaser_title(sample_data, target_date=target_d, slot_num=1)
+            
+            # Check Mobile Viewport clamp (<= 52 characters)
+            self.assertLessEqual(len(title), 52, f"Title too long for mobile: '{title}' ({len(title)} chars)")
+            self.assertTrue(title.endswith("#Shorts"))
+            # Must NOT be the old repetitive static template
+            self.assertNotIn("Genius IQ Puzzle: Find the Missing Value!", title)
+
+    def test_generate_dynamic_teaser_title_slot2_evening(self):
+        """Item 1: Verifies Slot 2 produces an evening variant under 52 chars."""
+        target_d = datetime.datetime(2026, 11, 27)
+        sample_data = {"archetype": "grid", "question_header": "Grid", "series": "test"}
+        title_slot2 = generate_dynamic_teaser_title(sample_data, target_date=target_d, slot_num=2)
+        
+        self.assertLessEqual(len(title_slot2), 52)
+        self.assertTrue(title_slot2.startswith("🌙"))
+        self.assertTrue(title_slot2.endswith("#Shorts"))
 
 class TestTTSUtils(unittest.TestCase):
     def test_speech_sanitization(self):

@@ -39,7 +39,8 @@ from core.youtube_utils import (
 )
 from core.content_parser import (
     format_community_poll_text, format_teaser_challenge_comment,
-    format_solution_reveal_comment, format_brainteaser_description
+    format_solution_reveal_comment, format_brainteaser_description,
+    generate_dynamic_teaser_title
 )
 from core.broadcast_utils import broadcast_daily_content
 from core.tts_utils import synthesize_text, get_audio_duration, HAS_TTS
@@ -1159,23 +1160,8 @@ def publish_teaser_to_youtube(video_path, data, target_date, slot=1, privacy_sta
         date_str = target_date.strftime("%B %d, %Y")
         year_str = target_date.strftime("%Y")
         
-        date_compact = target_date.strftime("%d %b")
-        if slot_num == 1:
-            CURIOSITY_TITLES = [
-                f"🧠 Can You Solve This in 8s? Daily Brain Teaser ({date_compact}) #Shorts",
-                f"🔥 95% Fail This Logic Test! Can You Beat It? ({date_compact}) #Shorts",
-                f"⚡ Spot the Pattern Challenge! Daily Brain Teaser ({date_compact}) #Shorts",
-                f"🧩 Genius IQ Puzzle: Find the Missing Value! ({date_compact}) #Shorts"
-            ]
-            title = CURIOSITY_TITLES[target_date.day % len(CURIOSITY_TITLES)]
-        else:
-            SLOT2_TITLES = [
-                f"⚡ Spot the Pattern Challenge! Daily Brain Teaser ({date_compact} Part 2) #Shorts",
-                f"🧠 Evening IQ Test: Can You Solve It? ({date_compact} Part 2) #Shorts",
-                f"🔥 95% Fail This Logic Riddle! Part 2 ({date_compact}) #Shorts",
-                f"🧩 Speed Reasoning Challenge! Daily Brain Teaser ({date_compact} Part 2) #Shorts"
-            ]
-            title = SLOT2_TITLES[target_date.day % len(SLOT2_TITLES)]
+        # Item 1 Upgrade: Dynamic archetype-based title strictly avoiding repetitive static templates
+        title = generate_dynamic_teaser_title(data, target_date=target_date, slot_num=slot_num)
             
         # Upload Deduplication Guard: Check if a video with the exact same title was already uploaded
         try:

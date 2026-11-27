@@ -5,6 +5,17 @@ All notable changes to the Pulse Vector project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.15.0] - 2026-11-27
+
+### Added
+- **YouTube Studio Upgrade Item 1: Dynamic Archetype-Based Shorts Titles**:
+  - Eliminated repetitive static title strings (e.g. `🧩 Genius IQ Puzzle: Find the Missing Value!`) cited by YouTube Studio channel audit.
+  - Implemented `generate_dynamic_teaser_title()` in `src/core/content_parser.py` mapping all 9 puzzle archetypes (`grid`, `detective`, `formula`, `scale`, `sequence`, `oddone`, `cipher`, `relations`, `riddle`) to high-curiosity, distinct title pools.
+  - Added Slot 2 evening variant support (`slot_num=2`) with distinct evening hooks (`🌙`).
+  - Enforced strict mobile viewport clamp (`<= 52` chars including `#Shorts`).
+  - Integrated dynamic generator directly into `publish_teaser_to_youtube()` in `src/brainteaser_pipeline.py`.
+  - Added unit tests in `scripts/test_pipeline.py` verifying archetype variety, evening prefixes, and length limits (all 99 tests PASS).
+
 ## [2.14.0] - 2026-11-25
 
 ### Added
