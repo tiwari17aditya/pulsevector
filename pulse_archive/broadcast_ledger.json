@@ -19,19 +19,19 @@
     "brainteaser": {
       "telegram": {
         "status": "SENT",
-        "timestamp": "2026-11-27T11:18:57.764650+00:00",
+        "timestamp": "2026-11-27T11:44:41.985214+00:00",
         "title": "Brain Teaser",
         "video_url": ""
       },
       "discord": {
         "status": "SENT",
-        "timestamp": "2026-11-27T11:18:57.765407+00:00",
+        "timestamp": "2026-11-27T11:44:42.015382+00:00",
         "title": "Brain Teaser",
         "video_url": ""
       },
       "telegram_quiz": {
         "status": "SENT",
-        "timestamp": "2026-11-27T11:18:57.766133+00:00",
+        "timestamp": "2026-11-27T11:44:42.044020+00:00",
         "title": "Brain Teaser",
         "video_url": ""
       }
@@ -143,20 +143,6 @@
         "status": "SENT",
         "timestamp": "2026-11-26T23:01:25.898935+00:00",
         "title": "Daily Brain Teaser: November 27, 2026  🧠",
-        "video_url": ""
-      }
-    },
-    "daily": {
-      "telegram": {
-        "status": "SENT",
-        "timestamp": "2026-11-27T11:04:29.925393+00:00",
-        "title": "🔥 AI Breakthrough: Claude Opus 5.6 #Shorts",
-        "video_url": ""
-      },
-      "discord": {
-        "status": "SENT",
-        "timestamp": "2026-11-27T11:04:31.913797+00:00",
-        "title": "🔥 AI Breakthrough: Claude Opus 5.6 #Shorts",
         "video_url": ""
       }
     }
