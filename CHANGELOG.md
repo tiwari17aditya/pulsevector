@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Integrated dynamic generator directly into `publish_teaser_to_youtube()` in `src/brainteaser_pipeline.py`.
   - Added unit tests in `scripts/test_pipeline.py` verifying archetype variety, evening prefixes, and length limits (all 99 tests PASS).
 
+- **YouTube Studio Upgrade Item 2: Front-Loaded Hooks & Mobile <=52 Character Title Clamp**:
+  - Addressed YouTube Studio algorithm audit finding: titles truncating on mobile devices beyond 45–55 characters with hooks buried behind generic prefixes and filler phrases.
+  - Upgraded `optimize_youtube_title()` in `src/core/content_parser.py`:
+    - Enforced strict mobile viewport clamp (`<= 52` characters total, including `#Shorts`).
+    - Stripped generic series labels and filler prefixes (`Daily Current Affairs:`, `Top 15:`, `Daily News:`, `Pulse Vector:`, `& Top News`, dates in parentheses).
+    - Front-loaded punchy curiosity news hooks from lead story headlines with an attention emoji prefix (`🔥`).
+    - Ensured clean truncation strictly at word boundaries with zero mid-word cuts.
+  - Added unit tests in `scripts/test_pipeline.py` under `TestContentParser` and updated `TestBroadcastDeduplicationLedger` (all 100 tests PASS).
+
 ## [2.14.0] - 2026-11-25
 
 ### Added

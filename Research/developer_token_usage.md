@@ -375,6 +375,7 @@ This document tracks the input and output token consumption for each developer c
 | Turn ID | Timestamp | Topic / User Request | Est. Input Tokens | Est. Output Tokens | Total Tokens | Notes / Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Turn 1** | 15:10 | YouTube Studio Channel Audit & Item 1 Dynamic Archetype Titles (`v2.15.0-dev`) | 48,000 | 4,200 | 52,200 | Analyzed 6 YouTube Studio audit images from `C:\Users\Admin\Downloads\upgrades`; created `v2.15.0-dev` branch; built `generate_dynamic_teaser_title()` mapping 9 archetypes to high-curiosity pools under 52 chars, eradicating static repeating templates; integrated into `brainteaser_pipeline.py`; added unit tests (99/99 tests PASS); merged into `main` and pushed to remote. |
+| **Turn 2** | 15:45 | YouTube Studio Item 2: Front-Load Hook & Mobile <=52 Char Title Clamp | 42,000 | 3,800 | 45,800 | Upgraded `optimize_youtube_title()` in `src/core/content_parser.py` stripping generic prefixes (`Daily Current Affairs:`, `& Top News`, dates) and front-loading curiosity hooks clamped strictly to <= 52 characters; expanded test suite to 100 tests (all 100 PASS); merged into `main` and pushed to remote. |
 
 *Note: Token counts are estimated based on context window load (included libraries, workspace codebase context, active logs, and previous turns history).*
 

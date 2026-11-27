@@ -319,7 +319,7 @@ Correct Answer: c
         self.assertNotIn("pulsevector/play", payload.description)
 
     def test_optimize_youtube_title(self):
-        """Pillar 3: Verifies that generic titles are transformed into high-CTR curiosity titles."""
+        """Pillar 3 & Item 2: Verifies that generic titles are transformed into front-loaded titles under 52 chars."""
         points = [(1, "ISRO launches advanced quantum communication satellite")]
         target_d = datetime.datetime(2026, 9, 26)
         
@@ -327,13 +327,36 @@ Correct Answer: c
         opt_title = optimize_youtube_title("Daily Current Affairs 26 September 2026", "daily", target_d, points)
         self.assertIn("🔥", opt_title)
         self.assertIn("ISRO launches advanced quantum", opt_title)
-        self.assertIn("#Shorts", opt_title)
-        self.assertLessEqual(len(opt_title), 100)
+        self.assertTrue(opt_title.endswith("#Shorts"))
+        self.assertLessEqual(len(opt_title), 52)
         
         # Weekly masterclass title transformation
         opt_weekly = optimize_youtube_title("Weekly Current Affairs", "weekly", target_d, points)
         self.assertIn("Weekly Current Affairs Masterclass", opt_weekly)
         self.assertIn("Full Revision", opt_weekly)
+
+    def test_optimize_youtube_title_mobile_clamp_and_hook(self):
+        """Item 2: Verifies front-loaded hook extraction and strict <= 52 char mobile viewport clamp."""
+        target_d = datetime.datetime(2026, 11, 27)
+        long_point = [(1, "Cabinet approves Rs 76,000 crore semiconductor incentive scheme for national fabrication plants")]
+        
+        # Long point must be cleanly clamped <= 52 chars without cutting mid-word or breaking #Shorts
+        clamped_title = optimize_youtube_title("", "daily", target_d, long_point)
+        self.assertTrue(clamped_title.startswith("🔥"))
+        self.assertTrue(clamped_title.endswith("#Shorts"))
+        self.assertLessEqual(len(clamped_title), 52)
+        
+        # Generic prefix stripping (e.g. 'Daily News: ')
+        raw_generic = "Daily News: Supreme Court Rules on Digital Privacy Rights"
+        cleaned_title = optimize_youtube_title(raw_generic, "daily", target_d, [])
+        self.assertTrue(cleaned_title.endswith("#Shorts"))
+        self.assertLessEqual(len(cleaned_title), 52)
+        self.assertNotIn("Daily News:", cleaned_title)
+        
+        # Fallback when no points or text
+        fallback = optimize_youtube_title("", "daily", target_d, [])
+        self.assertTrue(fallback.endswith("#Shorts"))
+        self.assertLessEqual(len(fallback), 52)
 
     def test_generate_dynamic_teaser_title_archetypes(self):
         """Item 1: Verifies dynamic archetype title generation strictly under 52 chars."""
@@ -1609,7 +1632,7 @@ class TestBroadcastDeduplicationLedger(unittest.TestCase):
             paths["video_file"].parent.mkdir(parents=True, exist_ok=True)
             
             points_15 = "\n".join([f"{i}. Point {i} text summary. [Source: Source {i}]" for i in range(1, 16)])
-            title_str = "🔥 India Test Victory & Top News (25 Nov 2026) #Shorts"
+            title_str = "🔥 India Test Victory #Shorts"
             paths["text_file"].write_text(
                 f"Daily Current Affairs 25 November 2026\n\n{points_15}\n\nTitle: {title_str}\nReel Description: Summary text\nHashtags: #News #Daily",
                 encoding="utf-8"

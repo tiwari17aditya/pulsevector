@@ -344,32 +344,71 @@ def optimize_youtube_title(
 ) -> str:
     """
     Transforms generic calendar titles into high-CTR curiosity-driven YouTube titles.
-    Strictly enforces YouTube's 100-character title budget.
+    Item 2: Front-loads the hook and enforces strict mobile viewport clamp (<= 52 chars).
     """
     date_compact = target_date.strftime("%d %b %Y")
-    is_generic = (
-        not raw_title
-        or raw_title.lower().startswith("daily current affairs")
-        or raw_title.lower().startswith("weekly current affairs")
-        or raw_title.lower().startswith("monthly current affairs")
-    )
     
+    # Generic prefixes and filler phrases to strip or detect
+    GENERIC_PATTERNS = [
+        r"^daily current affairs[:\s\-]*(?:\d{1,2}\s+[a-zA-Z]+\s+\d{4})?[:\s\-]*",
+        r"^weekly current affairs[:\s\-]*(?:\d{1,2}\s+[a-zA-Z]+\s+\d{4})?[:\s\-]*",
+        r"^monthly current affairs[:\s\-]*(?:[a-zA-Z]+\s+\d{4})?[:\s\-]*",
+        r"^top\s+\d+\s+current affairs[:\s\-]*",
+        r"^today'?s current affairs[:\s\-]*",
+        r"^daily news[:\s\-]*",
+        r"^pulse vector[:\s\|\-]*",
+    ]
+    
+    clean_raw = raw_title.strip() if raw_title else ""
+    is_generic = not clean_raw
+    for pat in GENERIC_PATTERNS:
+        if re.search(pat, clean_raw, flags=re.IGNORECASE):
+            is_generic = True
+            clean_raw = re.sub(pat, "", clean_raw, flags=re.IGNORECASE).strip()
+            break
+
     if content_type == "daily":
-        if is_generic and points:
-            # Extract lead story preview
+        # Target budget: <= 52 characters total (Shorts mobile display viewport safe)
+        suffix = " #Shorts"
+        max_hook_len = 52 - len(suffix)  # 44 characters
+        
+        hook = ""
+        # 1. Use cleaned raw title if it contains meaningful news hook
+        if not is_generic and clean_raw:
+            clean_candidate = re.sub(r'#Shorts\b', '', clean_raw, flags=re.IGNORECASE).strip()
+            clean_candidate = re.sub(r'(&\s*top news|\(\d{1,2}\s+[a-zA-Z]+(?:\s+\d{4})?\))', '', clean_candidate, flags=re.IGNORECASE).strip()
+            if len(clean_candidate) >= 8:
+                hook = clean_candidate
+                
+        # 2. Extract lead story hook from first news point if hook is still empty
+        if not hook and points:
             lead_text = points[0][1] if isinstance(points[0], (list, tuple)) else str(points[0])
+            lead_text = re.sub(r'\[Source:.*?\]', '', lead_text, flags=re.IGNORECASE).strip()
             lead_clean = re.sub(r'[\.\:\;\-\"\'\`]', '', lead_text).strip()
-            # Trim lead clean to ~42 chars at word boundary
-            if len(lead_clean) > 42:
-                lead_clean = lead_clean[:42].rsplit(' ', 1)[0]
-            candidate = f"🔥 {lead_clean} & Top News ({date_compact}) #Shorts"
-            if len(candidate) <= 100:
-                return candidate
-        elif not is_generic and raw_title:
-            if "#Shorts" not in raw_title and len(raw_title) <= 92:
-                return f"{raw_title} #Shorts"
-            return raw_title[:100]
-        return f"⚡ Daily Current Affairs ({date_compact}) #Shorts"
+            lead_clean = re.sub(r'^(the|in a major move|today|as per reports|govt)\s+', '', lead_clean, flags=re.IGNORECASE).strip()
+            hook = lead_clean
+
+        # 3. Fallback if still empty
+        if not hook:
+            hook = f"Top Headlines {target_date.strftime('%d %b')}"
+
+        # Ensure hook has an attention emoji if it doesn't already have one
+        if not re.match(r'^[\U00010000-\U0010ffff\u2600-\u27ff]', hook):
+            hook = f"🔥 {hook}"
+
+        # Truncate hook strictly at word boundary to fit max_hook_len (44 chars)
+        if len(hook) > max_hook_len:
+            truncated = hook[:max_hook_len].rsplit(' ', 1)[0]
+            if len(truncated) >= 15:
+                hook = truncated
+            else:
+                hook = hook[:max_hook_len].strip()
+
+        candidate = f"{hook}{suffix}"
+        if len(candidate) > 52:
+            candidate = f"{candidate[:52-len(suffix)].strip()}{suffix}"
+            
+        return candidate
         
     elif content_type == "weekly":
         start_d = target_date - datetime.timedelta(days=6)
