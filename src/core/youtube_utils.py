@@ -154,6 +154,33 @@ def generate_playlist_description(title: str) -> str:
             "🌐 Official Channel: https://www.youtube.com/@Pulse_vector\n\n"
             "#MonthlyCurrentAffairs #CurrentAffairsRoundup #UPSC #SSCCGL #BankingAwareness #PulseVector"
         )
+    elif any(k in t_lower for k in ["last day on earth", "ldoe", "survival"]):
+        return (
+            f"🎮 Official {title} by Pulse Vector.\n\n"
+            "The definitive survival guide and tactical walkthrough series for Last Day on Earth (LDoE): Survival. "
+            "Master bunker alpha hard-mode raids, Sector 7 multiplayer operations, resource farming routes, boss fight mechanics, "
+            "and tactical weapon modifications.\n\n"
+            "🎯 Series Highlights:\n"
+            "• 🛡️ High-Tier Bunker Raids: Efficient clears across Floors 2, 3, 4, and The Blind One with minimum gear consumption.\n"
+            "• 🔫 Tactical Loadout Blueprints: Weapon mods, armor crafting priorities, and base fortification designs.\n"
+            "• 🧟 Survival Lore & Strategies: Uncovering the post-apocalyptic narrative of the survival wasteland.\n\n"
+            "🔔 Subscribe to @Pulse_vector for regular survival gaming episodes!\n"
+            "🌐 Official Channel: https://www.youtube.com/@Pulse_vector\n\n"
+            "#LDoE #LastDayOnEarth #LDoESurvival #SurvivalGaming #ZombieSurvival #PulseVector"
+        )
+    elif any(k in t_lower for k in ["vedas", "mahabharat", "ancient", "dharma", "gita"]):
+        return (
+            f"🕉️ Official {title} by Pulse Vector.\n\n"
+            "Immerse yourself in ancient Indian wisdom, philosophy, and timeless epics. "
+            "This series explores the profound philosophical foundations of the Vedas, the Bhagavad Gita, and the epic saga of Mahabharat.\n\n"
+            "🎯 Series Highlights:\n"
+            "• 📜 Authentic Source Insights: Rigveda, Yajurveda, Samaveda, Atharvaveda, and the Mahabharata.\n"
+            "• ⚖️ Dharma in Action: Ethical dilemmas, strategic statecraft, and spiritual wisdom explained for modern life.\n"
+            "• 🎨 Cinematic Visuals & Audio: Immersive neural narration and high-definition visual storytelling.\n\n"
+            "🔔 Subscribe to @Pulse_vector and embark on the journey of ancient wisdom!\n"
+            "🌐 Official Channel: https://www.youtube.com/@Pulse_vector\n\n"
+            "#Vedas #Mahabharat #Dharma #BhagavadGita #AncientWisdom #IndianPhilosophy #PulseVector"
+        )
     else:
         return (
             f"⚡ Official {title} Archive by Pulse Vector.\n\n"
@@ -194,15 +221,17 @@ def create_playlist(youtube, title, description="", privacy_status="public"):
 def add_video_to_playlist(youtube, video_id, playlist_title, playlist_privacy="public"):
     try:
         request = youtube.playlists().list(
-            part="snippet",
+            part="snippet,status",
             mine=True,
             maxResults=50
         )
         response = request.execute()
         playlist_id = None
+        matched_item = None
         for item in response.get('items', []):
             if item['snippet']['title'] == playlist_title:
                 playlist_id = item['id']
+                matched_item = item
                 break
                 
         if not playlist_id:
@@ -213,6 +242,20 @@ def add_video_to_playlist(youtube, video_id, playlist_title, playlist_privacy="p
                 print(f"✅ Created new YouTube Playlist: '{playlist_title}'")
             else:
                 return False
+        elif playlist_privacy == "public" and matched_item and matched_item.get("status", {}).get("privacyStatus") == "private":
+            # Item 5: Unhide private empty playlist now that it is receiving active uploaded content
+            try:
+                youtube.playlists().update(
+                    part="snippet,status",
+                    body={
+                        "id": playlist_id,
+                        "snippet": matched_item["snippet"],
+                        "status": {"privacyStatus": "public"}
+                    }
+                ).execute()
+                print(f"  > Unlocked playlist '{playlist_title}' to PUBLIC now that content is added.")
+            except Exception as unhide_err:
+                logging.warning(f"Could not unhide playlist: {unhide_err}")
 
                 
         request = youtube.playlistItems().insert(

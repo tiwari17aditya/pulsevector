@@ -41,6 +41,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `set_video_thumbnail()` in `src/core/youtube_utils.py` and integrated automated custom thumbnail uploads across both Daily News and Brain Teaser publishing pipelines.
   - Added unit tests in `scripts/test_pipeline.py` verifying hook extraction, thumbnail generation, and API setting (all 104 tests PASS).
 
+- **YouTube Studio Upgrade Item 5: Multi-Genre Identity & Home Tab Playlist Segmentation**:
+  - Addressed YouTube Studio channel identity audit: isolating the 96.7% watch-time gaming audience (Last Day on Earth Survival) and high-reach Shorts audience (IQ Brain Teasers) to prevent cross-genre friction and confusion.
+  - Upgraded `generate_playlist_description()` in `src/core/youtube_utils.py` with full structured, SEO-optimized descriptions across all 4 content pillars:
+    - 🎮 LDoE Survival Gaming (bunker raids, sector 7, boss tactics)
+    - 🕉️ Vedas & Ancient Indian Wisdom (Mahabharat, Bhagavad Gita, Dharma)
+    - 🧠 Daily IQ Brain Teasers (cognitive puzzles, CSAT/competitive exam aptitude)
+    - ⚡ Daily, Weekly & Monthly Current Affairs (exam intelligence archives)
+  - Upgraded `add_video_to_playlist()` in `src/core/youtube_utils.py`: strictly enforces that empty playlists are held private, automatically unlocking to PUBLIC as soon as active content is added.
+  - Integrated 7-shelf Home Tab architect (`channel_branding/setup_hometab_sections.py` and `channel_branding/`) segregating Daily News, LDoE Survival, Brain Teasers, Mahabharat, Weekly Masterclasses, Recent Uploads, and Full Playlists.
+  - Added unit tests in `scripts/test_pipeline.py` verifying multi-genre descriptions, private-to-public playlist unlocking, and Home Tab shelf integrity (all 107 tests PASS).
+
 ## [2.14.0] - 2026-11-25
 
 ### Added

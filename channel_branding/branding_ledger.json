@@ -1,0 +1,71 @@
+{
+  "channel_id": "UCt154eXNnEfKtRNBrAnay7A",
+  "channel_handle": "@pulse_vector",
+  "active_version": "v1.0.0",
+  "last_updated": "2026-11-04T21:55:00+05:30",
+  "versions": [
+    {
+      "version": "v1.0.0",
+      "codename": "Cinematic Multi-Genre Nexus",
+      "timestamp": "2026-11-04T21:22:00+05:30",
+      "status": "ACTIVE_LIVE_ON_YOUTUBE",
+      "youtube_banner_cdn_url": "https://yt3.googleusercontent.com/2u7xEQWp5YNqus20VGIguSrkJe--MFO3MRDwAORdV8pPAW_2be8hVg8tGAKavHTM4GY7099KfA",
+      "banner_file": "assets/banners/banner_cinematic_multigenre_master.png",
+      "icon_master_file": "assets/icons/icon_pulse_vector_3d_master.png",
+      "icon_800_file": "assets/icons/icon_pulse_vector_3d_800.png",
+      "channel_title": "Pulse Vector",
+      "channel_handle": "@pulse_vector",
+      "description": "⚡ Welcome to PULSE VECTOR — The Nexus of Daily Intelligence, Tactical Gaming, Mind Puzzles & Ancient Epics.\n\nWhether preparing for exams, sharpening cognitive agility, exploring epic lore, or mastering survival gaming, Pulse Vector delivers daily.\n\n🔥 CORE PILLARS:\n1️⃣ 🌐 CURRENT AFFAIRS: Daily Shorts & Weekly Masterclasses for UPSC, SSC, Banking & Global News.\n2️⃣ 🧠 BRAIN TEASERS: 8s logic puzzles, math riddles & aptitude challenges.\n3️⃣ 🏹 MAHABHARAT (ANIMATED): 70+ episodes on Kurukshetra, Dharma, Karma & ancient strategy.\n4️⃣ 🧟‍♂️ LDoE SURVIVAL: 100+ walkthroughs, Bunker Alfa raids, base building & apocalypse tactics.\n5️⃣ 💻 TECH & AUTOMATION: Engineering projects & autonomous systems.\n\n📅 SCHEDULE:\n• Daily: Current Affairs & Brain Teaser Shorts\n• Weekly: Masterclasses & LDoE Survival Walkthroughs\n\n🤝 COMMUNITY:\n• Telegram: https://t.me/pulsevector_daily\n• Channel: https://youtube.com/@pulse_vector\n\n🔔 Subscribe to master knowledge, conquer puzzles & stay ahead!",
+      "keywords_string": "\"Pulse Vector\" \"Current Affairs\" \"Daily Current Affairs\" \"UPSC Current Affairs\" \"SSC CGL\" \"Brain Teasers\" \"Logic Puzzles\" \"Aptitude\" \"Mahabharat\" \"Mahabharat Animation\" \"Last Day on Earth\" LDoE \"LDoE Survival\" \"Bunker Alfa\" \"Zombie Survival\" \"Strategy Game\" \"Tech Stack\" \"Knowledge Hub\"",
+      "pillars_highlighted": [
+        "Current Affairs & Global Intelligence",
+        "Daily Brain Teasers & Aptitude",
+        "Mahabharat: Epic Battle of Dharma (Animated)",
+        "Last Day on Earth (LDoE) Survival",
+        "Tech & Autonomous Systems"
+      ],
+      "home_tab_sections": [
+        {
+          "position": 0,
+          "title": "Daily Current Affairs (Oct - Dec 2026)",
+          "type": "singleplaylist",
+          "playlist_id": "PLKaPhI3LucGw"
+        },
+        {
+          "position": 1,
+          "title": "Last Day on Earth: Survival — Official Gameplay Series",
+          "type": "singleplaylist",
+          "playlist_id": "PLJPzVNVZwaGY"
+        },
+        {
+          "position": 2,
+          "title": "Daily Brain Teasers — 2026",
+          "type": "singleplaylist",
+          "playlist_id": "PLENP5DyB-lS4"
+        },
+        {
+          "position": 3,
+          "title": "Mahabharat: The Epic Battle of Dharma (Animated)",
+          "type": "singleplaylist",
+          "playlist_id": "PLTdRkcKiCRVA"
+        },
+        {
+          "position": 4,
+          "title": "Weekly Current Affairs Masterclasses",
+          "type": "singleplaylist",
+          "playlist_id": "PL4PQLXRi54n0f5deGjKOCuz3VbMOMzmxO"
+        },
+        {
+          "position": 5,
+          "title": "Latest Uploads",
+          "type": "recentuploads"
+        },
+        {
+          "position": 6,
+          "title": "All Playlists Directory",
+          "type": "allplaylists"
+        }
+      ]
+    }
+  ]
+}

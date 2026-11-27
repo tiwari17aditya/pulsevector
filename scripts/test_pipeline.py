@@ -30,7 +30,10 @@ from core.content_parser import (
     optimize_youtube_title, ContentValidationError, validate_content_payload,
     assert_content_valid_for_upload, generate_dynamic_teaser_title
 )
-from core.youtube_utils import sanitize_youtube_tags, set_video_thumbnail
+from core.youtube_utils import (
+    sanitize_youtube_tags, set_video_thumbnail, generate_playlist_description,
+    add_video_to_playlist
+)
 from core.tts_utils import sanitize_text_for_speech, verify_speech_points_alignment, get_ffmpeg_executable
 from core.image_utils import wrap_text, create_slide_image_file, ensure_fonts
 from core.video_utils import (
@@ -976,6 +979,52 @@ class TestYouTubeTagSafety(unittest.TestCase):
                 res_ok = set_video_thumbnail(mock_yt, "vid_123", str(dummy_thumb))
                 self.assertTrue(res_ok)
                 mock_yt.thumbnails().set.assert_called_once()
+
+    def test_generate_playlist_description_multi_genre(self):
+        """Item 5: Verifies distinct descriptions across all 4 channel content pillars."""
+        # LDoE Gaming (96.7% watch time pillar)
+        ldoe_desc = generate_playlist_description("Last Day on Earth Survival Guide")
+        self.assertIn("#LDoE", ldoe_desc)
+        self.assertIn("bunker alpha", ldoe_desc.lower())
+        
+        # Vedas & Ancient Wisdom
+        vedas_desc = generate_playlist_description("Mahabharat: Epic of Dharma")
+        self.assertIn("#Mahabharat", vedas_desc)
+        self.assertIn("ancient wisdom", vedas_desc.lower())
+        
+        # Brain Teasers
+        bt_desc = generate_playlist_description("Daily Brain Teasers - 2026")
+        self.assertIn("#BrainTeasers", bt_desc)
+        
+        # Current Affairs
+        ca_desc = generate_playlist_description("Daily Current Affairs (Oct - Dec 2026)")
+        self.assertIn("#DailyCurrentAffairs", ca_desc)
+
+    def test_add_video_to_playlist_unhide_private(self):
+        """Item 5: Verifies that adding video to a private empty playlist unlocks it to public."""
+        mock_yt = MagicMock()
+        mock_yt.playlists().list().execute.return_value = {
+            "items": [{
+                "id": "pl_123",
+                "snippet": {"title": "Test Playlist"},
+                "status": {"privacyStatus": "private"}
+            }]
+        }
+        res = add_video_to_playlist(mock_yt, "vid_abc", "Test Playlist", playlist_privacy="public")
+        self.assertTrue(res)
+        mock_yt.playlists().update.assert_called_once()
+        mock_yt.playlistItems().insert.assert_called_once()
+
+    def test_target_shelves_multi_genre_integrity(self):
+        """Item 5: Verifies Home Tab shelves correctly segregate Gaming, Puzzles, News, and Vedas."""
+        from channel_branding.setup_hometab_sections import TARGET_SHELVES
+        shelf_titles = [s["title"].lower() for s in TARGET_SHELVES]
+        
+        self.assertTrue(any("current affairs" in t for t in shelf_titles), "Must include Current Affairs shelf")
+        self.assertTrue(any("last day on earth" in t for t in shelf_titles), "Must include LDoE gaming shelf (96.7% watch time)")
+        self.assertTrue(any("brain teaser" in t for t in shelf_titles), "Must include Brain Teasers shelf")
+        self.assertTrue(any("mahabharat" in t for t in shelf_titles), "Must include Mahabharat/Vedas shelf")
+        self.assertEqual(len(TARGET_SHELVES), 7)
 
 
 class TestGDriveUtils(unittest.TestCase):
