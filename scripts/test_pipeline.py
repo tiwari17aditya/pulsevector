@@ -30,12 +30,12 @@ from core.content_parser import (
     optimize_youtube_title, ContentValidationError, validate_content_payload,
     assert_content_valid_for_upload, generate_dynamic_teaser_title
 )
-from core.youtube_utils import sanitize_youtube_tags
+from core.youtube_utils import sanitize_youtube_tags, set_video_thumbnail
 from core.tts_utils import sanitize_text_for_speech, verify_speech_points_alignment, get_ffmpeg_executable
 from core.image_utils import wrap_text, create_slide_image_file, ensure_fonts
 from core.video_utils import (
     create_transition_frames, generate_countdown_sfx, merge_brainteaser_audio,
-    compute_word_timings, render_karaoke_subtitle_overlay
+    compute_word_timings, render_karaoke_subtitle_overlay, extract_thumbnail_power_hook
 )
 from core.broadcast_utils import (
     broadcast_daily_content, broadcast_telegram, broadcast_discord, broadcast_instagram,
@@ -502,6 +502,50 @@ class TestImageAndVideoUtils(unittest.TestCase):
         rendered_late = render_karaoke_subtitle_overlay(draw, 10.0, timings, font_sub)
         self.assertFalse(rendered_late)
 
+    def test_extract_thumbnail_power_hook(self):
+        """Item 4: Verifies 2-3 word high-contrast complementary power hooks."""
+        # Space story
+        b, h = extract_thumbnail_power_hook("ISRO launches quantum satellite into polar orbit")
+        self.assertEqual(b, "🚀 SPACE MISSION")
+        self.assertEqual(h, "HISTORIC ORBIT")
+        
+        # Policy story
+        b, h = extract_thumbnail_power_hook("Union Cabinet approves semiconductor incentive scheme")
+        self.assertEqual(b, "⚡ POLICY SHIFT")
+        self.assertEqual(h, "CABINET CLEARS")
+        
+        # Generic fallback
+        b, h = extract_thumbnail_power_hook("Major global development occurs in foreign diplomacy")
+        self.assertTrue(len(h.split()) <= 3)
+        self.assertEqual(h, h.upper())
+
+    def test_generate_brainteaser_thumbnail(self):
+        """Item 4: Verifies high-contrast teaser thumbnail generation with complementary hooks."""
+        from brainteaser_pipeline import generate_brainteaser_thumbnail
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_root = pathlib.Path(tmp_dir)
+            t_date = datetime.datetime(2026, 11, 27)
+            y_dir = tmp_root / "2026" / "November"
+            img_dir = y_dir / "Brain_Teasers" / "Images"
+            txt_dir = y_dir / "Brain_Teasers" / "Text"
+            img_dir.mkdir(parents=True, exist_ok=True)
+            txt_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Create dummy styled image and text file
+            styled_img = Image.new("RGBA", (656, 656), (30, 41, 59, 255))
+            styled_path = img_dir / "brainteaser-27nov26_styled.png"
+            styled_img.save(styled_path, "PNG")
+            
+            txt_path = txt_dir / "brainteaser-27nov26.txt"
+            txt_path.write_text("Daily Brain Teaser\n\nFind the missing value in 3x3 grid\n\n[1, 2, ?]", encoding="utf-8")
+            
+            with patch("brainteaser_pipeline.ARCHIVE_DIR", tmp_root):
+                thumb_out = generate_brainteaser_thumbnail(t_date, slot=1)
+                self.assertTrue(thumb_out.exists())
+                self.assertGreater(thumb_out.stat().st_size, 5000)
+                with Image.open(thumb_out) as im:
+                    self.assertEqual(im.size, (1080, 1920))
+
     def test_brainteaser_all_layouts_rendering(self):
         import brainteaser_pipeline
         font_reg, font_bold = ensure_fonts(pathlib.Path("pulse_archive"))
@@ -916,6 +960,22 @@ class TestYouTubeTagSafety(unittest.TestCase):
         """sanitize_youtube_tags must handle empty list and None gracefully."""
         self.assertEqual(sanitize_youtube_tags([]), [])
         self.assertEqual(sanitize_youtube_tags(None), [])
+
+    def test_set_video_thumbnail(self):
+        """Item 4: Verifies custom thumbnail upload lifecycle and graceful error handling."""
+        # Non-existent file must return False gracefully
+        res_missing = set_video_thumbnail(MagicMock(), "vid_123", "non_existent_thumb.png")
+        self.assertFalse(res_missing)
+        
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dummy_thumb = pathlib.Path(tmp_dir) / "thumb.png"
+            dummy_thumb.write_bytes(b"dummy_png_bytes")
+            
+            mock_yt = MagicMock()
+            with patch("core.youtube_utils.MediaFileUpload"):
+                res_ok = set_video_thumbnail(mock_yt, "vid_123", str(dummy_thumb))
+                self.assertTrue(res_ok)
+                mock_yt.thumbnails().set.assert_called_once()
 
 
 class TestGDriveUtils(unittest.TestCase):

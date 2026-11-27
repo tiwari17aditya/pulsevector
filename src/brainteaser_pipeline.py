@@ -40,7 +40,7 @@ from core.youtube_utils import (
 from core.content_parser import (
     format_community_poll_text, format_teaser_challenge_comment,
     format_solution_reveal_comment, format_brainteaser_description,
-    generate_dynamic_teaser_title
+    generate_dynamic_teaser_title, classify_teaser_archetype
 )
 from core.broadcast_utils import broadcast_daily_content
 from core.tts_utils import synthesize_text, get_audio_duration, HAS_TTS
@@ -920,6 +920,87 @@ def generate_brainteaser_slides(target_date, style_idx=None, bg_idx=None, slot=1
         print(f"  └─ 🎯 {styled_msg}")
     else:
         logging.warning(f"  └─ ⚠️ Boundary Check Notice: Styled={styled_msg}, Plain={plain_msg}")
+        
+    # 5. Item 4: High-Contrast Thumbnail Generation for Browse & Suggested Feeds
+    try:
+        generate_brainteaser_thumbnail(target_date, slot=slot_num)
+    except Exception as th_err:
+        logging.warning(f"  > Warning generating teaser thumbnail: {th_err}")
+
+
+def generate_brainteaser_thumbnail(target_date, slot=1) -> pathlib.Path:
+    """
+    Item 4: Generates a high-contrast 1080x1920 thumbnail card for YouTube Shorts / Browse feeds.
+    Features 2-3 bold, high-contrast curiosity words complementary to the title.
+    """
+    slot_num = int(slot) if slot else 1
+    year = target_date.strftime("%Y")
+    month_name = target_date.strftime("%B")
+    processed_month_dir = ARCHIVE_DIR / year / month_name
+    slot_suffix = f"_{slot_num}" if slot_num > 1 else ""
+    bt_filename = f"brainteaser-{target_date.strftime(BT_DATE_FMT).lower()}{slot_suffix}.txt"
+    bt_path = processed_month_dir / "Brain_Teasers" / "Text" / bt_filename
+    
+    images_dir = processed_month_dir / "Brain_Teasers" / "Images"
+    images_dir.mkdir(parents=True, exist_ok=True)
+    thumb_path = images_dir / f"{bt_path.stem}_thumb.png"
+    
+    styled_path = images_dir / f"{bt_path.stem}_styled.png"
+    if not styled_path.exists():
+        return thumb_path
+        
+    data = parse_teaser_file(bt_path) if bt_path.exists() else {}
+    arch = classify_teaser_archetype(data) if data else "riddle"
+    
+    COMPLEMENTARY_HOOKS = {
+        "grid": ("FIND THE MISSING", "ONLY 5% CAN"),
+        "detective": ("WHO IS LYING?", "95% ACCUSE WRONG"),
+        "formula": ("BODMAS TRAP!", "CAN YOU SOLVE?"),
+        "scale": ("BALANCE THE SCALE", "GENIUS TEST"),
+        "sequence": ("WHAT COMES NEXT?", "CRACK THE PATTERN"),
+        "oddone": ("SPOT THE IMPOSTOR", "1 DOES NOT FIT"),
+        "cipher": ("DECODE THE CIPHER", "SECRET CODE"),
+        "relations": ("WHO IS SHE?", "TRICKY FAMILY"),
+        "riddle": ("CAN YOU SOLVE?", "ONLY 1% FIGURE OUT"),
+    }
+    top_hook, sub_hook = COMPLEMENTARY_HOOKS.get(arch, ("CAN YOU SOLVE?", "GENIUS IQ TEST"))
+    
+    font_reg, font_bold = ensure_fonts(ARCHIVE_DIR)
+    try:
+        f_hero = ImageFont.truetype(str(font_bold), 64)
+        f_sub = ImageFont.truetype(str(font_bold), 38)
+        f_badge = ImageFont.truetype(str(font_bold), 32)
+    except Exception:
+        f_hero = f_sub = f_badge = ImageFont.load_default()
+        
+    W_canvas, H_canvas = 1080, 1920
+    canvas = create_base_background_with_glow(W_canvas, H_canvas, t=0.0)
+    draw_watermark_on_image(canvas, font_bold)
+    
+    # Paste centered puzzle card
+    card_img = Image.open(styled_path).convert("RGBA")
+    card_x = (W_canvas - 656) // 2
+    card_y = (H_canvas - 656) // 2
+    canvas.paste(card_img, (card_x, card_y), card_img)
+    
+    draw = ImageDraw.Draw(canvas)
+    
+    # Top Curiosity Pill & Hero Hook
+    badge_y = 380
+    draw.rounded_rectangle([(W_canvas/2 - 280, badge_y), (W_canvas/2 + 280, badge_y + 54)], radius=27, fill=(239, 68, 68, 220), outline=(255, 255, 255, 60), width=2)
+    draw_text_with_shadow_helper(draw, "⚡ IQ SPEED TEST", W_canvas/2, badge_y + 27, f_badge, text_color=(255, 255, 255, 255))
+    
+    draw_text_with_shadow_helper(draw, top_hook, W_canvas/2, 480, f_hero, text_color=(251, 191, 36, 255))
+    draw_text_with_shadow_helper(draw, sub_hook, W_canvas/2, 560, f_sub, text_color=(229, 231, 235, 255))
+    
+    # Bottom Urgency Pill
+    bot_y = 1460
+    draw.rounded_rectangle([(W_canvas/2 - 240, bot_y), (W_canvas/2 + 240, bot_y + 60)], radius=30, fill=(15, 23, 42, 230), outline=(56, 189, 248, 160), width=2)
+    draw_text_with_shadow_helper(draw, "⏱️ 8 SECONDS TIMER", W_canvas/2, bot_y + 30, f_sub, text_color=(56, 189, 248, 255))
+    
+    canvas.convert("RGB").save(thumb_path, "PNG")
+    print(f"  > Generated High-Contrast Thumbnail at: {thumb_path}")
+    return thumb_path
 
 
 def create_countdown_bell_ring(draw, cx, cy, radius, progress, text, font_timer):
@@ -1237,7 +1318,12 @@ def publish_teaser_to_youtube(video_path, data, target_date, slot=1, privacy_sta
         )
             
         print("  > Uploading video...")
-        video_id = upload_video_to_youtube(youtube, str(video_path), title, description, final_tags, category_id="27", privacy_status=privacy_status)
+        thumb_file = pathlib.Path(video_path).parent.parent / "Images" / f"{pathlib.Path(video_path).stem}_thumb.png"
+        video_id = upload_video_to_youtube(
+            youtube, str(video_path), title, description, final_tags, 
+            category_id="27", privacy_status=privacy_status,
+            thumbnail_path=str(thumb_file) if thumb_file.exists() else None
+        )
         print(f"  > YouTube Upload Success! Video ID: {video_id}")
         
         playlist_title = f"Daily Brain Teasers - {year_str}"

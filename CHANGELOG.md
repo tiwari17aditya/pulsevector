@@ -32,6 +32,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Shortened voiceover retention hooks to punchy 8-9 word ego-challenges delivered in <= 1.5 seconds at +30% speech rate, and reduced karaoke start offset to 0.05s for instant subtitle pop.
   - Added unit tests in `scripts/test_pipeline.py` verifying frame-0 tick audio amplitude and dynamic countdown color stages (all 101 tests PASS).
 
+- **YouTube Studio Upgrade Item 4: High-Contrast Complementary Thumbnail Overlays**:
+  - Capitalized on Browse features (5.29% CTR) and Suggested videos (1.85% CTR) as advised by YouTube Studio audit.
+  - Eliminated redundant verbatim title repetition on thumbnail cards in favor of 2–3 high-contrast, bold complementary curiosity words.
+  - Implemented `extract_thumbnail_power_hook()` in `src/core/video_utils.py`: dynamically maps headlines to high-contrast topical power hooks (e.g. `🚀 SPACE MISSION / HISTORIC ORBIT`, `⚡ POLICY SHIFT / CABINET CLEARS`, `📈 MARKET ALERT / ECONOMIC SURGE`).
+  - Redesigned Daily News thumbnail slide layout with high-contrast hero punch text (72pt–80pt bold) and attention badges.
+  - Implemented `generate_brainteaser_thumbnail()` in `src/brainteaser_pipeline.py` rendering high-contrast 1080x1920 thumbnail cards tailored to all 9 archetypes (e.g. `WHO IS LYING? / 95% ACCUSE WRONG`).
+  - Added `set_video_thumbnail()` in `src/core/youtube_utils.py` and integrated automated custom thumbnail uploads across both Daily News and Brain Teaser publishing pipelines.
+  - Added unit tests in `scripts/test_pipeline.py` verifying hook extraction, thumbnail generation, and API setting (all 104 tests PASS).
+
 ## [2.14.0] - 2026-11-25
 
 ### Added

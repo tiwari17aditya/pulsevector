@@ -235,7 +235,27 @@ def add_video_to_playlist(youtube, video_id, playlist_title, playlist_privacy="p
         print(f"❌ Failed to add video to playlist: {e}")
         return False
 
-def upload_video_to_youtube(youtube, file_path, title, description, tags, category_id="27", privacy_status=None):
+def set_video_thumbnail(youtube, video_id: str, thumbnail_path: str) -> bool:
+    """
+    Item 4: Uploads a high-contrast custom thumbnail to YouTube Data API v3 for a given video.
+    """
+    p = pathlib.Path(thumbnail_path)
+    if not p.exists():
+        logging.warning(f"Thumbnail file not found at {thumbnail_path}. Skipping thumbnail upload.")
+        return False
+    try:
+        request = youtube.thumbnails().set(
+            videoId=video_id,
+            media_body=MediaFileUpload(str(p), mimetype='image/png', resumable=True)
+        )
+        request.execute()
+        print(f"  > ✅ Successfully set custom thumbnail for video {video_id} ({p.name})")
+        return True
+    except Exception as e:
+        logging.warning(f"  > ⚠️ Notice: Could not set custom thumbnail via API: {e}")
+        return False
+
+def upload_video_to_youtube(youtube, file_path, title, description, tags, category_id="27", privacy_status=None, thumbnail_path=None):
     if not privacy_status:
         privacy_status = os.getenv("YOUTUBE_PRIVACY_STATUS", "public")
     # Always sanitize tags before sending to YouTube API.
@@ -271,6 +291,8 @@ def upload_video_to_youtube(youtube, file_path, title, description, tags, catego
                 
         if 'id' in response:
             video_id = response['id']
+            if thumbnail_path:
+                set_video_thumbnail(youtube, video_id, thumbnail_path)
             return video_id
         else:
             raise RuntimeError(f"Unexpected upload response: {response}")

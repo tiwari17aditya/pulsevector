@@ -460,9 +460,11 @@ class PipelineEngine:
                         print(f"  > Note on upload deduplication check: {dup_err}")
 
                 if not video_id:
+                    thumb_path = img_dir / "thumbnail.png"
                     print(f"Uploading '{payload.title}' to YouTube...")
                     video_id = upload_video_to_youtube(
-                        youtube, str(video_path), payload.title, payload.description, payload.hashtags
+                        youtube, str(video_path), payload.title, payload.description, payload.hashtags,
+                        thumbnail_path=str(thumb_path) if thumb_path.exists() else None
                     )
                     print(f"✅ Upload Complete! Video ID: {video_id}")
                     

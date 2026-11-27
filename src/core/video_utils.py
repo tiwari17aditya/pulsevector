@@ -338,6 +338,45 @@ def draw_text_with_shadow_helper(draw, text, x, y, font, shadow_color=(0, 0, 0, 
         draw.text((x + offset[0], y + offset[1]), text, font=font, fill=shadow_color, anchor=anchor)
     draw.text((x, y), text, font=font, fill=text_color, anchor=anchor)
 
+def extract_thumbnail_power_hook(headline: str) -> Tuple[str, str]:
+    """
+    Item 4: Extracts 2-3 high-contrast punchy complementary words from a headline.
+    Returns (badge_text, hero_text) for maximum CTR in Browse & Suggested feeds.
+    """
+    h_lower = headline.lower() if headline else ""
+    
+    if any(k in h_lower for k in ["space", "isro", "satellite", "nasa", "moon", "orbit", "mars"]):
+        return ("🚀 SPACE MISSION", "HISTORIC ORBIT")
+    if any(k in h_lower for k in ["cabinet", "approves", "clears", "scheme", "fund", "crore", "govt"]):
+        return ("⚡ POLICY SHIFT", "CABINET CLEARS")
+    if any(k in h_lower for k in ["gdp", "economy", "inflation", "rbi", "market", "sensex", "repo"]):
+        return ("📈 MARKET ALERT", "ECONOMIC SURGE")
+    if any(k in h_lower for k in ["defence", "missile", "military", "army", "navy", "airforce", "drdo"]):
+        return ("🛡️ DEFENCE ALERT", "STRATEGIC TEST")
+    if any(k in h_lower for k in ["supreme court", "high court", "verdict", "ruling", "judge", "bench"]):
+        return ("⚖️ LANDMARK RULING", "COURT VERDICT")
+    if any(k in h_lower for k in ["ai", "tech", "quantum", "chip", "semiconductor", "digital"]):
+        return ("🔥 TECH FRONTIER", "QUANTUM LEAP")
+    if any(k in h_lower for k in ["wins", "victory", "champion", "gold", "medal", "cup", "trophy"]):
+        return ("🏆 HISTORIC WIN", "CHAMPIONS")
+    if any(k in h_lower for k in ["summit", "bilateral", "treaty", "pact", "president", "prime minister", "visit"]):
+        return ("🌐 GLOBAL SUMMIT", "STRATEGIC PACT")
+    if any(k in h_lower for k in ["climate", "green", "solar", "energy", "renewable", "emission"]):
+        return ("🌱 GREEN ENERGY", "CLEAN TARGET")
+        
+    # Fallback: Clean headline and take first 2-3 impactful uppercase words
+    clean = re.sub(r'\[Source:.*?\]', '', headline, flags=re.IGNORECASE).strip()
+    clean = re.sub(r'[\.\:\;\-\"\'\`]', '', clean).strip()
+    clean = re.sub(r'^(the|in a major move|today|as per reports|govt)\s+', '', clean, flags=re.IGNORECASE).strip()
+    words = clean.split()
+    if len(words) >= 2:
+        hero = " ".join(words[:3]).upper()
+        if len(hero) > 24:
+            hero = " ".join(words[:2]).upper()
+        return ("⚡ CRITICAL UPDATE", hero)
+        
+    return ("⚡ TOP STORY", "BREAKING NEWS")
+
 def generate_thumbnail_slide_image(
     date_obj: datetime.datetime,
     font_bold_path: pathlib.Path,
@@ -419,25 +458,30 @@ def generate_thumbnail_slide_image(
         draw.rounded_rectangle([(cx - 320, 800), (cx + 320, 860)], radius=25, fill=(15, 23, 42, 220), outline=(56, 189, 248, 120), width=1)
         draw_text_with_shadow_helper(draw, "▶ WATCH COMPLETE MASTERCLASS", cx, 830, font_micro, text_color=(56, 189, 248, 230))
     elif headline_hook and category_name == "DAILY":
-        # --- High-Retention Headline Hook Layout ---
+        # --- High-Retention Headline Hook Layout (Item 4: High-Contrast Complementary Hook) ---
+        badge_text, hero_text = extract_thumbnail_power_hook(headline_hook)
+        
         # 1. Top Urgent Category Badge
         badge_y = 440
         draw.rounded_rectangle([(180, badge_y), (900, badge_y + 60)], radius=30, fill=(245, 158, 11, 40), outline=(245, 158, 11, 200), width=2)
-        draw_text_with_shadow_helper(draw, "⚡ TOP STORIES TODAY", cx, badge_y + 30, font_sublogo, text_color=(251, 191, 36, 255))
+        draw_text_with_shadow_helper(draw, badge_text, cx, badge_y + 30, font_sublogo, text_color=(251, 191, 36, 255))
         
         # 2. Date Subtitle
         draw_text_with_shadow_helper(draw, formatted_date_str, cx, 560, font_date, text_color=(148, 163, 184, 255))
         draw.line([(240, 630), (840, 630)], fill=(255, 255, 255, 30), width=2)
         
-        # 3. Breaking Headline Preview Card
-        preview_box = [(120, 680), (960, 1380)]
-        draw.rounded_rectangle(preview_box, radius=25, fill=(30, 41, 59, 140), outline=(56, 189, 248, 90), width=2)
+        # 3. High-Contrast Hero Card
+        preview_box = [(100, 680), (980, 1380)]
+        draw.rounded_rectangle(preview_box, radius=25, fill=(15, 23, 42, 230), outline=(56, 189, 248, 120), width=3)
         
-        # Micro pill: STORY #1
-        draw.rounded_rectangle([(160, 720), (380, 770)], radius=15, fill=(239, 68, 68, 220))
-        draw_text_with_shadow_helper(draw, "🔥 STORY #1", 270, 745, font_micro, text_color=(255, 255, 255, 255))
+        # Micro pill: BREAKING INSIGHT
+        draw.rounded_rectangle([(cx - 160, 720), (cx + 160, 770)], radius=15, fill=(239, 68, 68, 240))
+        draw_text_with_shadow_helper(draw, "🔥 TOP STORY", cx, 745, font_micro, text_color=(255, 255, 255, 255))
         
-        # Clean and wrap the headline text
+        # Giant 2-3 Word Hero Punch Text (high-contrast yellow)
+        draw_text_with_shadow_helper(draw, hero_text, cx, 860, font_title, text_color=(251, 191, 36, 255))
+        
+        # Clean and wrap complementary preview
         clean_headline = re.sub(r"^[\d\.\-\s]+", "", headline_hook).strip()
         clean_headline = re.sub(r"\[Source:[^\]]+\]", "", clean_headline, flags=re.IGNORECASE).strip()
         from .content_parser import clean_markdown_decorations
@@ -445,9 +489,9 @@ def generate_thumbnail_slide_image(
         
         from .image_utils import wrap_text
         lines = wrap_text(clean_headline, font_hook_title, max_width=760)
-        curr_y = 830
-        for line in lines[:5]:
-            draw_text_with_shadow_helper(draw, line, cx, curr_y, font_hook_title, text_color=(255, 255, 255, 255))
+        curr_y = 990
+        for line in lines[:3]:
+            draw_text_with_shadow_helper(draw, line, cx, curr_y, font_hook_title, text_color=(229, 231, 235, 255))
             curr_y += 65
             
         # 4. Bottom Call-To-Action Pill
