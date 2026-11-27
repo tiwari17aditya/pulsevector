@@ -925,7 +925,18 @@ def generate_brainteaser_slides(target_date, style_idx=None, bg_idx=None, slot=1
 def create_countdown_bell_ring(draw, cx, cy, radius, progress, text, font_timer):
     draw.ellipse([(cx - radius, cy - radius), (cx + radius, cy + radius)], outline=(255, 255, 255, 30), width=8)
     angle = int(360 * progress)
-    draw.arc([(cx - radius, cy - radius), (cx + radius, cy + radius)], start=-90, end=-90 + angle, fill=(56, 189, 248), width=8)
+    # Item 3: Dynamic urgency color shift: Electric Cyan -> Amber (<=5s) -> Alert Red (<=3s)
+    try:
+        sec = int(text)
+        if sec <= 3:
+            fill_color = (239, 68, 68)   # Alert Red
+        elif sec <= 5:
+            fill_color = (251, 191, 36)  # Warning Amber
+        else:
+            fill_color = (56, 189, 248)  # Electric Cyan
+    except (ValueError, TypeError):
+        fill_color = (56, 189, 248)
+    draw.arc([(cx - radius, cy - radius), (cx + radius, cy + radius)], start=-90, end=-90 + angle, fill=fill_color, width=8)
 
 def generate_brainteaser_video(target_date, slot=1):
     slot_num = int(slot) if slot else 1
@@ -977,27 +988,27 @@ def generate_brainteaser_video(target_date, slot=1):
     W_canvas, H_canvas = 1080, 1920
     
     # 1. Synthesize Intro Voiceover Hook & compute word timings for Karaoke Subtitles
-    # High-retention ego-challenge hooks that trigger immediate viewer engagement in the first 3 seconds
+    # Item 3: High-retention ego-challenge hooks delivering punchy challenge under 1.5s
     RETENTION_HOOKS = [
         {
             "badge": "95% FAIL THIS TEST!",
             "subtitle": "Can you solve it before zero?",
-            "speech": "Ninety-five percent of people fail this puzzle! Can you solve it in eight seconds?"
+            "speech": "Ninety-five percent fail! Can you solve this in eight seconds?"
         },
         {
             "badge": "ONLY 5% SPOT THE RULE!",
             "subtitle": "Think fast! What is the answer?",
-            "speech": "Only five percent of people spot the pattern! What is the missing answer?"
+            "speech": "Only five percent spot the pattern! Find the missing value!"
         },
         {
             "badge": "GENIUS IQ CHALLENGE!",
             "subtitle": "Beat the clock & solve it!",
-            "speech": "Genius challenge! Find the correct answer before the timer hits zero!"
+            "speech": "Genius challenge! Find the correct answer before the clock hits zero!"
         },
         {
             "badge": "SPEED REASONING TEST!",
             "subtitle": "Can you beat 90% of viewers?",
-            "speech": "Speed test! Can you beat ninety percent of viewers and solve this now?"
+            "speech": "Speed challenge! Beat ninety percent of viewers and solve this now!"
         }
     ]
     hook_idx = (target_date.day + (slot_num - 1) * 2) % len(RETENTION_HOOKS)
@@ -1007,9 +1018,9 @@ def generate_brainteaser_video(target_date, slot=1):
     vo_timings = []
     if HAS_TTS:
         try:
-            synthesize_text(intro_hook, voice="en-US-ChristopherNeural", rate="+25%", output_path=temp_vo_path)
+            synthesize_text(intro_hook, voice="en-US-ChristopherNeural", rate="+30%", output_path=temp_vo_path)
             vo_dur = get_audio_duration(temp_vo_path)
-            vo_timings = compute_word_timings(intro_hook, vo_dur, start_offset=0.25)
+            vo_timings = compute_word_timings(intro_hook, vo_dur, start_offset=0.05)
             print("  > Synthesized Brain Teaser voiceover intro with karaoke timings.")
         except Exception as e:
             print(f"  > Warning: Failed synthesizing voiceover intro: {e}")

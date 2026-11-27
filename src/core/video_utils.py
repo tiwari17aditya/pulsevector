@@ -160,11 +160,13 @@ def generate_countdown_sfx(output_wav: pathlib.Path, total_duration: float = 10.
     
     samples = [0.0] * total_samples
     
-    # 1. 1-second interval clock ticks up to stop_at
-    tick_times = [i * tick_interval for i in range(1, int(stop_at) + 1)]
+    # 1. 1-second interval clock ticks up to stop_at (Item 3: starts immediately at 0.0s for instant auditory hook)
+    tick_times = [i * tick_interval for i in range(0, int(stop_at) + 1)]
     for t_sec in tick_times:
         start_idx = int(t_sec * sample_rate)
-        tick_duration = 0.04  # 40ms click
+        # Accentuate opening tick at t=0.0s to instantly hook viewers in first 0.2s
+        tick_duration = 0.05 if t_sec == 0 else 0.04
+        vol_scale = 1.0 if t_sec == 0 else 0.8
         tick_samples_count = int(tick_duration * sample_rate)
         for j in range(tick_samples_count):
             idx = start_idx + j
@@ -173,7 +175,7 @@ def generate_countdown_sfx(output_wav: pathlib.Path, total_duration: float = 10.
                 click = (math.sin(2 * math.pi * 1200 * t_rel) * 0.7 + 
                          math.sin(2 * math.pi * 2400 * t_rel) * 0.3)
                 decay = math.exp(-t_rel * 90)
-                samples[idx] += click * decay * 0.8
+                samples[idx] += click * decay * vol_scale
                 
     # 2. Resonant Bell Chime at stop_at
     chime_start_idx = int(stop_at * sample_rate)

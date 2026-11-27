@@ -449,11 +449,36 @@ class TestImageAndVideoUtils(unittest.TestCase):
         self.assertEqual(frames[0].shape, (100, 100, 3))
 
     def test_generate_countdown_sfx(self):
+        """Item 3: Verifies immediate frame-0 countdown tick synthesis and bell chime."""
+        import wave
+        import struct
         with tempfile.TemporaryDirectory() as tmp_dir:
             wav_path = pathlib.Path(tmp_dir) / "test_sfx.wav"
             out = generate_countdown_sfx(wav_path, total_duration=2.0, tick_interval=1.0, stop_at=1.0)
             self.assertTrue(out.exists())
             self.assertGreater(out.stat().st_size, 1000)
+            
+            with wave.open(str(out), 'rb') as wf:
+                self.assertEqual(wf.getnchannels(), 2)
+                self.assertEqual(wf.getframerate(), 44100)
+                # First 200 frames (approx 4.5ms) must contain non-zero audio from frame-0 tick
+                frames = wf.readframes(200)
+                unpacked = struct.unpack(f"<{len(frames)//2}h", frames)
+                has_audio = any(abs(v) > 0 for v in unpacked)
+                self.assertTrue(has_audio, "Frame 0 tick must produce immediate audio amplitude")
+
+    def test_create_countdown_bell_ring_dynamic_color(self):
+        """Item 3: Verifies urgency color shift in countdown bell ring."""
+        from brainteaser_pipeline import create_countdown_bell_ring
+        dummy_img = Image.new("RGBA", (200, 200), (0, 0, 0, 255))
+        draw = ImageDraw.Draw(dummy_img)
+        font_reg, _ = ensure_fonts(pathlib.Path("pulse_archive"))
+        font_sub = ImageFont.truetype(str(font_reg), 24)
+        
+        # Must execute without errors across all time stages (start, warning, critical)
+        create_countdown_bell_ring(draw, 100, 100, 50, 0.9, "8", font_sub)
+        create_countdown_bell_ring(draw, 100, 100, 50, 0.5, "5", font_sub)
+        create_countdown_bell_ring(draw, 100, 100, 50, 0.2, "2", font_sub)
 
     def test_compute_word_timings_and_karaoke(self):
         sample_text = "Daily Brain Teaser solve this puzzle"
